@@ -25,6 +25,7 @@ export interface Product {
   howToTake: string;
   documents: { name: string; url: string }[];
   inStock: boolean;
+  stockQty?: number; // кол-во в наличии, undefined = не отслеживается
   weight: string;
   servings: number;
   // только для семян

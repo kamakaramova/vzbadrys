@@ -76,6 +76,8 @@ export default function AdminPage() {
   const [productSearch, setProductSearch] = useState("");
   const [productSaved, setProductSaved] = useState(false);
   const [showAddProduct, setShowAddProduct] = useState(false);
+  const [receiveQtys, setReceiveQtys] = useState<Record<string, string>>({});
+  const [receiveSaved, setReceiveSaved] = useState<Record<string, boolean>>({});
 
   const store = useAuthStore();
   const promoStore = usePromoStore();
@@ -89,7 +91,7 @@ export default function AdminPage() {
   const promos = mounted ? promoStore.promos : [];
   const { addPromo, togglePromo, deletePromo } = promoStore;
   const allProducts = mounted ? productStore.products : [];
-  const { updateProduct, deleteProduct, toggleStock, resetToDefault } = productStore;
+  const { updateProduct, deleteProduct, toggleStock, resetToDefault, receiveStock, setStockQty } = productStore;
 
   const customerStats = useMemo(() => {
     return users.map((u) => {
@@ -765,10 +767,76 @@ export default function AdminPage() {
               </div>
             </div>
 
+            {/* ПРИЁМКА ТОВАРА */}
+            <div className="bg-white rounded-3xl border border-[#f0e8e0] overflow-hidden">
+              <div className="px-6 py-4 border-b border-[#f0e8e0]">
+                <h2 className="font-bold flex items-center gap-2"><Plus size={16} className="text-[#E8845A]" /> Приёмка товара</h2>
+                <p className="text-xs text-[#aaa] mt-1">Введи сколько штук пришло — остаток обновится автоматически. Когда остаток = 0, карточка уходит в «нет в наличии».</p>
+              </div>
+              <div className="divide-y divide-[#f0e8e0]">
+                {allProducts.filter((p) => p.name.toLowerCase().includes(productSearch.toLowerCase())).map((p) => {
+                  const stockColor = p.stockQty === undefined ? "text-[#aaa]" : p.stockQty === 0 ? "text-red-500 font-bold" : p.stockQty <= 5 ? "text-orange-500 font-bold" : "text-green-600 font-bold";
+                  return (
+                    <div key={p.id} className="flex items-center gap-4 px-6 py-3">
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-semibold truncate">{p.name}</p>
+                        <p className="text-xs mt-0.5">
+                          Остаток: <span className={stockColor}>
+                            {p.stockQty === undefined ? "не отслеживается" : `${p.stockQty} шт.`}
+                          </span>
+                          {p.stockQty !== undefined && !p.inStock && p.stockQty === 0 && (
+                            <span className="ml-2 text-red-400 font-semibold">· Нет в наличии на сайте</span>
+                          )}
+                        </p>
+                      </div>
+                      {/* Поле приёмки */}
+                      <div className="flex items-center gap-2 flex-shrink-0">
+                        <span className="text-xs text-[#aaa] hidden sm:block">Принять:</span>
+                        <input
+                          type="number"
+                          min="1"
+                          value={receiveQtys[p.id] || ""}
+                          onChange={(e) => setReceiveQtys({ ...receiveQtys, [p.id]: e.target.value })}
+                          placeholder="шт."
+                          className="w-20 px-3 py-2 rounded-xl border border-[#f0e8e0] text-sm outline-none focus:border-[#E8845A] text-center"
+                        />
+                        <button
+                          onClick={() => {
+                            const qty = parseInt(receiveQtys[p.id] || "0");
+                            if (!qty || qty < 1) return;
+                            receiveStock(p.id, qty);
+                            setReceiveQtys({ ...receiveQtys, [p.id]: "" });
+                            setReceiveSaved({ ...receiveSaved, [p.id]: true });
+                            setTimeout(() => setReceiveSaved((prev) => ({ ...prev, [p.id]: false })), 1500);
+                          }}
+                          className="px-4 py-2 rounded-xl bg-[#E8845A] hover:bg-[#d4703f] text-white text-xs font-bold transition-all whitespace-nowrap"
+                        >
+                          {receiveSaved[p.id] ? <Check size={14} /> : "+ Принять"}
+                        </button>
+                        {/* Установить точный остаток */}
+                        <button
+                          onClick={() => {
+                            const qty = prompt(`Установить точный остаток для «${p.name}»:\nТекущий остаток: ${p.stockQty ?? "не задан"}`);
+                            if (qty === null) return;
+                            const num = parseInt(qty);
+                            if (!isNaN(num) && num >= 0) setStockQty(p.id, num);
+                          }}
+                          title="Установить точный остаток"
+                          className="p-2 rounded-xl border border-[#f0e8e0] text-[#aaa] hover:text-[#E8845A] hover:border-[#E8845A] transition-all text-xs"
+                        >
+                          <Edit2 size={14} />
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
             {/* Список товаров */}
             <div className="bg-white rounded-3xl border border-[#f0e8e0] overflow-hidden">
               <div className="px-6 py-4 border-b border-[#f0e8e0] flex items-center justify-between">
-                <h2 className="font-bold">Все товары</h2>
+                <h2 className="font-bold">Редактировать товары</h2>
                 <span className="text-xs text-[#aaa]">{allProducts.length} шт.</span>
               </div>
               <div className="divide-y divide-[#f0e8e0]">
@@ -796,7 +864,10 @@ export default function AdminPage() {
                           {p.inStock ? "В наличии" : "Нет в наличии"}
                         </span>
                       </div>
-                      <p className="text-xs text-[#aaa] mt-0.5">{p.category === "bads" ? "БАД" : "Семена"} · {p.weight}</p>
+                      <p className="text-xs text-[#aaa] mt-0.5">
+                        {p.category === "bads" ? "БАД" : "Семена"} · {p.weight}
+                        {p.stockQty !== undefined && <span> · Остаток: <b>{p.stockQty} шт.</b></span>}
+                      </p>
                     </div>
 
                     {/* Цена */}

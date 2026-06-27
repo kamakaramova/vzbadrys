@@ -5,6 +5,7 @@ import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import { useCartStore } from "@/store/cartStore";
 import { useAuthStore } from "@/store/authStore";
+import { useProductStore } from "@/store/productStore";
 import { Check, MapPin, Package, CreditCard, MessageSquare } from "lucide-react";
 import { useRouter } from "next/navigation";
 
@@ -21,6 +22,7 @@ export default function CheckoutPage() {
   const promoDiscount = useCartStore((s) => s.promoDiscount);
   const clearCart = useCartStore((s) => s.clearCart);
   const { user, addOrder, addBonusToUser } = useAuthStore();
+  const writeOffStock = useProductStore((s) => s.writeOffStock);
   const referrerId = useCartStore((s) => s.referrerId);
   const promoType = useCartStore((s) => s.promoType);
 
@@ -94,6 +96,9 @@ export default function CheckoutPage() {
         comment: comment || undefined,
       });
     }
+
+    // Списываем остатки
+    items.forEach((item) => writeOffStock(item.id, item.quantity));
 
     // Если использован реферальный код — начисляем 100 бонусов рефереру
     if (promoType === "referral" && referrerId) {
