@@ -1,0 +1,483 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Согласие на обработку персональных данных — Взбадрись</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&display=swap');
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: 'Montserrat', sans-serif;
+      background: #fdf9f6;
+      color: #2d2d2d;
+      line-height: 1.8;
+      font-size: 15px;
+    }
+
+    .header {
+      background: #fff;
+      border-bottom: 1px solid #f0ebe5;
+      padding: 32px 0;
+      text-align: center;
+    }
+
+    .logo {
+      font-size: 22px;
+      font-weight: 700;
+      color: #e07b4a;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+
+    .header-subtitle {
+      font-size: 12px;
+      color: #b0a89e;
+      margin-top: 4px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .container {
+      max-width: 820px;
+      margin: 0 auto;
+      padding: 52px 24px 88px;
+    }
+
+    .doc-title {
+      font-size: 26px;
+      font-weight: 700;
+      color: #1a1a1a;
+      margin-bottom: 6px;
+      text-align: center;
+      line-height: 1.3;
+    }
+
+    .doc-meta {
+      text-align: center;
+      color: #b0a89e;
+      font-size: 13px;
+      margin-bottom: 40px;
+    }
+
+    .alert-box {
+      background: #fff8f4;
+      border-left: 4px solid #e07b4a;
+      border-radius: 0 12px 12px 0;
+      padding: 18px 22px;
+      margin-bottom: 36px;
+      font-size: 14px;
+      color: #4a4a4a;
+      line-height: 1.7;
+    }
+
+    .alert-box strong { color: #c96530; }
+
+    h2 {
+      font-size: 16px;
+      font-weight: 700;
+      color: #1a1a1a;
+      margin: 44px 0 14px;
+      padding-bottom: 10px;
+      border-bottom: 2px solid #f0e8e0;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .num {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 28px;
+      height: 28px;
+      background: #e07b4a;
+      color: #fff;
+      border-radius: 50%;
+      font-size: 12px;
+      font-weight: 700;
+      flex-shrink: 0;
+    }
+
+    p { margin-bottom: 12px; color: #3d3d3d; }
+
+    ul {
+      list-style: none;
+      padding-left: 0;
+      margin-bottom: 16px;
+    }
+
+    ul li {
+      position: relative;
+      padding-left: 18px;
+      margin-bottom: 8px;
+      color: #3d3d3d;
+      font-size: 14.5px;
+    }
+
+    ul li::before {
+      content: '–';
+      position: absolute;
+      left: 0;
+      color: #e07b4a;
+      font-weight: 700;
+    }
+
+    .info-card {
+      background: #fff;
+      border: 1px solid #ede5dc;
+      border-radius: 14px;
+      padding: 22px 26px;
+      margin: 14px 0;
+    }
+
+    .card-row {
+      display: flex;
+      gap: 14px;
+      padding: 9px 0;
+      border-bottom: 1px solid #f7f2ee;
+      font-size: 14px;
+    }
+
+    .card-row:last-child { border-bottom: none; }
+    .cl { color: #b0a89e; min-width: 210px; flex-shrink: 0; }
+    .cv { color: #1a1a1a; font-weight: 500; }
+
+    .note {
+      background: #f9f6f3;
+      border-radius: 10px;
+      padding: 14px 18px;
+      font-size: 13.5px;
+      color: #666;
+      margin: 14px 0;
+      line-height: 1.65;
+    }
+
+    .note strong { color: #333; }
+
+    /* Главный блок — текст согласия */
+    .consent-main {
+      background: #fff;
+      border: 2px solid #e07b4a;
+      border-radius: 16px;
+      padding: 36px 40px;
+      margin: 32px 0;
+    }
+
+    .consent-main-label {
+      font-size: 11px;
+      font-weight: 700;
+      color: #e07b4a;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      margin-bottom: 20px;
+    }
+
+    .consent-main p {
+      font-size: 14.5px;
+      line-height: 1.85;
+      color: #2d2d2d;
+      margin-bottom: 16px;
+    }
+
+    .consent-main p:last-child { margin-bottom: 0; }
+
+    /* Чекбоксы-примеры */
+    .checkbox-example {
+      background: #fdf9f6;
+      border: 1px dashed #d5c8be;
+      border-radius: 10px;
+      padding: 16px 18px;
+      margin: 20px 0 0;
+      font-size: 13.5px;
+      color: #555;
+      line-height: 1.65;
+    }
+
+    .checkbox-example-label {
+      font-size: 11px;
+      font-weight: 700;
+      color: #b0a89e;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      margin-bottom: 12px;
+    }
+
+    .cb-row {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      margin-bottom: 10px;
+    }
+
+    .cb-row:last-child { margin-bottom: 0; }
+
+    .cb-box {
+      width: 18px;
+      height: 18px;
+      border: 2px solid #e07b4a;
+      border-radius: 4px;
+      flex-shrink: 0;
+      margin-top: 2px;
+    }
+
+    /* Блок — как работает */
+    .how-it-works {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+      margin: 16px 0;
+    }
+
+    .how-card {
+      background: #fff;
+      border: 1px solid #ede5dc;
+      border-radius: 12px;
+      padding: 20px 20px;
+    }
+
+    .how-card-icon {
+      font-size: 22px;
+      margin-bottom: 10px;
+    }
+
+    .how-card-title {
+      font-size: 13px;
+      font-weight: 700;
+      color: #1a1a1a;
+      margin-bottom: 6px;
+    }
+
+    .how-card-text {
+      font-size: 13px;
+      color: #666;
+      line-height: 1.6;
+    }
+
+    .revoke-block {
+      background: #f9f6f3;
+      border: 1px solid #e0d5ca;
+      border-radius: 12px;
+      padding: 22px 26px;
+      margin-top: 14px;
+    }
+
+    .revoke-block p { font-size: 14px; margin-bottom: 8px; }
+    .revoke-block p:last-child { margin-bottom: 0; }
+    .revoke-block strong { color: #1a1a1a; }
+
+    .footer-block {
+      margin-top: 64px;
+      padding-top: 28px;
+      border-top: 1px solid #ede5dc;
+      text-align: center;
+      color: #b0a89e;
+      font-size: 13px;
+      line-height: 1.7;
+    }
+
+    .footer-block strong {
+      display: block;
+      font-size: 15px;
+      color: #e07b4a;
+      margin-bottom: 6px;
+    }
+
+    a { color: #e07b4a; text-decoration: none; }
+    a:hover { text-decoration: underline; }
+
+    @media (max-width: 600px) {
+      .card-row { flex-direction: column; gap: 4px; }
+      .cl { min-width: unset; }
+      .doc-title { font-size: 20px; }
+      .consent-main { padding: 24px 20px; }
+      .how-it-works { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="header">
+  <div class="logo">Взбадрись</div>
+  <div class="header-subtitle">Официальный документ</div>
+</div>
+
+<div class="container">
+
+  <h1 class="doc-title">Согласие на обработку<br/>персональных данных</h1>
+  <div class="doc-meta">Редакция от 27 июня 2026 года · Электронная форма — подпись не требуется</div>
+
+  <div class="alert-box">
+    Настоящий документ определяет условия, на которых <strong>ИП Абдулкина Полина Валентиновна</strong> (бренд «Взбадрись») обрабатывает персональные данные пользователей сайта. Согласие предоставляется в электронной форме: нажатие кнопки «Оформить заказ» или проставление отметки в чекбоксе приравнивается к письменному согласию в соответствии с п. 1 ст. 9 ФЗ-152 «О персональных данных».
+  </div>
+
+  <!-- 1 -->
+  <h2><span class="num">1</span>Оператор персональных данных</h2>
+  <div class="info-card">
+    <div class="card-row"><span class="cl">Наименование</span><span class="cv">ИП Абдулкина Полина Валентиновна</span></div>
+    <div class="card-row"><span class="cl">ИНН</span><span class="cv">166107199180</span></div>
+    <div class="card-row"><span class="cl">ОГРНИП</span><span class="cv">326169000086855</span></div>
+    <div class="card-row"><span class="cl">Адрес</span><span class="cv">123112, г. Москва, Пресненская наб., д. 10, эт. 19</span></div>
+    <div class="card-row"><span class="cl">Электронная почта</span><span class="cv"><a href="mailto:PABDULKINA@GMAIL.COM">PABDULKINA@GMAIL.COM</a></span></div>
+  </div>
+
+  <!-- 2 -->
+  <h2><span class="num">2</span>Как фиксируется согласие на сайте</h2>
+  <p>Сайт реализует товары дистанционным способом (ст. 26.1 Закона РФ «О защите прав потребителей», Постановление Правительства РФ № 2463). Согласие на обработку персональных данных фиксируется электронно и не требует собственноручной подписи.</p>
+
+  <div class="how-it-works">
+    <div class="how-card">
+      <div class="how-card-icon">🛒</div>
+      <div class="how-card-title">При оформлении заказа</div>
+      <div class="how-card-text">Нажатие кнопки «Оформить заказ» вместе с отметкой в чекбоксе = согласие на обработку данных в целях исполнения заказа.</div>
+    </div>
+    <div class="how-card">
+      <div class="how-card-icon">📧</div>
+      <div class="how-card-title">При подписке на рассылку</div>
+      <div class="how-card-text">Отдельный чекбокс или форма подписки = согласие на маркетинговые коммуникации. Не является условием покупки.</div>
+    </div>
+  </div>
+
+  <div class="checkbox-example">
+    <div class="checkbox-example-label">Пример формулировок чекбоксов на сайте</div>
+    <div class="cb-row">
+      <div class="cb-box"></div>
+      <span>Оформляя заказ, я принимаю <a href="politika-konfidentsialnosti.html">Политику конфиденциальности</a> и даю согласие на обработку моих персональных данных для выполнения заказа и получения уведомлений о его статусе. <em style="color:#b0a89e">(обязательный чекбокс)</em></span>
+    </div>
+    <div class="cb-row" style="margin-top:8px;">
+      <div class="cb-box"></div>
+      <span>Я хочу получать акции, новинки и полезные материалы от «Взбадрись» на email. Отписаться можно в любое время по ссылке в письме. <em style="color:#b0a89e">(необязательный чекбокс)</em></span>
+    </div>
+  </div>
+
+  <!-- 3 -->
+  <h2><span class="num">3</span>Состав персональных данных</h2>
+  <p>Пользователь даёт согласие на обработку следующих данных:</p>
+  <ul>
+    <li>Фамилия, имя, отчество</li>
+    <li>Адрес электронной почты</li>
+    <li>Номер телефона</li>
+    <li>Адрес доставки (населённый пункт, улица, дом, квартира, индекс)</li>
+    <li>Данные о платёжных операциях — в объёме, необходимом для проведения оплаты (реквизиты карт не хранятся)</li>
+    <li>История заказов и переписки с поддержкой</li>
+    <li>Данные метрических систем (Яндекс.Метрика, Google Analytics и аналогичные сервисы): поведение на сайте, источник перехода, время сессии</li>
+    <li>Cookie-файлы и технические данные о посещении сайта</li>
+  </ul>
+
+  <!-- 4 -->
+  <h2><span class="num">4</span>Цели обработки</h2>
+  <ul>
+    <li>Оформление, обработка и доставка заказов на биологически активные добавки</li>
+    <li>Уведомление о статусе заказа (email, SMS)</li>
+    <li>Обратная связь и поддержка клиентов</li>
+    <li>Информирование об акциях и новинках — только при наличии отдельного согласия</li>
+    <li>Анализ работы сайта и улучшение сервиса</li>
+    <li>Исполнение требований законодательства РФ (налоговый учёт, бухгалтерия)</li>
+  </ul>
+
+  <!-- 5 -->
+  <h2><span class="num">5</span>Перечень действий с персональными данными</h2>
+  <ul>
+    <li>Сбор и запись при оформлении заказа или регистрации</li>
+    <li>Систематизация и хранение в защищённых информационных системах</li>
+    <li>Уточнение и обновление по запросу пользователя</li>
+    <li>Передача третьим лицам в объёме, необходимом для исполнения заказа (службы доставки, платёжные сервисы)</li>
+    <li>Трансграничная передача — в страны с адекватным уровнем защиты ПД (при использовании иностранных сервисов)</li>
+    <li>Обезличивание и уничтожение по истечении срока хранения или при отзыве согласия</li>
+  </ul>
+
+  <!-- 6 -->
+  <h2><span class="num">6</span>Правовые основания</h2>
+  <ul>
+    <li>Согласие субъекта персональных данных — п. 1 ч. 1 ст. 6, ст. 9 ФЗ-152 (для рассылок, маркетинга)</li>
+    <li>Исполнение договора купли-продажи — п. 5 ч. 1 ст. 6 ФЗ-152 (для обработки заказов)</li>
+    <li>Исполнение требований законодательства — п. 2 ч. 1 ст. 6 ФЗ-152 (налоговый учёт)</li>
+  </ul>
+
+  <!-- 7 -->
+  <h2><span class="num">7</span>Сроки хранения</h2>
+  <ul>
+    <li>Данные о заказе — 5 лет (требования налогового и бухгалтерского законодательства)</li>
+    <li>Данные для рассылок — до отписки или отзыва согласия</li>
+    <li>Переписка с поддержкой — 3 года с момента последнего обращения</li>
+    <li>Технические данные (cookie, логи) — не более 12 месяцев</li>
+  </ul>
+
+  <!-- 8 — главный блок согласия -->
+  <h2><span class="num">8</span>Текст согласия</h2>
+
+  <div class="consent-main">
+    <div class="consent-main-label">Настоящим пользователь подтверждает</div>
+
+    <p>Оформляя заказ на сайте «Взбадрись» и проставляя отметку в соответствующем чекбоксе, пользователь в соответствии со ст. 9 Федерального закона № 152-ФЗ «О персональных данных» свободно, своей волей и в своём интересе даёт согласие <strong>ИП Абдулкиной Полине Валентиновне</strong> (ИНН 166107199180, ОГРНИП 326169000086855, адрес: 123112, г. Москва, Пресненская наб., д. 10, эт. 19) на обработку следующих персональных данных: фамилия, имя, отчество; адрес электронной почты; номер телефона; адрес доставки; данные о платёжных операциях; cookie-файлы и технические данные посещений сайта.</p>
+
+    <p><strong>Цели обработки:</strong> оформление и доставка заказа, уведомление о его статусе, обратная связь, исполнение требований законодательства РФ.</p>
+
+    <p><strong>Действия с данными:</strong> сбор, запись, систематизация, хранение, уточнение, использование, передача третьим лицам (службы доставки, платёжные сервисы) и трансграничная передача в страны с адекватным уровнем защиты, обезличивание, уничтожение.</p>
+
+    <p>Пользователь подтверждает, что является совершеннолетним (достиг возраста 18 лет), ознакомлен с <a href="politika-konfidentsialnosti.html">Политикой конфиденциальности</a> и предоставляет данные добровольно и осознанно.</p>
+
+    <p>Настоящее согласие предоставляется на весь период действия договора купли-продажи и может быть отозвано в любой момент путём направления письменного уведомления на <a href="mailto:PABDULKINA@GMAIL.COM">PABDULKINA@GMAIL.COM</a>. Обработка данных прекращается в течение <strong>10 рабочих дней</strong> с момента получения отзыва (ст. 21 ФЗ-152), если иное не предусмотрено законодательством РФ.</p>
+
+    <div class="checkbox-example" style="margin-top:24px;">
+      <div class="cb-row">
+        <div class="cb-box"></div>
+        <span style="font-size:14px; color:#2d2d2d;">Оформляя заказ, я принимаю <a href="politika-konfidentsialnosti.html">Политику конфиденциальности</a> и даю согласие на обработку моих персональных данных в соответствии с настоящим документом.</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- 9 -->
+  <h2><span class="num">9</span>Согласие на рассылку — отдельно</h2>
+  <p>Согласие на получение маркетинговых рассылок (акции, новинки, полезные материалы) предоставляется отдельно от согласия на обработку данных при заказе и <strong>не является обязательным условием покупки</strong>.</p>
+  <p>Пользователь вправе в любой момент:</p>
+  <ul>
+    <li>Отписаться от рассылки по ссылке «Отписаться» в любом письме</li>
+    <li>Направить запрос на отписку на <a href="mailto:PABDULKINA@GMAIL.COM">PABDULKINA@GMAIL.COM</a></li>
+  </ul>
+  <div class="note">
+    Соответствует требованиям ст. 18 Федерального закона № 38-ФЗ «О рекламе»: рассылка допускается только при наличии явного предварительного согласия адресата.
+  </div>
+
+  <!-- 10 -->
+  <h2><span class="num">10</span>Порядок отзыва согласия</h2>
+  <div class="revoke-block">
+    <p><strong>Как отозвать согласие:</strong> направьте запрос на <a href="mailto:PABDULKINA@GMAIL.COM">PABDULKINA@GMAIL.COM</a> с темой «Отзыв согласия на обработку персональных данных».</p>
+    <p><strong>Срок прекращения обработки:</strong> 10 рабочих дней с момента получения запроса (ст. 21 ФЗ-152).</p>
+    <p><strong>Важно:</strong> отзыв согласия не влечёт прекращения обработки данных, если их хранение обязательно по законодательству РФ (например, для целей налогового учёта в течение 5 лет).</p>
+  </div>
+
+  <!-- 11 -->
+  <!-- 11 — инциденты -->
+  <h2><span class="num">11</span>Уведомление об инцидентах</h2>
+  <p>В случае несанкционированного доступа, утечки или иного нарушения безопасности персональных данных Оператор действует в соответствии с ч. 3.1 ст. 21 ФЗ-152 (ФЗ-266 от 14.07.2022):</p>
+  <ul>
+    <li>В течение <strong>24 часов</strong> — уведомляет Роскомнадзор о факте инцидента</li>
+    <li>В течение <strong>72 часов</strong> — передаёт результаты расследования: причины, состав затронутых данных, принятые меры</li>
+    <li>При необходимости — уведомляет пострадавших субъектов данных</li>
+  </ul>
+  <div class="note">Если вы подозреваете компрометацию своих данных — немедленно напишите на <a href="mailto:PABDULKINA@GMAIL.COM">PABDULKINA@GMAIL.COM</a>.</div>
+
+  <!-- 12 — права -->
+  <h2><span class="num">12</span>Права пользователя</h2>
+  <ul>
+    <li>Получить информацию о том, какие данные обрабатываются и на каком основании</li>
+    <li>Требовать уточнения, блокировки или уничтожения неточных или незаконно обрабатываемых данных</li>
+    <li>Отозвать согласие на обработку персональных данных</li>
+    <li>Отписаться от рассылки в любой момент</li>
+    <li>Обжаловать действия Оператора в Роскомнадзоре (<a href="https://rkn.gov.ru" target="_blank">rkn.gov.ru</a>) или в суде</li>
+  </ul>
+  <p>Срок рассмотрения запроса — <strong>10 рабочих дней</strong>. Повторный запрос принимается не ранее чем через <strong>30 дней</strong> после предыдущего (ст. 20 ФЗ-152).</p>
+
+  <div class="footer-block">
+    <strong>Взбадрись</strong>
+    ИП Абдулкина Полина Валентиновна · ИНН 166107199180 · ОГРНИП 326169000086855<br/>
+    123112, г. Москва, Пресненская наб., д. 10, эт. 19<br/>
+    <a href="mailto:PABDULKINA@GMAIL.COM">PABDULKINA@GMAIL.COM</a>
+  </div>
+
+</div>
+</body>
+</html>
