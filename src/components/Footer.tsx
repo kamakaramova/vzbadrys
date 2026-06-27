@@ -57,12 +57,35 @@ export default function Footer() {
           </div>
         </div>
 
+        {/* Способы оплаты */}
         <div className="border-t border-[#f0e8e0] mt-10 pt-6 flex flex-col sm:flex-row justify-between items-center gap-4">
-          <p className="text-xs text-[#aaa]">© 2025 Взбадрись. Все права защищены.</p>
+          <p className="text-xs text-[#aaa]">Безопасная оплата картой или через СБП</p>
+          <div className="flex flex-wrap items-center gap-2">
+            {[
+              { label: "VISA", style: "text-[#1a1f71] italic font-black tracking-tight" },
+              { label: "mastercard", style: "text-[#eb001b] font-bold lowercase" },
+              { label: "МИР", style: "text-[#0f754e] font-black" },
+              { label: "СБП", style: "text-[#1a1a1a] font-bold" },
+              { label: "Ozon Pay", style: "text-[#005bff] font-bold" },
+            ].map((p) => (
+              <span
+                key={p.label}
+                className={`bg-white border border-[#f0e8e0] rounded-lg px-3 py-1.5 text-xs ${p.style}`}
+              >
+                {p.label}
+              </span>
+            ))}
+          </div>
+        </div>
+
+        {/* Правовые ссылки */}
+        <div className="border-t border-[#f0e8e0] mt-6 pt-6 flex flex-col sm:flex-row justify-between items-center gap-4">
+          <p className="text-xs text-[#aaa]">© 2025 Взбадрись · ИП Абдулкина П. В. · ИНН 166107199180</p>
           <div className="flex flex-wrap gap-4 justify-center sm:justify-end">
             <Link href="/oferta" target="_blank" className="text-xs text-[#aaa] hover:text-[#E8845A] transition-colors">Публичная оферта</Link>
             <Link href="/privacy" target="_blank" className="text-xs text-[#aaa] hover:text-[#E8845A] transition-colors">Политика конфиденциальности</Link>
             <Link href="/soglasie" target="_blank" className="text-xs text-[#aaa] hover:text-[#E8845A] transition-colors">Согласие на обработку данных</Link>
+            <Link href="/cookie" className="text-xs text-[#aaa] hover:text-[#E8845A] transition-colors">Cookie</Link>
           </div>
         </div>
       </div>

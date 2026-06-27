@@ -65,17 +65,21 @@ export default function ContactsPage() {
                 <span className="text-[#aaa] group-hover:text-[#E8845A] transition-colors text-xl">→</span>
               </a>
 
-              {/* Телефон — заглушка, заменить */}
-              <div className="flex items-center gap-5 bg-white border border-[#f0e8e0] rounded-3xl p-6">
+              {/* Телефон */}
+              <a
+                href="tel:+79872970767"
+                className="flex items-center gap-5 bg-white border border-[#f0e8e0] rounded-3xl p-6 hover:shadow-lg hover:-translate-y-0.5 transition-all group"
+              >
                 <div className="w-14 h-14 rounded-2xl bg-[#FDDCCA] flex items-center justify-center text-3xl flex-shrink-0">
                   📞
                 </div>
-                <div>
+                <div className="flex-1">
                   <p className="font-bold text-base">Телефон</p>
-                  <p className="text-[#aaa] text-sm italic">Будет указан позже</p>
+                  <p className="text-[#E8845A] text-sm font-semibold">+7 987 297 07 67</p>
                   <p className="text-xs text-[#aaa] mt-0.5">Пн–Пт, 10:00–19:00 МСК</p>
                 </div>
-              </div>
+                <span className="text-[#aaa] group-hover:text-[#E8845A] transition-colors text-xl">→</span>
+              </a>
 
               {/* Instagram */}
               <div className="flex items-center gap-5 bg-white border border-[#f0e8e0] rounded-3xl p-6">
