@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useState, Suspense } from "react";
 import Link from "next/link";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
@@ -9,7 +9,7 @@ import { Eye, EyeOff, Check, User, Mail, Phone, Lock } from "lucide-react";
 
 type Mode = "login" | "register";
 
-export default function AuthPage() {
+function AuthContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const redirect = searchParams.get("redirect") || "/account";
@@ -229,6 +229,14 @@ export default function AuthPage() {
       </main>
       <Footer />
     </>
+  );
+}
+
+export default function AuthPage() {
+  return (
+    <Suspense fallback={null}>
+      <AuthContent />
+    </Suspense>
   );
 }
 
