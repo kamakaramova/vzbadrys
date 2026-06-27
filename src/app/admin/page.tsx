@@ -5,12 +5,15 @@ import {
   BarChart2, Users, ShoppingBag, TrendingUp,
   Search, Download, ChevronUp, ChevronDown,
   X, Check, Package, Eye, Tag, Trash2, ToggleLeft, ToggleRight,
+  Plus, Edit2, ImageIcon,
 } from "lucide-react";
 import { usePromoStore } from "@/store/promoStore";
+import { useProductStore } from "@/store/productStore";
+import { Product } from "@/lib/products";
 
 const ADMIN_PASSWORD = "vzbadris2026";
 
-type Tab = "dashboard" | "orders" | "customers" | "promos";
+type Tab = "dashboard" | "orders" | "customers" | "promos" | "products";
 type SortField = "name" | "email" | "totalSpent" | "ordersCount" | "avgCheck" | "lastOrder" | "createdAt";
 type SortDir = "asc" | "desc";
 type OrderSortField = "date" | "total" | "status" | "userName";
@@ -68,14 +71,25 @@ export default function AdminPage() {
   const [promoFormError, setPromoFormError] = useState("");
   const [promoAdded, setPromoAdded] = useState(false);
 
+  // Состояние редактора товаров
+  const [editingProduct, setEditingProduct] = useState<Product | null>(null);
+  const [productSearch, setProductSearch] = useState("");
+  const [productSaved, setProductSaved] = useState(false);
+  const [showAddProduct, setShowAddProduct] = useState(false);
+
   const store = useAuthStore();
   const promoStore = usePromoStore();
+  const productStore = useProductStore();
+
+  useEffect(() => { if (mounted) productStore.init(); }, [mounted]);
 
   const users = mounted ? store.users : [];
   const orders = mounted ? store.orders : [];
   const updateOrderStatus = store.updateOrderStatus;
   const promos = mounted ? promoStore.promos : [];
   const { addPromo, togglePromo, deletePromo } = promoStore;
+  const allProducts = mounted ? productStore.products : [];
+  const { updateProduct, deleteProduct, toggleStock, resetToDefault } = productStore;
 
   const customerStats = useMemo(() => {
     return users.map((u) => {
@@ -274,13 +288,14 @@ export default function AdminPage() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Табы */}
         <div className="flex gap-2 mb-8 bg-[#f5f0ec] p-1.5 rounded-2xl w-fit">
-          {(["dashboard", "orders", "customers", "promos"] as const).map((id) => {
-            const labels: Record<typeof id, string> = { dashboard: "Дашборд", orders: "Заказы", customers: "Покупатели", promos: "Промокоды" };
+          {(["dashboard", "orders", "customers", "promos", "products"] as const).map((id) => {
+            const labels: Record<typeof id, string> = { dashboard: "Дашборд", orders: "Заказы", customers: "Покупатели", promos: "Промокоды", products: "Товары" };
             const icons: Record<typeof id, React.ReactNode> = {
               dashboard: <BarChart2 size={15} />,
               orders: <ShoppingBag size={15} />,
               customers: <Users size={15} />,
               promos: <Tag size={15} />,
+              products: <Package size={15} />,
             };
             return (
               <button
@@ -726,7 +741,230 @@ export default function AdminPage() {
             </div>
           </div>
         )}
+        {/* ТОВАРЫ */}
+        {tab === "products" && (
+          <div className="space-y-6">
+            {/* Шапка */}
+            <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center justify-between">
+              <div className="relative flex-1 max-w-sm">
+                <Search size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#aaa]" />
+                <input
+                  value={productSearch}
+                  onChange={(e) => setProductSearch(e.target.value)}
+                  placeholder="Поиск по названию..."
+                  className="w-full pl-10 pr-4 py-2.5 rounded-2xl border border-[#f0e8e0] text-sm outline-none focus:border-[#E8845A] bg-white"
+                />
+              </div>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => { resetToDefault(); alert("Товары сброшены к исходным"); }}
+                  className="text-xs text-[#aaa] hover:text-[#E8845A] px-3 py-2 rounded-xl border border-[#f0e8e0] bg-white"
+                >
+                  Сбросить к исходным
+                </button>
+              </div>
+            </div>
+
+            {/* Список товаров */}
+            <div className="bg-white rounded-3xl border border-[#f0e8e0] overflow-hidden">
+              <div className="px-6 py-4 border-b border-[#f0e8e0] flex items-center justify-between">
+                <h2 className="font-bold">Все товары</h2>
+                <span className="text-xs text-[#aaa]">{allProducts.length} шт.</span>
+              </div>
+              <div className="divide-y divide-[#f0e8e0]">
+                {allProducts
+                  .filter((p) => p.name.toLowerCase().includes(productSearch.toLowerCase()))
+                  .map((p) => (
+                  <div key={p.id} className="flex items-center gap-4 px-6 py-4">
+                    {/* Фото */}
+                    <div className="w-14 h-14 rounded-2xl bg-[#fdf8f5] flex items-center justify-center flex-shrink-0 overflow-hidden">
+                      {p.images[0] ? (
+                        <img src={p.images[0]} alt={p.name} className="w-full h-full object-cover" onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }} />
+                      ) : (
+                        <ImageIcon size={20} className="text-[#ccc]" />
+                      )}
+                    </div>
+
+                    {/* Инфо */}
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <p className="font-semibold text-sm truncate">{p.name}</p>
+                        {p.badge && (
+                          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#FDDCCA] text-[#8b4513]">{p.badge}</span>
+                        )}
+                        <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${p.inStock ? "bg-green-100 text-green-700" : "bg-red-100 text-red-500"}`}>
+                          {p.inStock ? "В наличии" : "Нет в наличии"}
+                        </span>
+                      </div>
+                      <p className="text-xs text-[#aaa] mt-0.5">{p.category === "bads" ? "БАД" : "Семена"} · {p.weight}</p>
+                    </div>
+
+                    {/* Цена */}
+                    <div className="text-right flex-shrink-0">
+                      <p className="font-bold text-[#E8845A]">{p.price.toLocaleString("ru-RU")} ₽</p>
+                      {p.oldPrice && <p className="text-xs text-[#aaa] line-through">{p.oldPrice.toLocaleString("ru-RU")} ₽</p>}
+                    </div>
+
+                    {/* Действия */}
+                    <div className="flex items-center gap-1 flex-shrink-0">
+                      <button
+                        onClick={() => toggleStock(p.id)}
+                        title={p.inStock ? "Снять с продажи" : "Вернуть в продажу"}
+                        className={`p-2 rounded-xl transition-all ${p.inStock ? "text-green-500 hover:bg-green-50" : "text-[#ccc] hover:bg-[#fdf8f5]"}`}
+                      >
+                        {p.inStock ? <ToggleRight size={20} /> : <ToggleLeft size={20} />}
+                      </button>
+                      <button
+                        onClick={() => setEditingProduct({ ...p })}
+                        className="p-2 rounded-xl text-[#6b6b6b] hover:bg-[#fdf8f5] hover:text-[#E8845A] transition-all"
+                      >
+                        <Edit2 size={16} />
+                      </button>
+                      <button
+                        onClick={() => { if (confirm(`Удалить «${p.name}»?`)) deleteProduct(p.id); }}
+                        className="p-2 rounded-xl text-[#ccc] hover:bg-red-50 hover:text-red-400 transition-all"
+                      >
+                        <Trash2 size={16} />
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <p className="text-xs text-[#aaa] text-center">Изменения сохраняются автоматически. Чтобы обновить сайт — сделай git push.</p>
+          </div>
+        )}
       </div>{/* /max-w-7xl */}
+
+      {/* Модал: редактирование товара */}
+      {editingProduct && (
+        <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4" onClick={() => setEditingProduct(null)}>
+          <div className="bg-white rounded-3xl w-full max-w-xl max-h-[90vh] overflow-y-auto shadow-2xl" onClick={(e) => e.stopPropagation()}>
+            <div className="sticky top-0 bg-white border-b border-[#f0e8e0] px-6 py-4 flex items-center justify-between rounded-t-3xl">
+              <p className="font-bold">Редактировать товар</p>
+              <button onClick={() => setEditingProduct(null)} className="text-[#aaa] hover:text-[#1a1a1a]"><X size={20} /></button>
+            </div>
+            <div className="p-6 space-y-4">
+              <div>
+                <label className="block text-xs font-semibold text-[#6b6b6b] uppercase tracking-wide mb-1.5">Название</label>
+                <input
+                  value={editingProduct.name}
+                  onChange={(e) => setEditingProduct({ ...editingProduct, name: e.target.value })}
+                  className="w-full px-4 py-3 rounded-2xl border border-[#f0e8e0] text-sm outline-none focus:border-[#E8845A]"
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-semibold text-[#6b6b6b] uppercase tracking-wide mb-1.5">Цена (₽)</label>
+                  <input
+                    type="number"
+                    value={editingProduct.price}
+                    onChange={(e) => setEditingProduct({ ...editingProduct, price: Number(e.target.value) })}
+                    className="w-full px-4 py-3 rounded-2xl border border-[#f0e8e0] text-sm outline-none focus:border-[#E8845A]"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-[#6b6b6b] uppercase tracking-wide mb-1.5">Старая цена (₽)</label>
+                  <input
+                    type="number"
+                    value={editingProduct.oldPrice || ""}
+                    onChange={(e) => setEditingProduct({ ...editingProduct, oldPrice: e.target.value ? Number(e.target.value) : undefined })}
+                    placeholder="Оставь пустым если нет"
+                    className="w-full px-4 py-3 rounded-2xl border border-[#f0e8e0] text-sm outline-none focus:border-[#E8845A]"
+                  />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-semibold text-[#6b6b6b] uppercase tracking-wide mb-1.5">Бейдж</label>
+                  <select
+                    value={editingProduct.badge || ""}
+                    onChange={(e) => setEditingProduct({ ...editingProduct, badge: e.target.value || undefined })}
+                    className="w-full px-4 py-3 rounded-2xl border border-[#f0e8e0] text-sm outline-none focus:border-[#E8845A] bg-white"
+                  >
+                    <option value="">Без бейджа</option>
+                    <option value="Хит">Хит</option>
+                    <option value="Новинка">Новинка</option>
+                    <option value="Скидка">Скидка</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-[#6b6b6b] uppercase tracking-wide mb-1.5">В наличии</label>
+                  <select
+                    value={editingProduct.inStock ? "true" : "false"}
+                    onChange={(e) => setEditingProduct({ ...editingProduct, inStock: e.target.value === "true" })}
+                    className="w-full px-4 py-3 rounded-2xl border border-[#f0e8e0] text-sm outline-none focus:border-[#E8845A] bg-white"
+                  >
+                    <option value="true">Да, в наличии</option>
+                    <option value="false">Нет в наличии</option>
+                  </select>
+                </div>
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-[#6b6b6b] uppercase tracking-wide mb-1.5">Вес / объём</label>
+                <input
+                  value={editingProduct.weight}
+                  onChange={(e) => setEditingProduct({ ...editingProduct, weight: e.target.value })}
+                  placeholder="например: 60 капсул"
+                  className="w-full px-4 py-3 rounded-2xl border border-[#f0e8e0] text-sm outline-none focus:border-[#E8845A]"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-[#6b6b6b] uppercase tracking-wide mb-1.5">Описание</label>
+                <textarea
+                  value={editingProduct.description}
+                  onChange={(e) => setEditingProduct({ ...editingProduct, description: e.target.value })}
+                  rows={4}
+                  className="w-full px-4 py-3 rounded-2xl border border-[#f0e8e0] text-sm outline-none focus:border-[#E8845A] resize-none"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-[#6b6b6b] uppercase tracking-wide mb-1.5">Состав</label>
+                <textarea
+                  value={editingProduct.composition}
+                  onChange={(e) => setEditingProduct({ ...editingProduct, composition: e.target.value })}
+                  rows={2}
+                  className="w-full px-4 py-3 rounded-2xl border border-[#f0e8e0] text-sm outline-none focus:border-[#E8845A] resize-none"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-[#6b6b6b] uppercase tracking-wide mb-1.5">Как принимать</label>
+                <textarea
+                  value={editingProduct.howToTake}
+                  onChange={(e) => setEditingProduct({ ...editingProduct, howToTake: e.target.value })}
+                  rows={2}
+                  className="w-full px-4 py-3 rounded-2xl border border-[#f0e8e0] text-sm outline-none focus:border-[#E8845A] resize-none"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-[#6b6b6b] uppercase tracking-wide mb-1.5">Путь к фото (через /products/...)</label>
+                <input
+                  value={editingProduct.images[0] || ""}
+                  onChange={(e) => setEditingProduct({ ...editingProduct, images: e.target.value ? [e.target.value] : [] })}
+                  placeholder="/products/название.jpg"
+                  className="w-full px-4 py-3 rounded-2xl border border-[#f0e8e0] text-sm outline-none focus:border-[#E8845A] font-mono text-xs"
+                />
+              </div>
+            </div>
+            <div className="px-6 pb-6 flex gap-3">
+              <button
+                onClick={() => {
+                  updateProduct(editingProduct.id, editingProduct);
+                  setProductSaved(true);
+                  setTimeout(() => { setProductSaved(false); setEditingProduct(null); }, 1200);
+                }}
+                className="flex-1 bg-[#E8845A] hover:bg-[#d4703f] text-white font-bold py-3 rounded-2xl transition-all flex items-center justify-center gap-2"
+              >
+                {productSaved ? <><Check size={16} /> Сохранено!</> : "Сохранить"}
+              </button>
+              <button onClick={() => setEditingProduct(null)} className="px-5 py-3 rounded-2xl border border-[#f0e8e0] text-[#6b6b6b] hover:bg-[#fdf8f5]">
+                Отмена
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Модал: детали заказа */}
       {selectedOrder && (

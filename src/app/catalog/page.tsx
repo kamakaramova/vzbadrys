@@ -1,25 +1,31 @@
+"use client";
+import { useEffect } from "react";
+import { useSearchParams } from "next/navigation";
+import { Suspense } from "react";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import ProductCard from "@/components/ProductCard";
 import SeedCard from "@/components/SeedCard";
-import { products } from "@/lib/products";
+import { useProductStore } from "@/store/productStore";
 
-export default async function CatalogPage({
-  searchParams,
-}: {
-  searchParams: Promise<{ cat?: string; badge?: string }>;
-}) {
-  const { cat, badge } = await searchParams;
+function CatalogContent() {
+  const searchParams = useSearchParams();
+  const cat = searchParams.get("cat") as "bads" | "seeds" | undefined;
+  const badge = searchParams.get("badge");
 
-  const catFilter = cat as "bads" | "seeds" | undefined;
+  const { products, init, initialized } = useProductStore();
+  useEffect(() => { if (!initialized) init(); }, [initialized, init]);
 
   let filtered = products;
-  if (catFilter) filtered = filtered.filter((p) => p.category === catFilter);
+  if (cat) filtered = filtered.filter((p) => p.category === cat);
   if (badge === "new") filtered = filtered.filter((p) => p.badge === "Новинка");
   if (badge === "sale") filtered = filtered.filter((p) => p.oldPrice);
 
+  // только товары в наличии показываем покупателям
+  filtered = filtered.filter((p) => p.inStock);
+
   const tabs = [
-    { label: "Все товары", value: undefined },
+    { label: "Все товары", value: null },
     { label: "БАДы", value: "bads" },
     { label: "Семена", value: "seeds" },
   ];
@@ -28,7 +34,6 @@ export default async function CatalogPage({
     <>
       <Header />
       <main className="min-h-screen">
-        {/* Шапка каталога */}
         <section className="bg-[#fdf8f5] border-b border-[#f0e8e0] py-10">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <h1 className="text-3xl font-bold mb-6">Каталог</h1>
@@ -38,7 +43,7 @@ export default async function CatalogPage({
                   key={tab.label}
                   href={tab.value ? `/catalog?cat=${tab.value}` : "/catalog"}
                   className={`px-5 py-2 rounded-full text-sm font-medium transition-all ${
-                    catFilter === tab.value
+                    cat === tab.value
                       ? "bg-[#E8845A] text-white"
                       : "bg-white border border-[#f0e8e0] text-[#6b6b6b] hover:border-[#E8845A] hover:text-[#E8845A]"
                   }`}
@@ -50,7 +55,6 @@ export default async function CatalogPage({
           </div>
         </section>
 
-        {/* Товары */}
         <section className="py-12">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             {filtered.length === 0 ? (
@@ -77,5 +81,13 @@ export default async function CatalogPage({
       </main>
       <Footer />
     </>
+  );
+}
+
+export default function CatalogPage() {
+  return (
+    <Suspense fallback={null}>
+      <CatalogContent />
+    </Suspense>
   );
 }
