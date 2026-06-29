@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import Link from "next/link";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
@@ -23,7 +23,11 @@ export default function CartPage() {
   const applyPromo = useCartStore((s) => s.applyPromo);
   const removePromo = useCartStore((s) => s.removePromo);
   const users = useAuthStore((s) => s.users);
-  const activePromos = usePromoStore((s) => s.getActivePromos());
+  const promos = usePromoStore((s) => s.promos);
+  const activePromos = useMemo(() => {
+    const now = new Date();
+    return promos.filter((p) => p.active && (!p.expiresAt || new Date(p.expiresAt) >= now));
+  }, [promos]);
 
   const [promoInput, setPromoInput] = useState("");
   const [promoError, setPromoError] = useState("");
