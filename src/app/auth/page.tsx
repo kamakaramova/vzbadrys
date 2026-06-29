@@ -204,8 +204,7 @@ function AuthContent() {
                 <div className="bg-[#fff8f5] border border-[#f5d5c0] rounded-2xl p-4 text-sm">
                   <p className="font-semibold text-[#E8845A] mb-1">🎁 При регистрации:</p>
                   <ul className="space-y-1 text-[#6b6b6b]">
-                    <li className="flex items-center gap-2"><Check size={12} className="text-[#E8845A]" /> Личный реферальный код</li>
-                    <li className="flex items-center gap-2"><Check size={12} className="text-[#E8845A]" /> Бонусы 1% с каждого заказа</li>
+                    <li className="flex items-center gap-2"><Check size={12} className="text-[#E8845A]" /> Кэшбэк с каждого заказа</li>
                     <li className="flex items-center gap-2"><Check size={12} className="text-[#E8845A]" /> История всех заказов</li>
                   </ul>
                 </div>
@@ -220,9 +219,11 @@ function AuthContent() {
               </div>
             )}
 
-            <p className="text-xs text-center text-[#aaa] mt-5">
+            <p className="text-xs text-center text-[#aaa] mt-5 leading-relaxed">
               Регистрируясь, вы соглашаетесь с{" "}
-              <Link href="/privacy" className="underline hover:text-[#E8845A]">политикой конфиденциальности</Link>
+              <a href="/privacy" target="_blank" className="underline hover:text-[#E8845A]">политикой конфиденциальности</a>{" "}
+              и даёте{" "}
+              <a href="/soglasie" target="_blank" className="underline hover:text-[#E8845A]">согласие на обработку персональных данных</a>
             </p>
           </div>
         </div>

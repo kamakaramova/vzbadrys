@@ -89,10 +89,7 @@ export default function Home() {
         {/* О КОМПАНИИ */}
         <section className="py-20">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <p className="text-xs font-semibold text-[#E8845A] uppercase tracking-widest mb-4 text-center">О компании</p>
-            <h2 className="text-3xl md:text-4xl font-bold text-center mb-5 max-w-3xl mx-auto leading-tight">
-              Два учёных, которые перепроверяют каждый состав
-            </h2>
+            <p className="text-xs font-semibold text-[#E8845A] uppercase tracking-widest mb-6 text-center">О компании</p>
             <p className="text-center text-[#6b6b6b] max-w-2xl mx-auto mb-14 leading-relaxed">
               Бренд «Взбадрись» создали две девушки с биологическим образованием — Кама и Полина.
               Мы познакомились в научной лаборатории и обе по шесть лет проработали с исследованиями,
