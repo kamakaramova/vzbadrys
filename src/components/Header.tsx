@@ -21,7 +21,7 @@ export default function Header() {
     <header className="sticky top-0 z-50 bg-white border-b border-[#f0e8e0]">
       {/* Верхняя полоска */}
       <div className="bg-[#FDDCCA] py-2 px-4 text-center text-xs font-medium text-[#8b4513]">
-        🌿 Бесплатная доставка от 3 000 ₽ · Документы на каждый товар
+        🌿 Бесплатная доставка от 5 000 ₽ · Документы на каждый товар
       </div>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -43,6 +43,7 @@ export default function Header() {
             <Link href="/blog" className="text-sm font-medium text-[#1a1a1a] hover:text-[#E8845A] transition-colors">Статьи</Link>
             <Link href="/delivery" className="text-sm font-medium text-[#1a1a1a] hover:text-[#E8845A] transition-colors">Доставка</Link>
             <Link href="/sales" className="text-sm font-semibold text-[#E8845A] hover:text-[#d4703f] transition-colors">Акции 🔥</Link>
+            <Link href="/about" className="text-sm font-medium text-[#1a1a1a] hover:text-[#E8845A] transition-colors">О компании</Link>
           </nav>
 
           {/* Иконки справа */}
@@ -167,6 +168,7 @@ export default function Header() {
           <Link href="/returns" className="py-2 text-sm font-medium" onClick={() => setMobileOpen(false)}>Возврат</Link>
           <Link href="/contacts" className="py-2 text-sm font-medium" onClick={() => setMobileOpen(false)}>Контакты</Link>
           <Link href="/sales" className="py-2 text-sm font-medium text-[#E8845A]" onClick={() => setMobileOpen(false)}>Акции 🔥</Link>
+          <Link href="/about" className="py-2 text-sm font-medium" onClick={() => setMobileOpen(false)}>О компании</Link>
           <Link href="/cart" className="py-2 text-sm font-medium" onClick={() => setMobileOpen(false)}>Корзина ({totalItems})</Link>
         </div>
       )}
