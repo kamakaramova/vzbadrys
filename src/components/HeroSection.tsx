@@ -297,8 +297,8 @@ export default function HeroSection() {
                 </span>
               </h1>
               <p
-                className="mt-4 font-semibold tracking-widest text-[#E8845A] uppercase"
-                style={{ fontSize: "clamp(0.7rem, 1.2vw, 0.9rem)", letterSpacing: "0.22em", position: "relative", zIndex: 1 }}
+                className="mt-4 font-bold tracking-widest text-[#E8845A] uppercase"
+                style={{ fontSize: "clamp(1.1rem, 2.4vw, 1.8rem)", letterSpacing: "0.14em", position: "relative", zIndex: 1 }}
               >
                 и почувствуй разницу
               </p>

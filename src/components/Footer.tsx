@@ -16,9 +16,6 @@ export default function Footer() {
             <p className="text-sm text-[#6b6b6b] leading-relaxed">
               БАДы и суперфуды с документами. Только проверенные составы и честная информация.
             </p>
-            <p className="text-xs text-[#aaa] mt-4">
-              Куратор: нутрициолог Кама Карамова
-            </p>
           </div>
 
           {/* Каталог */}

@@ -143,7 +143,7 @@ export default function ContactsPage() {
                     ["Наименование", "ИП Абдулкина Полина Валентиновна"],
                     ["ИНН", "166107199180"],
                     ["ОГРНИП", "326169000086855"],
-                    ["Юридический адрес", "123112, г. Москва, Пресненская наб., д. 10, эт. 19"],
+                    ["Юридический адрес", "РТ, г. Казань, ул. Айдарова, д. 15, кв. 96"],
                   ].map(([label, value], i) => (
                     <div key={i} className={`flex justify-between gap-4 ${i > 0 ? "border-t border-[#f0e8e0] pt-2" : ""}`}>
                       <span className="flex-shrink-0">{label}</span>

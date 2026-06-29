@@ -86,60 +86,95 @@ export default function Home() {
           </div>
         </section>
 
-        {/* ОСНОВАТЕЛЬ БРЕНДА */}
+        {/* О КОМПАНИИ */}
         <section className="py-20">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <p className="text-xs font-semibold text-[#E8845A] uppercase tracking-widest mb-4 text-center">Основатель бренда</p>
-            <h2 className="text-3xl md:text-4xl font-bold text-center mb-14 max-w-2xl mx-auto leading-tight">
-              Кама Карамова —<br className="hidden md:block" /> нутрициолог с научным подходом
+            <p className="text-xs font-semibold text-[#E8845A] uppercase tracking-widest mb-4 text-center">О компании</p>
+            <h2 className="text-3xl md:text-4xl font-bold text-center mb-5 max-w-3xl mx-auto leading-tight">
+              Два учёных, которые перепроверяют каждый состав
             </h2>
+            <p className="text-center text-[#6b6b6b] max-w-2xl mx-auto mb-14 leading-relaxed">
+              Бренд «Взбадрись» создали две девушки с биологическим образованием — Кама и Полина.
+              Мы познакомились в научной лаборатории и обе по шесть лет проработали с исследованиями,
+              анализами и документами. Поэтому к продукту подходим как учёные: разбираем каждый состав,
+              ездим на производства вживую и сами смотрим, как и из чего делают то, что потом окажется у вас дома.
+            </p>
 
-            <div className="grid md:grid-cols-3 gap-8 items-start">
-              {/* Фото */}
+            <div className="grid md:grid-cols-2 gap-8 items-stretch mb-12">
+              {/* Фото команды */}
               <div className="flex justify-center md:justify-end">
                 <div className="relative">
-                  <div className="w-64 h-80 rounded-3xl overflow-hidden shadow-xl">
+                  <div className="w-full max-w-sm h-96 rounded-3xl overflow-hidden shadow-xl">
                     <img
-                      src="/kama-photo.jpg"
-                      alt="Кама Карамова — нутрициолог"
+                      src="/komanda-photo.jpg"
+                      alt="Кама Карамова и Полина Абдулкина — основатели бренда Взбадрись"
                       className="w-full h-full object-cover object-top"
                     />
                   </div>
                   <div className="absolute -bottom-3 -right-3 bg-[#E8845A] text-white text-xs font-bold px-3 py-1.5 rounded-full shadow-lg">
-                    5+ лет практики
+                    Опыт в научной лаборатории
                   </div>
                 </div>
               </div>
 
-              {/* Карточки достижений */}
-              <div className="md:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-4">
-                {[
-                  {
-                    title: "Нутрициолог с опытом 5+ лет",
-                    desc: "Практикую с осени 2020 года. Специализация: превентивный подход, лабораторная диагностика, работа с дефицитами и восстановление через питание.",
-                  },
-                  {
-                    title: "Научный бэкграунд",
-                    desc: "6 лет работы в эколого-биотехнологической лаборатории. Писала диссертацию на тему устойчивости к антибиотикам. Биологическое и системное мышление.",
-                  },
-                  {
-                    title: "2000+ клиентов",
-                    desc: "Помогла более чем двум тысячам женщин разобраться с усталостью, выпадением волос, ЖКТ, дефицитами и восстановлением после родов.",
-                  },
-                  {
-                    title: "Работаю с анализами иначе",
-                    desc: "Смотрю не только по референсам лаборатории, но и по оптимальным значениям. Работаю с причинами — не только с симптомами.",
-                  },
-                ].map((card, i) => (
-                  <div
-                    key={i}
-                    className="bg-[#fdf8f5] border border-[#f0e8e0] rounded-2xl p-5 hover:border-[#FDDCCA] hover:shadow-md transition-all"
-                  >
-                    <h3 className="font-semibold text-sm text-[#E8845A] mb-2">{card.title}</h3>
-                    <p className="text-sm text-[#6b6b6b] leading-relaxed">{card.desc}</p>
+              {/* Два человека */}
+              <div className="space-y-4">
+                {/* Кама */}
+                <div className="bg-[#fdf8f5] border border-[#f0e8e0] rounded-2xl p-6">
+                  <div className="flex items-center gap-2 mb-2">
+                    <h3 className="font-bold text-base">Кама Карамова</h3>
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#FDDCCA] text-[#8b4513]">Составы</span>
                   </div>
-                ))}
+                  <p className="text-sm text-[#6b6b6b] leading-relaxed">
+                    Нутрициолог, практика более 5 лет. Научный бэкграунд — 6 лет в эколого-биотехнологической
+                    лаборатории. Отвечает за составы: подбирает действующие вещества, формы и дозировки,
+                    следит за сочетаемостью компонентов внутри каждого БАД.
+                  </p>
+                </div>
+                {/* Полина */}
+                <div className="bg-[#fdf8f5] border border-[#f0e8e0] rounded-2xl p-6">
+                  <div className="flex items-center gap-2 mb-2">
+                    <h3 className="font-bold text-base">Полина Абдулкина</h3>
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#FDDCCA] text-[#8b4513]">Качество и документы</span>
+                  </div>
+                  <p className="text-sm text-[#6b6b6b] leading-relaxed">
+                    Биологическое образование, 6 лет работы в лаборатории. Поднимала производство с нуля,
+                    готовила лабораторию к аккредитации, большой опыт в сертификации. Отвечает за качество:
+                    досконально проверяет все документы, сырьё и соответствие стандартам.
+                  </p>
+                </div>
               </div>
+            </div>
+
+            {/* Наш подход */}
+            <p className="text-center text-sm font-semibold text-[#E8845A] uppercase tracking-widest mb-6">Как мы подходим к продукту</p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              {[
+                {
+                  title: "Чистый состав",
+                  desc: "Только нужные действующие вещества — без лишних добавок, красителей и балласта.",
+                },
+                {
+                  title: "Сочетаемость компонентов",
+                  desc: "Подбираем формы и дозировки так, чтобы компоненты внутри БАД работали вместе, а не мешали друг другу.",
+                },
+                {
+                  title: "Ездим на производство сами",
+                  desc: "Вживую смотрим, как и из чего производят, проверяем сырьё и условия — не верим на слово.",
+                },
+                {
+                  title: "Документы на каждый товар",
+                  desc: "Свидетельства о госрегистрации и сертификаты — проверяем каждую бумагу до того, как товар попадёт к вам.",
+                },
+              ].map((card, i) => (
+                <div
+                  key={i}
+                  className="bg-white border border-[#f0e8e0] rounded-2xl p-5 hover:border-[#FDDCCA] hover:shadow-md transition-all"
+                >
+                  <h3 className="font-semibold text-sm text-[#E8845A] mb-2">{card.title}</h3>
+                  <p className="text-sm text-[#6b6b6b] leading-relaxed">{card.desc}</p>
+                </div>
+              ))}
             </div>
           </div>
         </section>
