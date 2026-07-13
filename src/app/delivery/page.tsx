@@ -150,6 +150,52 @@ export default function DeliveryPage() {
             </div>
           </div>
 
+          {/* Как проходит оплата */}
+          <div className="mt-14">
+            <h2 className="text-2xl font-bold mb-6">Как проходит оплата</h2>
+            <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              {[
+                { n: "1", t: "Оформляете заказ", d: "Добавляете товары в корзину и заполняете данные для доставки." },
+                { n: "2", t: "Переходите к оплате", d: "Нажимаете «Оплатить» — открывается защищённая платёжная страница Ozon Pay." },
+                { n: "3", t: "Оплачиваете картой или СБП", d: "Вводите данные карты или сканируете QR-код. Платёж проходит через банк по протоколу 3-D Secure." },
+                { n: "4", t: "Получаете подтверждение", d: "На email приходит электронный чек (54-ФЗ), а после отправки — трек-номер." },
+              ].map((s, i) => (
+                <div key={i} className="bg-white border border-[#f0e8e0] rounded-3xl p-6">
+                  <div className="w-9 h-9 rounded-full bg-[#E8845A] text-white font-bold flex items-center justify-center mb-3">{s.n}</div>
+                  <p className="font-bold text-sm mb-1.5">{s.t}</p>
+                  <p className="text-sm text-[#6b6b6b] leading-relaxed">{s.d}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Безопасность платежей */}
+          <div className="mt-14">
+            <h2 className="text-2xl font-bold mb-6">Безопасность платежей и защита от мошенничества</h2>
+            <div className="bg-[#fdf8f5] border border-[#f0e8e0] rounded-3xl p-6 sm:p-8">
+              <div className="grid sm:grid-cols-2 gap-x-8 gap-y-4">
+                {[
+                  "Приём платежей организован в партнёрстве с ООО «ОЗОН Банк» через сервис Ozon Pay.",
+                  "Все платёжные страницы работают по защищённому протоколу HTTPS (SSL-шифрование).",
+                  "Данные вашей карты вводятся на стороне банка и не хранятся на нашем сайте.",
+                  "Каждая операция по карте проходит проверку по технологии 3-D Secure (подтверждение кодом из банка).",
+                  "Расчёты соответствуют стандарту безопасности PCI DSS.",
+                  "При подозрении на мошенническую операцию банк вправе запросить дополнительное подтверждение или отклонить платёж.",
+                ].map((t, i) => (
+                  <div key={i} className="flex items-start gap-3 text-sm text-[#555] leading-relaxed">
+                    <span className="text-[#2d7a4f] flex-shrink-0 mt-0.5">🔒</span>
+                    {t}
+                  </div>
+                ))}
+              </div>
+              <p className="text-xs text-[#aaa] mt-6">
+                Если у вас возникли вопросы по оплате или вы заметили подозрительную операцию — напишите нам в Telegram
+                <a href="https://t.me/vzbadris" className="text-[#E8845A] underline"> @vzbadris</a> или на
+                <a href="mailto:vzbadris@yandex.ru" className="text-[#E8845A] underline"> vzbadris@yandex.ru</a>.
+              </p>
+            </div>
+          </div>
+
           {/* FAQ */}
           <div className="mt-14">
             <h2 className="text-2xl font-bold mb-6">Частые вопросы</h2>
@@ -175,7 +221,7 @@ export default function DeliveryPage() {
             <p className="text-[#6b6b6b] mb-5 text-sm max-w-md mx-auto">Напишите нам — ответим в течение нескольких часов в рабочее время.</p>
             <div className="flex flex-wrap justify-center gap-3">
               <a
-                href="https://t.me/kama_karamova"
+                href="https://t.me/vzbadris"
                 className="inline-flex items-center gap-2 bg-[#E8845A] text-white font-semibold px-6 py-3 rounded-full hover:bg-[#d4703f] transition-all hover:-translate-y-0.5"
               >
                 Написать в Telegram →

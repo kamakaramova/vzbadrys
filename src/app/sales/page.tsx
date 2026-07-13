@@ -56,7 +56,7 @@ export default function SalesPage() {
                 { icon: "🎟️", title: "Промокод ВЗБАДРИСЬ10", desc: "Действует для новых покупателей. Одноразовый, применяется в корзине." },
                 { icon: "📦", title: "Бесплатная доставка", desc: "При заказе от 5 000 ₽ доставка СДЭК в ПВЗ — бесплатно." },
                 { icon: "🏷️", title: "Цены со скидкой", desc: "Скидки действуют до изменения ассортимента. Финальная цена — в карточке товара." },
-                { icon: "💬", title: "Вопросы по акциям", desc: "Напишите нам в Telegram @kama_karamova — ответим быстро." },
+                { icon: "💬", title: "Вопросы по акциям", desc: "Напишите нам в Telegram @vzbadris — ответим быстро." },
               ].map((item, i) => (
                 <div key={i} className="flex items-start gap-4">
                   <span className="text-2xl flex-shrink-0">{item.icon}</span>

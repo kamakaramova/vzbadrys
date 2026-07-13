@@ -154,7 +154,7 @@ export default function ReturnsPage() {
                 {
                   step: "2",
                   title: "Напишите нам в Telegram",
-                  desc: "Напишите в @kama_karamova или на почту, указав: номер заказа, причину обращения и приложите фото.",
+                  desc: "Напишите в @vzbadris или на почту, указав: номер заказа, причину обращения и приложите фото.",
                 },
                 {
                   step: "3",
@@ -245,7 +245,7 @@ export default function ReturnsPage() {
             </p>
             <div className="flex flex-wrap justify-center gap-3">
               <a
-                href="https://t.me/kama_karamova"
+                href="https://t.me/vzbadris"
                 className="inline-flex items-center gap-2 bg-[#E8845A] hover:bg-[#d4703f] text-white font-semibold px-6 py-3 rounded-full transition-all hover:-translate-y-0.5"
               >
                 Написать в Telegram →

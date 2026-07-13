@@ -71,7 +71,7 @@ export default function CookiePage() {
           ))}
 
           <div className="bg-[#fdf8f5] rounded-2xl border border-[#f0e8e0] p-6 text-sm text-[#6b6b6b]">
-            <p>По вопросам обработки данных пишите на <a href="mailto:vzbadris@yandex.ru" className="text-[#E8845A] underline">vzbadris@yandex.ru</a> или в Telegram <a href="https://t.me/kama_karamova" className="text-[#E8845A] underline">@kama_karamova</a>.</p>
+            <p>По вопросам обработки данных пишите на <a href="mailto:vzbadris@yandex.ru" className="text-[#E8845A] underline">vzbadris@yandex.ru</a> или в Telegram <a href="https://t.me/vzbadris" className="text-[#E8845A] underline">@vzbadris</a>.</p>
           </div>
         </div>
       </main>

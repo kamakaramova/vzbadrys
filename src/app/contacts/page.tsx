@@ -33,7 +33,7 @@ export default function ContactsPage() {
 
               {/* Telegram — основной */}
               <a
-                href="https://t.me/kama_karamova"
+                href="https://t.me/vzbadris"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="flex items-center gap-5 bg-white border border-[#f0e8e0] rounded-3xl p-6 hover:shadow-lg hover:-translate-y-0.5 transition-all group"
@@ -43,7 +43,7 @@ export default function ContactsPage() {
                 </div>
                 <div className="flex-1">
                   <p className="font-bold text-base">Telegram</p>
-                  <p className="text-[#E8845A] text-sm font-semibold">@kama_karamova</p>
+                  <p className="text-[#E8845A] text-sm font-semibold">@vzbadris</p>
                   <p className="text-xs text-[#aaa] mt-0.5">Отвечаем в течение нескольких часов</p>
                 </div>
                 <span className="text-[#aaa] group-hover:text-[#E8845A] transition-colors text-xl">→</span>
@@ -88,7 +88,7 @@ export default function ContactsPage() {
                 </div>
                 <div>
                   <p className="font-bold text-base">Instagram</p>
-                  <p className="text-sm text-[#6b6b6b]">@kama_karamova</p>
+                  <p className="text-sm text-[#6b6b6b]">@vzbadris</p>
                   <p className="text-xs text-[#aaa] mt-0.5">Контент о здоровье и питании</p>
                 </div>
               </div>
@@ -143,7 +143,9 @@ export default function ContactsPage() {
                     ["Наименование", "ИП Абдулкина Полина Валентиновна"],
                     ["ИНН", "166107199180"],
                     ["ОГРНИП", "326169000086855"],
+                    ["Страна регистрации", "Россия"],
                     ["Юридический адрес", "РТ, г. Казань, ул. Айдарова, д. 15, кв. 96"],
+                    ["Телефон", "+7 987 297 07 67"],
                   ].map(([label, value], i) => (
                     <div key={i} className={`flex justify-between gap-4 ${i > 0 ? "border-t border-[#f0e8e0] pt-2" : ""}`}>
                       <span className="flex-shrink-0">{label}</span>

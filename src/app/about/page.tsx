@@ -145,15 +145,15 @@ export default function AboutPage() {
             </p>
 
             <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
-              <a href="https://t.me/kama_karamova" target="_blank" rel="noopener noreferrer" className="bg-[#fdf8f5] border border-[#f0e8e0] rounded-2xl p-6 text-center hover:shadow-md hover:-translate-y-0.5 transition-all">
+              <a href="https://t.me/vzbadris" target="_blank" rel="noopener noreferrer" className="bg-[#fdf8f5] border border-[#f0e8e0] rounded-2xl p-6 text-center hover:shadow-md hover:-translate-y-0.5 transition-all">
                 <div className="text-3xl mb-3">✈️</div>
                 <p className="font-bold text-sm">Telegram</p>
-                <p className="text-[#E8845A] text-sm font-semibold mt-0.5">@kama_karamova</p>
+                <p className="text-[#E8845A] text-sm font-semibold mt-0.5">@vzbadris</p>
               </a>
               <div className="bg-[#fdf8f5] border border-[#f0e8e0] rounded-2xl p-6 text-center">
                 <div className="text-3xl mb-3">📸</div>
                 <p className="font-bold text-sm">Instagram / блог</p>
-                <p className="text-[#6b6b6b] text-sm mt-0.5">@kama_karamova</p>
+                <p className="text-[#6b6b6b] text-sm mt-0.5">@vzbadris</p>
               </div>
               <a href="mailto:vzbadris@yandex.ru" className="bg-[#fdf8f5] border border-[#f0e8e0] rounded-2xl p-6 text-center hover:shadow-md hover:-translate-y-0.5 transition-all">
                 <div className="text-3xl mb-3">📧</div>

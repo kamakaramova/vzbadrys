@@ -45,8 +45,8 @@ export default function Footer() {
           <div>
             <h4 className="font-semibold text-sm mb-4">Контакты</h4>
             <ul className="flex flex-col gap-2.5">
-              <li className="text-sm text-[#6b6b6b]">Telegram: <a href="https://t.me/kama_karamova" className="hover:text-[#E8845A] transition-colors">@kama_karamova</a></li>
-              <li className="text-sm text-[#6b6b6b]">Instagram: <span className="hover:text-[#E8845A]">@kama_karamova</span></li>
+              <li className="text-sm text-[#6b6b6b]">Telegram: <a href="https://t.me/vzbadris" className="hover:text-[#E8845A] transition-colors">@vzbadris</a></li>
+              <li className="text-sm text-[#6b6b6b]">Instagram: <span className="hover:text-[#E8845A]">@vzbadris</span></li>
             </ul>
             <div className="mt-6">
               <p className="text-xs text-[#aaa]">Не является лекарственным средством. Перед применением проконсультируйтесь со специалистом.</p>
