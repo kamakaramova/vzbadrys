@@ -60,7 +60,7 @@ export default function DeliveryPage() {
                     icon: "🚚",
                     title: "Почта России",
                     time: "5–14 рабочих дней",
-                    price: "от 250 ₽",
+                    price: "от 250 ₽ · Бесплатно от 5 000 ₽",
                     desc: "Доставка в любой населённый пункт России, включая отдалённые регионы.",
                     badge: null,
                     badgeColor: "",

@@ -51,7 +51,7 @@ export default function CheckoutPage() {
     { id: "sdek_pvz", label: "СДЭК — Пункт выдачи", desc: "Укажите адрес удобного ПВЗ СДЭК", price: subtotal >= 5000 ? 0 : 300, days: "2–5 дней", isPvz: true },
     { id: "yandex_pvz", label: "Яндекс — Пункт выдачи", desc: "Укажите адрес удобного ПВЗ Яндекс", price: subtotal >= 5000 ? 0 : 300, days: "3–6 дней", isPvz: true },
     { id: "ozon_pvz", label: "Ozon — Пункт выдачи", desc: "Укажите адрес удобного ПВЗ Ozon", price: subtotal >= 5000 ? 0 : 250, days: "3–7 дней", isPvz: true },
-    { id: "pochta", label: "Почта России", desc: "В любой населённый пункт России", price: 250, days: "5–14 дней", isPvz: false },
+    { id: "pochta", label: "Почта России", desc: "В любой населённый пункт России", price: subtotal >= 5000 ? 0 : 250, days: "5–14 дней", isPvz: false },
   ];
 
   const selectedDelivery = deliveryOptions.find((d) => d.id === delivery)!;
