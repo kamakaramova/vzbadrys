@@ -14,6 +14,24 @@ import { useRouter } from "next/navigation";
 type DeliveryMethod = "sdek_pvz" | "yandex_pvz" | "ozon_pvz" | "pochta";
 type PaymentMethod = "card" | "sbp";
 
+// Приводит ввод к российскому формату: 8… или 9… автоматически становятся +7…
+function formatPhone(input: string): string {
+  let d = input.replace(/\D/g, "");
+  if (d.startsWith("8")) d = "7" + d.slice(1);
+  else if (d.startsWith("9")) d = "7" + d;
+  d = d.slice(0, 11);
+  if (!d) return "";
+  let r = "+7";
+  if (d.length > 1) r += " (" + d.slice(1, 4);
+  if (d.length >= 4) r += ") " + d.slice(4, 7);
+  if (d.length >= 7) r += "-" + d.slice(7, 9);
+  if (d.length >= 9) r += "-" + d.slice(9, 11);
+  return r;
+}
+
+const phoneDigits = (v: string) => v.replace(/\D/g, "").length;
+const isValidEmail = (v: string) => /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(v.trim());
+
 export default function CheckoutPage() {
   const router = useRouter();
   const items = useCartStore((s) => s.items);
@@ -62,8 +80,8 @@ export default function CheckoutPage() {
     const e: Partial<typeof form> = {};
     if (!form.name.trim()) e.name = "Введите имя";
     if (!form.surname.trim()) e.surname = "Введите фамилию";
-    if (!form.phone.trim() || form.phone.length < 10) e.phone = "Введите корректный номер";
-    if (!form.email.trim() || !form.email.includes("@")) e.email = "Введите корректный email";
+    if (phoneDigits(form.phone) !== 11) e.phone = "Введите номер полностью: +7 и 10 цифр";
+    if (!isValidEmail(form.email)) e.email = "Проверьте email — похоже, есть опечатка";
     if (!form.city.trim()) e.city = "Введите город";
     if (selectedDelivery.isPvz && !form.address.trim()) e.address = "Введите адрес пункта выдачи";
     if (delivery === "pochta" && !form.address.trim()) e.address = "Выберите отделение Почты России на карте";
@@ -163,9 +181,9 @@ export default function CheckoutPage() {
               <p className="text-sm font-semibold mb-3">Что дальше:</p>
               <ul className="space-y-2">
                 {[
-                  "В течение часа вам позвонят для подтверждения",
-                  "После оплаты заказ будет собран и отправлен",
-                  "Трек-номер придёт на email после отправки",
+                  "Ваш заказ принят и передан в сборку",
+                  "После оплаты мы соберём и упакуем заказ",
+                  "Как только заказ будет отправлен — сообщим вам и пришлём трек-номер для отслеживания",
                 ].map((t, i) => (
                   <li key={i} className="flex items-start gap-2 text-sm text-[#555]">
                     <span className="text-[#E8845A] flex-shrink-0">{i + 1}.</span>
@@ -197,7 +215,7 @@ export default function CheckoutPage() {
       <input
         type={type}
         value={form[name]}
-        onChange={(e) => { setForm((f) => ({ ...f, [name]: e.target.value })); setErrors((err) => ({ ...err, [name]: "" })); }}
+        onChange={(e) => { const val = name === "phone" ? formatPhone(e.target.value) : e.target.value; setForm((f) => ({ ...f, [name]: val })); setErrors((err) => ({ ...err, [name]: "" })); }}
         placeholder={placeholder}
         className={`w-full px-4 py-3 rounded-2xl border text-sm outline-none transition-colors ${errors[name] ? "border-red-300 bg-red-50" : "border-[#f0e8e0] focus:border-[#E8845A]"}`}
       />
