@@ -33,7 +33,7 @@ export default function CartPage() {
   const [promoError, setPromoError] = useState("");
   const [promoType2, setPromoType2] = useState<"promo" | "referral" | null>(null);
 
-  const freeDelivery = subtotal >= 5000;
+  const freeDelivery = subtotal >= 3000;
   const deliveryCost = freeDelivery ? 0 : 300;
 
   const handlePromo = () => {
@@ -198,7 +198,7 @@ export default function CartPage() {
                   </div>
                   {!freeDelivery && (
                     <p className="text-xs text-[#aaa] bg-[#fdf8f5] rounded-xl p-3">
-                      До бесплатной доставки осталось {(5000 - subtotal).toLocaleString("ru-RU")} ₽
+                      До бесплатной доставки осталось {(3000 - subtotal).toLocaleString("ru-RU")} ₽
                     </p>
                   )}
                 </div>

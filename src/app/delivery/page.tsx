@@ -33,7 +33,7 @@ export default function DeliveryPage() {
                     icon: "🟠",
                     title: "Ozon — Пункт выдачи",
                     time: "3–7 рабочих дней",
-                    price: "от 250 ₽ · Бесплатно от 5 000 ₽",
+                    price: "от 250 ₽ · Бесплатно от 3 000 ₽",
                     desc: "Самый выгодный вариант. Пункты выдачи Ozon есть практически в каждом городе. Выберите удобный ПВЗ и заберите в любое время.",
                     badge: "Выгоднее всего",
                     badgeColor: "bg-[#FDDCCA] text-[#8b4513]",
@@ -42,7 +42,7 @@ export default function DeliveryPage() {
                     icon: "📦",
                     title: "СДЭК — Пункт выдачи",
                     time: "2–5 рабочих дней",
-                    price: "от 300 ₽ · Бесплатно от 5 000 ₽",
+                    price: "от 300 ₽ · Бесплатно от 3 000 ₽",
                     desc: "Широкая сеть пунктов выдачи по всей России. Укажите адрес удобного ПВЗ при оформлении заказа.",
                     badge: "Популярно",
                     badgeColor: "bg-[#FDDCCA] text-[#8b4513]",
@@ -51,7 +51,7 @@ export default function DeliveryPage() {
                     icon: "⚡",
                     title: "Яндекс — Пункт выдачи",
                     time: "3–6 рабочих дней",
-                    price: "от 300 ₽ · Бесплатно от 5 000 ₽",
+                    price: "от 300 ₽ · Бесплатно от 3 000 ₽",
                     desc: "Доставка в пункты выдачи Яндекса по всей России. Отправляем из Казани.",
                     badge: null,
                     badgeColor: "",
@@ -60,7 +60,7 @@ export default function DeliveryPage() {
                     icon: "🚚",
                     title: "Почта России",
                     time: "5–14 рабочих дней",
-                    price: "от 250 ₽ · Бесплатно от 5 000 ₽",
+                    price: "от 250 ₽ · Бесплатно от 3 000 ₽",
                     desc: "Доставка в любой населённый пункт России, включая отдалённые регионы.",
                     badge: null,
                     badgeColor: "",
@@ -88,8 +88,8 @@ export default function DeliveryPage() {
               {/* Бесплатная доставка */}
               <div className="mt-6 bg-gradient-to-r from-[#FDDCCA]/60 to-[#fdf8f5] rounded-3xl p-6 border border-[#f5d5c0]">
                 <p className="text-2xl mb-2">🎁</p>
-                <p className="font-bold text-base mb-1">Бесплатная доставка от 5 000 ₽</p>
-                <p className="text-sm text-[#6b6b6b]">При заказе на сумму от 5 000 ₽ — доставка в пункты выдачи Ozon, СДЭК и Яндекс бесплатно. Самый выгодный вариант — ПВЗ Ozon.</p>
+                <p className="font-bold text-base mb-1">Бесплатная доставка от 3 000 ₽</p>
+                <p className="text-sm text-[#6b6b6b]">При заказе на сумму от 3 000 ₽ — доставка в пункты выдачи Ozon, СДЭК и Яндекс бесплатно. Самый выгодный вариант — ПВЗ Ozon.</p>
               </div>
             </div>
 

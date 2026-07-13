@@ -21,7 +21,7 @@ export default function Header() {
     <header className="sticky top-0 z-50 bg-white border-b border-[#f0e8e0]">
       {/* Верхняя полоска */}
       <div className="bg-[#FDDCCA] py-2 px-4 text-center text-xs font-medium text-[#8b4513]">
-        🌿 Бесплатная доставка от 5 000 ₽ · Документы на каждый товар
+        🌿 Бесплатная доставка от 3 000 ₽ · Документы на каждый товар
       </div>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
