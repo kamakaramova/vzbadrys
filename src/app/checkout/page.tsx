@@ -7,6 +7,7 @@ import { useCartStore } from "@/store/cartStore";
 import { useAuthStore } from "@/store/authStore";
 import { useProductStore } from "@/store/productStore";
 import PochtaWidget, { PochtaPoint } from "@/components/PochtaWidget";
+import PaymentLogos from "@/components/PaymentLogos";
 import { Check, MapPin, Package, CreditCard, MessageSquare } from "lucide-react";
 import { useRouter } from "next/navigation";
 
@@ -188,7 +189,9 @@ export default function CheckoutPage() {
     );
   }
 
-  const Field = ({ label, name, type = "text", placeholder }: { label: string; name: keyof typeof form; type?: string; placeholder?: string }) => (
+  // Функция-рендер (НЕ компонент) — чтобы поле не пересоздавалось при каждом нажатии
+  // и курсор не слетал. Вызывается как {renderField({...})}, а не <Field/>.
+  const renderField = ({ label, name, type = "text", placeholder }: { label: string; name: keyof typeof form; type?: string; placeholder?: string }) => (
     <div>
       <label className="block text-xs font-semibold text-[#6b6b6b] mb-1.5 uppercase tracking-wide">{label}</label>
       <input
@@ -229,10 +232,10 @@ export default function CheckoutPage() {
                   <h2 className="font-bold text-base">Контактные данные</h2>
                 </div>
                 <div className="grid sm:grid-cols-2 gap-4">
-                  <Field label="Имя" name="name" placeholder="Имя" />
-                  <Field label="Фамилия" name="surname" placeholder="Фамилия" />
-                  <Field label="Телефон" name="phone" type="tel" placeholder="+7 (___) ___-__-__" />
-                  <Field label="Email" name="email" type="email" placeholder="на него придёт чек и уведомление" />
+                  {renderField({ label: "Имя", name: "name", placeholder: "Имя" })}
+                  {renderField({ label: "Фамилия", name: "surname", placeholder: "Фамилия" })}
+                  {renderField({ label: "Телефон", name: "phone", type: "tel", placeholder: "+7 (___) ___-__-__" })}
+                  {renderField({ label: "Email", name: "email", type: "email", placeholder: "на него придёт чек и уведомление" })}
                 </div>
               </div>
 
@@ -266,11 +269,11 @@ export default function CheckoutPage() {
                 )}
 
                 <div className="grid sm:grid-cols-2 gap-4">
-                  <Field label="Город" name="city" placeholder="Казань" />
-                  <Field label="Индекс (необязательно)" name="zip" placeholder="123456" />
+                  {renderField({ label: "Город", name: "city", placeholder: "Казань" })}
+                  {renderField({ label: "Индекс (необязательно)", name: "zip", placeholder: "123456" })}
                   {selectedDelivery.isPvz && (
                     <div className="sm:col-span-2">
-                      <Field label="Адрес пункта выдачи" name="address" placeholder="Например: ул. Ленина, 5 — ПВЗ на первом этаже" />
+                      {renderField({ label: "Адрес пункта выдачи", name: "address", placeholder: "Например: ул. Ленина, 5 — ПВЗ на первом этаже" })}
                       <p className="text-xs text-[#aaa] mt-1">Найдите ближайший ПВЗ на сайте службы доставки и введите его адрес</p>
                     </div>
                   )}
@@ -326,6 +329,10 @@ export default function CheckoutPage() {
                       </div>
                     </label>
                   ))}
+                </div>
+                <div className="mt-4 flex items-center gap-3 flex-wrap">
+                  <span className="text-xs text-[#aaa]">Принимаем к оплате:</span>
+                  <PaymentLogos />
                 </div>
               </div>
 
