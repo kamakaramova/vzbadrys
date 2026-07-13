@@ -6,6 +6,7 @@ import Footer from "@/components/Footer";
 import { useCartStore } from "@/store/cartStore";
 import { useAuthStore } from "@/store/authStore";
 import { useProductStore } from "@/store/productStore";
+import PochtaWidget, { PochtaPoint } from "@/components/PochtaWidget";
 import { Check, MapPin, Package, CreditCard, MessageSquare } from "lucide-react";
 import { useRouter } from "next/navigation";
 
@@ -43,6 +44,8 @@ export default function CheckoutPage() {
   });
   const [errors, setErrors] = useState<Partial<typeof form>>({});
   const [agreeTerms, setAgreeTerms] = useState(false);
+  const [showPochtaMap, setShowPochtaMap] = useState(false);
+  const [pochtaPoint, setPochtaPoint] = useState<PochtaPoint | null>(null);
 
   const deliveryOptions: { id: DeliveryMethod; label: string; desc: string; price: number; days: string; isPvz: boolean }[] = [
     { id: "sdek_pvz", label: "СДЭК — Пункт выдачи", desc: "Укажите адрес удобного ПВЗ СДЭК", price: subtotal >= 5000 ? 0 : 300, days: "2–5 дней", isPvz: true },
@@ -62,6 +65,7 @@ export default function CheckoutPage() {
     if (!form.email.trim() || !form.email.includes("@")) e.email = "Введите корректный email";
     if (!form.city.trim()) e.city = "Введите город";
     if (selectedDelivery.isPvz && !form.address.trim()) e.address = "Введите адрес пункта выдачи";
+    if (delivery === "pochta" && !form.address.trim()) e.address = "Выберите отделение Почты России на карте";
     setErrors(e);
     return Object.keys(e).length === 0;
   };
@@ -270,6 +274,35 @@ export default function CheckoutPage() {
                       <p className="text-xs text-[#aaa] mt-1">Найдите ближайший ПВЗ на сайте службы доставки и введите его адрес</p>
                     </div>
                   )}
+
+                  {/* Почта России — выбор отделения на карте */}
+                  {delivery === "pochta" && (
+                    <div className="sm:col-span-2">
+                      <label className="block text-sm font-medium text-[#1a1a1a] mb-1.5">Отделение Почты России</label>
+                      {pochtaPoint ? (
+                        <div className="flex items-start justify-between gap-3 bg-[#f0f8f4] border border-[#c8e6d4] rounded-2xl px-4 py-3">
+                          <div className="text-sm">
+                            <p className="font-semibold text-[#1a7a4a]">📍 {pochtaPoint.index && `${pochtaPoint.index}, `}{pochtaPoint.address}</p>
+                            {pochtaPoint.name && <p className="text-xs text-[#6b6b6b] mt-0.5">{pochtaPoint.name}</p>}
+                          </div>
+                          <button type="button" onClick={() => setShowPochtaMap(true)} className="text-xs text-[#E8845A] font-semibold hover:underline whitespace-nowrap">
+                            Изменить
+                          </button>
+                        </div>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => setShowPochtaMap(true)}
+                          className={`w-full flex items-center justify-center gap-2 py-3 rounded-2xl border-2 border-dashed font-semibold text-sm transition-all ${
+                            errors.address ? "border-red-300 text-red-400 bg-red-50" : "border-[#E8845A] text-[#E8845A] hover:bg-[#fff8f5]"
+                          }`}
+                        >
+                          <MapPin size={16} /> Выбрать отделение на карте
+                        </button>
+                      )}
+                      {errors.address && !pochtaPoint && <p className="text-xs text-red-400 mt-1">{errors.address}</p>}
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -417,6 +450,18 @@ export default function CheckoutPage() {
         </div>
       </main>
       <Footer />
+
+      {showPochtaMap && (
+        <PochtaWidget
+          onSelect={(p) => {
+            setPochtaPoint(p);
+            setForm((f) => ({ ...f, address: p.address, zip: p.index || f.zip }));
+            setErrors((e) => ({ ...e, address: undefined }));
+            setShowPochtaMap(false);
+          }}
+          onClose={() => setShowPochtaMap(false)}
+        />
+      )}
     </>
   );
 }
