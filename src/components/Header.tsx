@@ -27,13 +27,8 @@ export default function Header() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
           {/* Логотип */}
-          <Link href="/" className="flex items-center gap-2">
-            <div className="w-9 h-9 rounded-full bg-[#E8845A] flex items-center justify-center">
-              <span className="text-white font-bold text-sm">В</span>
-            </div>
-            <span className="font-black text-xl tracking-tight text-[#1a1a1a]" style={{ fontFamily: "Montserrat, sans-serif" }}>
-              вз<span style={{ background: "linear-gradient(135deg, #E8845A, #f5a87e)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", backgroundClip: "text" }}>БАД</span>рись
-            </span>
+          <Link href="/" className="flex items-center">
+            <img src="/logo.png" alt="Взбадрись — БАДы и суперфуды" className="h-12 w-auto" />
           </Link>
 
           {/* Навигация десктоп */}
