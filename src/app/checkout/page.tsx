@@ -97,8 +97,22 @@ export default function CheckoutPage() {
       });
     }
 
-    // Списываем остатки
-    items.forEach((item) => writeOffStock(item.id, item.quantity));
+    // Списываем остатки. Для семян id вида "base-100g" — списываем граммы (вес × кол-во упаковок).
+    const decrements = items.map((item) => {
+      const seedMatch = item.id.match(/^(.+)-(\d+)g$/);
+      if (seedMatch) {
+        return { id: seedMatch[1], amount: Number(seedMatch[2]) * item.quantity };
+      }
+      return { id: item.id, amount: item.quantity };
+    });
+    // Локально (на случай если база ещё не подключена)
+    decrements.forEach((d) => writeOffStock(d.id, d.amount));
+    // В базе данных (чтобы остаток обновился для всех)
+    fetch("/api/decrement-stock", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ items: decrements }),
+    }).catch(() => {});
 
     // Если использован реферальный код — начисляем 100 бонусов рефереру
     if (promoType === "referral" && referrerId) {

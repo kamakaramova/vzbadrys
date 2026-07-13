@@ -91,7 +91,7 @@ export default function AdminPage() {
   const promos = mounted ? promoStore.promos : [];
   const { addPromo, togglePromo, deletePromo } = promoStore;
   const allProducts = mounted ? productStore.products : [];
-  const { updateProduct, deleteProduct, toggleStock, resetToDefault, receiveStock, setStockQty } = productStore;
+  const { updateProduct, deleteProduct, toggleStock, resetToDefault, receiveStock, setStockQty, setAdminPassword, seedDatabase } = productStore;
 
   const customerStats = useMemo(() => {
     return users.map((u) => {
@@ -250,7 +250,7 @@ export default function AdminPage() {
               onChange={(e) => { setPw(e.target.value); setPwError(false); }}
               onKeyDown={(e) => {
                 if (e.key === "Enter") {
-                  if (pw === ADMIN_PASSWORD) setAuthed(true);
+                  if (pw === ADMIN_PASSWORD) { setAuthed(true); setAdminPassword(ADMIN_PASSWORD); }
                   else setPwError(true);
                 }
               }}
@@ -260,7 +260,7 @@ export default function AdminPage() {
             />
             {pwError && <p className="text-xs text-red-400">Неверный пароль</p>}
             <button
-              onClick={() => { if (pw === ADMIN_PASSWORD) setAuthed(true); else setPwError(true); }}
+              onClick={() => { if (pw === ADMIN_PASSWORD) { setAuthed(true); setAdminPassword(ADMIN_PASSWORD); } else setPwError(true); }}
               className="w-full bg-[#E8845A] hover:bg-[#d4703f] text-white font-bold py-3 rounded-full transition-all"
             >
               Войти
@@ -759,7 +759,17 @@ export default function AdminPage() {
               </div>
               <div className="flex gap-2">
                 <button
-                  onClick={() => { resetToDefault(); alert("Товары сброшены к исходным"); }}
+                  onClick={async () => {
+                    if (!confirm("Залить текущие товары в базу данных? Это первичная настройка — сделай один раз после подключения базы.")) return;
+                    const r = await seedDatabase();
+                    alert(r.ok ? "Товары загружены в базу ✅" : `Не получилось: ${r.error}`);
+                  }}
+                  className="text-xs font-semibold text-white bg-[#E8845A] hover:bg-[#d4703f] px-3 py-2 rounded-xl"
+                >
+                  Залить в базу (1 раз)
+                </button>
+                <button
+                  onClick={() => { if (confirm("Сбросить товары к исходным? Текущие правки будут потеряны.")) { resetToDefault(); alert("Товары сброшены к исходным"); } }}
                   className="text-xs text-[#aaa] hover:text-[#E8845A] px-3 py-2 rounded-xl border border-[#f0e8e0] bg-white"
                 >
                   Сбросить к исходным
@@ -771,18 +781,25 @@ export default function AdminPage() {
             <div className="bg-white rounded-3xl border border-[#f0e8e0] overflow-hidden">
               <div className="px-6 py-4 border-b border-[#f0e8e0]">
                 <h2 className="font-bold flex items-center gap-2"><Plus size={16} className="text-[#E8845A]" /> Приёмка товара</h2>
-                <p className="text-xs text-[#aaa] mt-1">Введи сколько штук пришло — остаток обновится автоматически. Когда остаток = 0, карточка уходит в «нет в наличии».</p>
+                <p className="text-xs text-[#aaa] mt-1">БАДы принимаем в штуках, семена — в граммах. Остаток обновляется автоматически. Когда остаток = 0, карточка уходит в «нет в наличии».</p>
               </div>
               <div className="divide-y divide-[#f0e8e0]">
                 {allProducts.filter((p) => p.name.toLowerCase().includes(productSearch.toLowerCase())).map((p) => {
-                  const stockColor = p.stockQty === undefined ? "text-[#aaa]" : p.stockQty === 0 ? "text-red-500 font-bold" : p.stockQty <= 5 ? "text-orange-500 font-bold" : "text-green-600 font-bold";
+                  const isSeed = p.category === "seeds";
+                  const unit = isSeed ? "г" : "шт.";
+                  // порог «мало»: для семян 500 г, для БАДов 5 шт.
+                  const lowThreshold = isSeed ? 500 : 5;
+                  const stockColor = p.stockQty === undefined ? "text-[#aaa]" : p.stockQty === 0 ? "text-red-500 font-bold" : p.stockQty <= lowThreshold ? "text-orange-500 font-bold" : "text-green-600 font-bold";
+                  const fmtStock = (g: number) => isSeed
+                    ? (g >= 1000 ? `${g.toLocaleString("ru-RU")} г (${(g / 1000).toLocaleString("ru-RU")} кг)` : `${g} г`)
+                    : `${g} шт.`;
                   return (
                     <div key={p.id} className="flex items-center gap-4 px-6 py-3">
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm font-semibold truncate">{p.name}</p>
+                        <p className="text-sm font-semibold truncate">{p.name} {isSeed && <span className="text-[10px] font-normal text-[#aaa]">· семена</span>}</p>
                         <p className="text-xs mt-0.5">
                           Остаток: <span className={stockColor}>
-                            {p.stockQty === undefined ? "не отслеживается" : `${p.stockQty} шт.`}
+                            {p.stockQty === undefined ? "не отслеживается" : fmtStock(p.stockQty)}
                           </span>
                           {p.stockQty !== undefined && !p.inStock && p.stockQty === 0 && (
                             <span className="ml-2 text-red-400 font-semibold">· Нет в наличии на сайте</span>
@@ -797,9 +814,10 @@ export default function AdminPage() {
                           min="1"
                           value={receiveQtys[p.id] || ""}
                           onChange={(e) => setReceiveQtys({ ...receiveQtys, [p.id]: e.target.value })}
-                          placeholder="шт."
-                          className="w-20 px-3 py-2 rounded-xl border border-[#f0e8e0] text-sm outline-none focus:border-[#E8845A] text-center"
+                          placeholder={unit}
+                          className="w-24 px-3 py-2 rounded-xl border border-[#f0e8e0] text-sm outline-none focus:border-[#E8845A] text-center"
                         />
+                        <span className="text-xs text-[#aaa] w-6">{unit}</span>
                         <button
                           onClick={() => {
                             const qty = parseInt(receiveQtys[p.id] || "0");
@@ -816,7 +834,7 @@ export default function AdminPage() {
                         {/* Установить точный остаток */}
                         <button
                           onClick={() => {
-                            const qty = prompt(`Установить точный остаток для «${p.name}»:\nТекущий остаток: ${p.stockQty ?? "не задан"}`);
+                            const qty = prompt(`Установить точный остаток для «${p.name}» (в ${isSeed ? "граммах" : "штуках"}):\nТекущий остаток: ${p.stockQty ?? "не задан"}`);
                             if (qty === null) return;
                             const num = parseInt(qty);
                             if (!isNaN(num) && num >= 0) setStockQty(p.id, num);
@@ -866,7 +884,7 @@ export default function AdminPage() {
                       </div>
                       <p className="text-xs text-[#aaa] mt-0.5">
                         {p.category === "bads" ? "БАД" : "Семена"} · {p.weight}
-                        {p.stockQty !== undefined && <span> · Остаток: <b>{p.stockQty} шт.</b></span>}
+                        {p.stockQty !== undefined && <span> · Остаток: <b>{p.category === "seeds" ? (p.stockQty >= 1000 ? `${(p.stockQty / 1000).toLocaleString("ru-RU")} кг` : `${p.stockQty} г`) : `${p.stockQty} шт.`}</b></span>}
                       </p>
                     </div>
 
@@ -925,27 +943,58 @@ export default function AdminPage() {
                   className="w-full px-4 py-3 rounded-2xl border border-[#f0e8e0] text-sm outline-none focus:border-[#E8845A]"
                 />
               </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-semibold text-[#6b6b6b] uppercase tracking-wide mb-1.5">Цена (₽)</label>
-                  <input
-                    type="number"
-                    value={editingProduct.price}
-                    onChange={(e) => setEditingProduct({ ...editingProduct, price: Number(e.target.value) })}
-                    className="w-full px-4 py-3 rounded-2xl border border-[#f0e8e0] text-sm outline-none focus:border-[#E8845A]"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold text-[#6b6b6b] uppercase tracking-wide mb-1.5">Старая цена (₽)</label>
-                  <input
-                    type="number"
-                    value={editingProduct.oldPrice || ""}
-                    onChange={(e) => setEditingProduct({ ...editingProduct, oldPrice: e.target.value ? Number(e.target.value) : undefined })}
-                    placeholder="Оставь пустым если нет"
-                    className="w-full px-4 py-3 rounded-2xl border border-[#f0e8e0] text-sm outline-none focus:border-[#E8845A]"
-                  />
-                </div>
-              </div>
+              {(() => {
+                const regular = editingProduct.oldPrice ?? editingProduct.price;
+                const discount = editingProduct.discountPercent ?? 0;
+                const finalPrice = discount > 0 ? Math.round(regular * (1 - discount / 100)) : regular;
+                const setPricing = (reg: number, disc: number) => {
+                  if (disc > 0) {
+                    setEditingProduct({ ...editingProduct, oldPrice: reg, discountPercent: disc, price: Math.round(reg * (1 - disc / 100)) });
+                  } else {
+                    setEditingProduct({ ...editingProduct, oldPrice: undefined, discountPercent: undefined, price: reg });
+                  }
+                };
+                return (
+                  <div>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <label className="block text-xs font-semibold text-[#6b6b6b] uppercase tracking-wide mb-1.5">Обычная цена (₽)</label>
+                        <input
+                          type="number"
+                          value={regular}
+                          onChange={(e) => setPricing(Number(e.target.value), discount)}
+                          className="w-full px-4 py-3 rounded-2xl border border-[#f0e8e0] text-sm outline-none focus:border-[#E8845A]"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-semibold text-[#6b6b6b] uppercase tracking-wide mb-1.5">Скидка %</label>
+                        <input
+                          type="number"
+                          min="0"
+                          max="99"
+                          value={discount || ""}
+                          onChange={(e) => setPricing(regular, Math.min(99, Math.max(0, Number(e.target.value))))}
+                          placeholder="0 — без скидки"
+                          className="w-full px-4 py-3 rounded-2xl border border-[#f0e8e0] text-sm outline-none focus:border-[#E8845A]"
+                        />
+                      </div>
+                    </div>
+                    {/* Итоговая цена */}
+                    <div className="mt-2 bg-[#fdf8f5] rounded-2xl px-4 py-3 flex items-center justify-between">
+                      <span className="text-xs text-[#6b6b6b]">Цена на сайте:</span>
+                      <span className="flex items-baseline gap-2">
+                        <span className="font-bold text-[#E8845A] text-lg">{finalPrice.toLocaleString("ru-RU")} ₽</span>
+                        {discount > 0 && (
+                          <>
+                            <span className="text-xs text-[#aaa] line-through">{regular.toLocaleString("ru-RU")} ₽</span>
+                            <span className="text-xs font-bold bg-[#FF6B6B] text-white px-2 py-0.5 rounded-full">−{discount}%</span>
+                          </>
+                        )}
+                      </span>
+                    </div>
+                  </div>
+                );
+              })()}
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs font-semibold text-[#6b6b6b] uppercase tracking-wide mb-1.5">Бейдж</label>

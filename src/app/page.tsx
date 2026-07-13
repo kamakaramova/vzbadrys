@@ -1,14 +1,11 @@
 import Link from "next/link";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
-import ProductCard from "@/components/ProductCard";
 import HeroSection from "@/components/HeroSection";
-import { products } from "@/lib/products";
+import FeaturedProducts from "@/components/FeaturedProducts";
 import { ArrowRight, Shield, Truck, FileCheck, Star } from "lucide-react";
 
 export default function Home() {
-  const featuredProducts = products.slice(0, 3);
-
   return (
     <>
       <Header />
@@ -78,11 +75,7 @@ export default function Home() {
                 Все товары <ArrowRight size={16} />
               </Link>
             </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-              {featuredProducts.map((product) => (
-                <ProductCard key={product.id} product={product} />
-              ))}
-            </div>
+            <FeaturedProducts />
           </div>
         </section>
 

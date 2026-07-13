@@ -11,8 +11,9 @@ export interface Product {
   name: string;
   shortName: string;
   category: "bads" | "seeds";
-  price: number;
-  oldPrice?: number;
+  price: number;        // итоговая цена (со скидкой, если есть)
+  oldPrice?: number;    // обычная цена до скидки
+  discountPercent?: number; // размер скидки в %, undefined = без скидки
   images: string[];
   badge?: string;
   description: string;
