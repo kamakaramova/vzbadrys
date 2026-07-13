@@ -226,7 +226,7 @@ export default function HeroSection() {
               <div className="inline-flex items-center gap-2 rounded-full px-4 py-1.5 bg-white/80 border border-[#FDDCCA] backdrop-blur-sm">
                 <span className="w-1.5 h-1.5 rounded-full bg-[#E8845A] animate-pulse" />
                 <span className="text-[10px] uppercase tracking-[0.18em] font-semibold text-[#E8845A]">
-                  Основатель бренда · нутрициолог Кама Карамова
+                  Проверенные составы · документы на каждый товар
                 </span>
               </div>
             </div>

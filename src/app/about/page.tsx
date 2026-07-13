@@ -138,10 +138,10 @@ export default function AboutPage() {
         {/* Контакты и блог */}
         <section className="py-16">
           <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
-            <h2 className="text-2xl md:text-3xl font-bold text-center mb-3">Связь и мой блог</h2>
+            <h2 className="text-2xl md:text-3xl font-bold text-center mb-3">Связь и наши соцсети</h2>
             <p className="text-center text-[#6b6b6b] max-w-xl mx-auto mb-10">
-              Я веду блог о здоровье, питании и разборах анализов — заходите, там много пользы.
-              А по любым вопросам всегда можно написать напрямую.
+              Делимся пользой о здоровье, питании и разборах анализов — подписывайтесь.
+              А по любым вопросам всегда можно написать нам напрямую.
             </p>
 
             <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -150,11 +150,11 @@ export default function AboutPage() {
                 <p className="font-bold text-sm">Telegram</p>
                 <p className="text-[#E8845A] text-sm font-semibold mt-0.5">@vzbadris</p>
               </a>
-              <div className="bg-[#fdf8f5] border border-[#f0e8e0] rounded-2xl p-6 text-center">
+              <a href="https://instagram.com/vzbadris" target="_blank" rel="noopener noreferrer" className="bg-[#fdf8f5] border border-[#f0e8e0] rounded-2xl p-6 text-center hover:shadow-md hover:-translate-y-0.5 transition-all">
                 <div className="text-3xl mb-3">📸</div>
-                <p className="font-bold text-sm">Instagram / блог</p>
-                <p className="text-[#6b6b6b] text-sm mt-0.5">@vzbadris</p>
-              </div>
+                <p className="font-bold text-sm">Instagram*</p>
+                <p className="text-[#E8845A] text-sm font-semibold mt-0.5">@vzbadris</p>
+              </a>
               <a href="mailto:vzbadris@yandex.ru" className="bg-[#fdf8f5] border border-[#f0e8e0] rounded-2xl p-6 text-center hover:shadow-md hover:-translate-y-0.5 transition-all">
                 <div className="text-3xl mb-3">📧</div>
                 <p className="font-bold text-sm">Email</p>

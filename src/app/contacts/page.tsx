@@ -82,16 +82,22 @@ export default function ContactsPage() {
               </a>
 
               {/* Instagram */}
-              <div className="flex items-center gap-5 bg-white border border-[#f0e8e0] rounded-3xl p-6">
+              <a
+                href="https://instagram.com/vzbadris"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-5 bg-white border border-[#f0e8e0] rounded-3xl p-6 hover:shadow-lg hover:-translate-y-0.5 transition-all group"
+              >
                 <div className="w-14 h-14 rounded-2xl bg-[#FDDCCA] flex items-center justify-center text-3xl flex-shrink-0">
                   📸
                 </div>
-                <div>
-                  <p className="font-bold text-base">Instagram</p>
-                  <p className="text-sm text-[#6b6b6b]">@vzbadris</p>
+                <div className="flex-1">
+                  <p className="font-bold text-base">Instagram*</p>
+                  <p className="text-[#E8845A] text-sm font-semibold">@vzbadris</p>
                   <p className="text-xs text-[#aaa] mt-0.5">Контент о здоровье и питании</p>
                 </div>
-              </div>
+                <span className="text-[#aaa] group-hover:text-[#E8845A] transition-colors text-xl">→</span>
+              </a>
             </div>
 
             {/* Правая колонка */}

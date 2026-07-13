@@ -1,4 +1,5 @@
 import Link from "next/link";
+import PaymentLogos from "@/components/PaymentLogos";
 
 export default function Footer() {
   return (
@@ -46,7 +47,8 @@ export default function Footer() {
             <h4 className="font-semibold text-sm mb-4">Контакты</h4>
             <ul className="flex flex-col gap-2.5">
               <li className="text-sm text-[#6b6b6b]">Telegram: <a href="https://t.me/vzbadris" className="hover:text-[#E8845A] transition-colors">@vzbadris</a></li>
-              <li className="text-sm text-[#6b6b6b]">Instagram: <span className="hover:text-[#E8845A]">@vzbadris</span></li>
+              <li className="text-sm text-[#6b6b6b]">Instagram*: <a href="https://instagram.com/vzbadris" className="hover:text-[#E8845A] transition-colors">@vzbadris</a></li>
+              <li className="text-sm text-[#6b6b6b]">Почта: <a href="mailto:vzbadris@yandex.ru" className="hover:text-[#E8845A] transition-colors">vzbadris@yandex.ru</a></li>
             </ul>
             <div className="mt-6">
               <p className="text-xs text-[#aaa]">Не является лекарственным средством. Перед применением проконсультируйтесь со специалистом.</p>
@@ -57,27 +59,12 @@ export default function Footer() {
         {/* Способы оплаты */}
         <div className="border-t border-[#f0e8e0] mt-10 pt-6 flex flex-col sm:flex-row justify-between items-center gap-4">
           <p className="text-xs text-[#aaa]">Безопасная оплата картой или через СБП</p>
-          <div className="flex flex-wrap items-center gap-2">
-            {[
-              { label: "VISA", style: "text-[#1a1f71] italic font-black tracking-tight" },
-              { label: "mastercard", style: "text-[#eb001b] font-bold lowercase" },
-              { label: "МИР", style: "text-[#0f754e] font-black" },
-              { label: "СБП", style: "text-[#1a1a1a] font-bold" },
-              { label: "Ozon Pay", style: "text-[#005bff] font-bold" },
-            ].map((p) => (
-              <span
-                key={p.label}
-                className={`bg-white border border-[#f0e8e0] rounded-lg px-3 py-1.5 text-xs ${p.style}`}
-              >
-                {p.label}
-              </span>
-            ))}
-          </div>
+          <PaymentLogos />
         </div>
 
         {/* Правовые ссылки */}
         <div className="border-t border-[#f0e8e0] mt-6 pt-6 flex flex-col sm:flex-row justify-between items-center gap-4">
-          <p className="text-xs text-[#aaa]">© 2025 Взбадрись · ИП Абдулкина П. В. · ИНН 166107199180</p>
+          <p className="text-xs text-[#aaa]">© 2026 Взбадрись · ИП Абдулкина П. В. · ИНН 166107199180</p>
           <div className="flex flex-wrap gap-4 justify-center sm:justify-end">
             <Link href="/oferta" target="_blank" className="text-xs text-[#aaa] hover:text-[#E8845A] transition-colors">Публичная оферта</Link>
             <Link href="/privacy" target="_blank" className="text-xs text-[#aaa] hover:text-[#E8845A] transition-colors">Политика конфиденциальности</Link>
@@ -85,6 +72,11 @@ export default function Footer() {
             <Link href="/cookie" className="text-xs text-[#aaa] hover:text-[#E8845A] transition-colors">Cookie</Link>
           </div>
         </div>
+
+        {/* Дисклеймер Instagram / Meta */}
+        <p className="text-[10px] text-[#c8beb4] mt-4 leading-relaxed">
+          *Instagram принадлежит компании Meta Platforms Inc., признанной в Российской Федерации экстремистской организацией, её деятельность на территории РФ запрещена.
+        </p>
       </div>
     </footer>
   );

@@ -28,7 +28,7 @@ export default function CheckoutPage() {
   const promoType = useCartStore((s) => s.promoType);
 
   const [delivery, setDelivery] = useState<DeliveryMethod>("sdek_pvz");
-  const [payment, setPayment] = useState<PaymentMethod>("card");
+  const [payment, setPayment] = useState<PaymentMethod>("sbp");
   const [comment, setComment] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [success, setSuccess] = useState(false);
@@ -314,8 +314,8 @@ export default function CheckoutPage() {
                 </div>
                 <div className="space-y-3">
                   {[
-                    { id: "card" as PaymentMethod, label: "Банковская карта", desc: "Visa, Mastercard, Мир — через Ozon Pay", icon: "💳" },
                     { id: "sbp" as PaymentMethod, label: "СБП (быстрые платежи)", desc: "По QR-коду, без комиссии", icon: "📱" },
+                    { id: "card" as PaymentMethod, label: "Банковская карта", desc: "Visa, Mastercard, Мир — через Ozon Pay", icon: "💳" },
                   ].map((opt) => (
                     <label key={opt.id} className={`flex items-center gap-4 p-4 rounded-2xl border-2 cursor-pointer transition-all ${payment === opt.id ? "border-[#E8845A] bg-[#fff8f5]" : "border-[#f0e8e0] hover:border-[#f5c9b0]"}`}>
                       <input type="radio" name="payment" value={opt.id} checked={payment === opt.id} onChange={() => setPayment(opt.id)} className="accent-[#E8845A]" />
