@@ -6,6 +6,7 @@ export interface PochtaPoint {
   address: string;
   index: string;
   name: string;
+  raw?: string;
 }
 
 declare global {
@@ -36,6 +37,12 @@ export default function PochtaWidget({
         containerId: "ecom-widget",
         callbackFunction: (data) => {
           const d = data as Record<string, unknown>;
+          // Выводим полный JSON ответа виджета — для отладки и для Почты России.
+          const rawJson = JSON.stringify(d, null, 2);
+          console.log("POCHTA_CALLBACK_JSON:", rawJson);
+          try {
+            (window as unknown as { __pochtaLastCallback?: string }).__pochtaLastCallback = rawJson;
+          } catch {}
           const address =
             (d.address as string) ||
             (d.addressSource as string) ||
@@ -47,7 +54,7 @@ export default function PochtaWidget({
             (d.postindex as string) ||
             "";
           const name = (d.name as string) || "Пункт Почты России";
-          onSelect({ address: String(address), index: String(index), name: String(name) });
+          onSelect({ address: String(address), index: String(index), name: String(name), raw: rawJson });
         },
       });
     };

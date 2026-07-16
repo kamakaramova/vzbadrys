@@ -321,6 +321,12 @@ export default function CheckoutPage() {
                           <MapPin size={16} /> Выбрать отделение на карте
                         </button>
                       )}
+                      {pochtaPoint?.raw && (
+                        <details className="mt-2">
+                          <summary className="text-xs text-[#aaa] cursor-pointer">Тех. данные для Почты России (JSON)</summary>
+                          <pre className="mt-1 text-[10px] bg-[#f7f2ee] rounded-xl p-3 overflow-auto max-h-40 whitespace-pre-wrap break-all select-all">{pochtaPoint.raw}</pre>
+                        </details>
+                      )}
                       {errors.address && !pochtaPoint && <p className="text-xs text-red-400 mt-1">{errors.address}</p>}
                       <p className="text-xs text-[#aaa] mt-2">
                         {subtotal >= 3000
