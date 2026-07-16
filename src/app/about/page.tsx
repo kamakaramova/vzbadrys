@@ -33,16 +33,16 @@ export default function AboutPage() {
           <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="grid md:grid-cols-2 gap-8 items-center mb-12">
               <div className="flex justify-center md:justify-start">
-                <div className="relative">
-                  <div className="w-full max-w-sm h-96 rounded-3xl overflow-hidden shadow-xl">
+                <div className="relative w-full max-w-lg">
+                  <div className="w-full aspect-[3/2] rounded-3xl overflow-hidden shadow-xl">
                     <img
-                      src="/komanda-photo.jpg"
+                      src="/komanda-photo.png"
                       alt="Кама Карамова и Полина Абдулкина — основатели бренда Взбадрись"
-                      className="w-full h-full object-cover object-top"
+                      className="w-full h-full object-cover object-center"
                     />
                   </div>
                   <div className="absolute -bottom-3 -right-3 bg-[#E8845A] text-white text-xs font-bold px-3 py-1.5 rounded-full shadow-lg">
-                    Опыт в научной лаборатории
+                    Основатели «Взбадрись»
                   </div>
                 </div>
               </div>
