@@ -271,7 +271,7 @@ export default function CheckoutPage() {
                         <div className="flex items-center justify-between">
                           <p className="font-semibold text-sm">{opt.label}</p>
                           <span className={`text-sm font-bold ${opt.price === 0 ? "text-green-600" : "text-[#1a1a1a]"}`}>
-                            {opt.price === 0 ? "Бесплатно" : `${opt.price} ₽`}
+                            {opt.price === 0 ? "Бесплатно" : (opt.id === "pochta" ? `от ${opt.price} ₽` : `${opt.price} ₽`)}
                           </span>
                         </div>
                         <p className="text-xs text-[#aaa] mt-0.5">{opt.desc} · {opt.days}</p>
@@ -322,6 +322,11 @@ export default function CheckoutPage() {
                         </button>
                       )}
                       {errors.address && !pochtaPoint && <p className="text-xs text-red-400 mt-1">{errors.address}</p>}
+                      <p className="text-xs text-[#aaa] mt-2">
+                        {subtotal >= 3000
+                          ? "Доставка Почтой России бесплатна при заказе от 3 000 ₽."
+                          : "Стоимость доставки Почтой России зависит от адреса — точную сумму сообщим после оформления. Ориентировочно от 250 ₽."}
+                      </p>
                     </div>
                   )}
                 </div>
@@ -409,7 +414,7 @@ export default function CheckoutPage() {
                   <div className="flex justify-between text-sm">
                     <span className="text-[#6b6b6b]">Доставка</span>
                     <span className={selectedDelivery.price === 0 ? "text-green-600 font-semibold" : ""}>
-                      {selectedDelivery.price === 0 ? "Бесплатно" : `${selectedDelivery.price} ₽`}
+                      {selectedDelivery.price === 0 ? "Бесплатно" : (delivery === "pochta" ? `от ${selectedDelivery.price} ₽` : `${selectedDelivery.price} ₽`)}
                     </span>
                   </div>
                 </div>
