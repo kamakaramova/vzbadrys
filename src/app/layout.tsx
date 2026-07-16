@@ -3,9 +3,19 @@ import "./globals.css";
 import CookieBanner from "@/components/CookieBanner";
 
 export const metadata: Metadata = {
+  metadataBase: new URL("https://xn--80abckmj9cj3h.xn--p1ai"),
   title: "Взбадрись — магазин БАДов и суперфудов",
   description: "Качественные БАДы и суперфуды с документами. Магний, цинк, селен и семена для здоровья. Доставка по России.",
   keywords: "БАДы, магний, цинк, селен, семена, нутрициолог, витамины, здоровье",
+  alternates: { canonical: "/" },
+  openGraph: {
+    title: "Взбадрись — магазин БАДов и суперфудов",
+    description: "Качественные БАДы и суперфуды с документами. Доставка по России.",
+    url: "https://xn--80abckmj9cj3h.xn--p1ai",
+    siteName: "Взбадрись",
+    locale: "ru_RU",
+    type: "website",
+  },
 };
 
 export default function RootLayout({
