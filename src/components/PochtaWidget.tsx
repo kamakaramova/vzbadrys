@@ -18,7 +18,7 @@ declare global {
   }
 }
 
-const WIDGET_ID = 62584;
+const WIDGET_ID = 62650;
 const WIDGET_SRC = "https://widget.pochta.ru/map/widget/widget.js";
 
 export default function PochtaWidget({
