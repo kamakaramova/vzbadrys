@@ -19,7 +19,7 @@ export default function ProductClient({
   const [activeTab, setActiveTab] = useState<Tab>("description");
   const [imageIndex, setImageIndex] = useState(0);
   // Кандидаты фото: конвенция /products/<id>/1..6.jpg (кладёшь файлы — появляются сами)
-  const imageCandidates = productImagePaths(product.id, 6);
+  const imageCandidates = productImagePaths(product.id, 8);
   const [loadedImages, setLoadedImages] = useState<string[]>([]);
   const hasPhotos = loadedImages.length > 0;
   const shownIndex = Math.min(imageIndex, Math.max(0, loadedImages.length - 1));
