@@ -43,18 +43,17 @@ export default function PochtaWidget({
           try {
             (window as unknown as { __pochtaLastCallback?: string }).__pochtaLastCallback = rawJson;
           } catch {}
-          const address =
-            (d.address as string) ||
-            (d.addressSource as string) ||
-            (d.name as string) ||
-            "";
-          const index =
-            (d.index as string) ||
-            (d.postalCode as string) ||
-            (d.postindex as string) ||
-            "";
-          const name = (d.name as string) || "Пункт Почты России";
-          onSelect({ address: String(address), index: String(index), name: String(name), raw: rawJson });
+          // Реальные поля ответа виджета Почты России (по документации):
+          // addressTo, cityTo, regionTo, indexTo, areaTo, id, mailType, cashOfDelivery
+          const street = (d.addressTo as string) || (d.address as string) || "";
+          const city = (d.cityTo as string) || "";
+          const region = (d.regionTo as string) || "";
+          const area = (d.areaTo as string) || "";
+          const index = String((d.indexTo as string) || (d.index as string) || "");
+          const fullAddress =
+            [region, area, city, street].filter(Boolean).join(", ") || street || "Пункт Почты России";
+          const name = String((d.id as string | number) ? `Отделение ${d.id}` : "Пункт Почты России");
+          onSelect({ address: fullAddress, index, name, raw: rawJson });
         },
       });
     };
