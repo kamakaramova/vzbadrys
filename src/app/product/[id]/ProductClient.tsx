@@ -20,7 +20,9 @@ export default function ProductClient({
   const [imageIndex, setImageIndex] = useState(0);
   // Кандидаты фото: конвенция /products/<id>/1..6.jpg (кладёшь файлы — появляются сами)
   const imageCandidates = productImagePaths(product.id, 8);
-  const [loadedImages, setLoadedImages] = useState<string[]>([]);
+  // Отмечаем, какие фото реально загрузились, и показываем их СТРОГО по порядку 1,2,3…
+  const [loadedMap, setLoadedMap] = useState<Record<string, boolean>>({});
+  const loadedImages = imageCandidates.filter((src) => loadedMap[src]);
   const hasPhotos = loadedImages.length > 0;
   const shownIndex = Math.min(imageIndex, Math.max(0, loadedImages.length - 1));
   const [qty, setQty] = useState(1);
@@ -91,7 +93,7 @@ export default function ProductClient({
                   key={src}
                   src={src}
                   alt=""
-                  onLoad={() => setLoadedImages((prev) => (prev.includes(src) ? prev : [...prev, src]))}
+                  onLoad={() => setLoadedMap((prev) => (prev[src] ? prev : { ...prev, [src]: true }))}
                   onError={() => {}}
                 />
               ))}
@@ -114,7 +116,7 @@ export default function ProductClient({
               )}
 
               {/* Главное фото */}
-              <div className="relative aspect-[4/5] w-full max-w-[360px] bg-[#fdf8f5] rounded-2xl overflow-hidden flex items-center justify-center">
+              <div className="relative aspect-[4/5] flex-1 max-w-[460px] bg-[#fdf8f5] rounded-2xl overflow-hidden flex items-center justify-center">
                 {hasPhotos ? (
                   <img src={loadedImages[shownIndex]} alt={product.name} className="w-full h-full object-cover" />
                 ) : (
