@@ -97,44 +97,53 @@ export default function ProductClient({
               ))}
             </div>
 
-            <div className="relative aspect-[4/5] bg-[#fdf8f5] rounded-3xl overflow-hidden mb-4 flex items-center justify-center">
-              {hasPhotos ? (
-                <img src={loadedImages[shownIndex]} alt={product.name} className="w-full h-full object-cover" />
-              ) : (
-                <div className="text-center">
-                  <div className="text-[120px]">{product.category === "bads" ? "💊" : "🌱"}</div>
-                  <p className="text-sm text-[#aaa] mt-2">{product.name}</p>
-                </div>
-              )}
+            <div className="flex gap-3">
+              {/* Лента миниатюр слева (как на маркетплейсах) */}
               {loadedImages.length > 1 && (
-                <>
-                  <button onClick={() => setImageIndex((i) => Math.max(0, i - 1))} className="absolute left-3 top-1/2 -translate-y-1/2 w-9 h-9 bg-white rounded-full shadow flex items-center justify-center hover:bg-[#fdf8f5]">
-                    <ChevronLeft size={18} />
-                  </button>
-                  <button onClick={() => setImageIndex((i) => Math.min(loadedImages.length - 1, i + 1))} className="absolute right-3 top-1/2 -translate-y-1/2 w-9 h-9 bg-white rounded-full shadow flex items-center justify-center hover:bg-[#fdf8f5]">
-                    <ChevronRight size={18} />
-                  </button>
-                </>
-              )}
-              {product.badge && (
-                <div className={`absolute top-4 left-4 px-3 py-1.5 rounded-full text-xs font-bold
-                  ${product.badge === "Хит" ? "bg-[#E8845A] text-white" : ""}
-                  ${product.badge === "Новинка" ? "bg-[#4CAF50] text-white" : ""}
-                  ${product.badge === "Скидка" ? "bg-[#FF6B6B] text-white" : ""}
-                `}>
-                  {product.badge}
+                <div className="flex flex-col gap-2 w-14 sm:w-16 flex-shrink-0 max-h-[460px] overflow-y-auto">
+                  {loadedImages.map((src, i) => (
+                    <button
+                      key={src}
+                      onClick={() => setImageIndex(i)}
+                      className={`aspect-[4/5] w-full rounded-xl overflow-hidden bg-[#fdf8f5] border-2 flex-shrink-0 transition-colors ${i === shownIndex ? "border-[#E8845A]" : "border-[#f0e8e0] hover:border-[#f5c9b0]"}`}
+                    >
+                      <img src={src} alt="" className="w-full h-full object-cover" />
+                    </button>
+                  ))}
                 </div>
               )}
-            </div>
-            {loadedImages.length > 1 && (
-              <div className="flex gap-3">
-                {loadedImages.map((src, i) => (
-                  <button key={src} onClick={() => setImageIndex(i)} className={`w-16 h-16 rounded-xl overflow-hidden bg-[#fdf8f5] border-2 transition-colors ${i === shownIndex ? "border-[#E8845A]" : "border-transparent"}`}>
-                    <img src={src} alt="" className="w-full h-full object-cover" />
-                  </button>
-                ))}
+
+              {/* Главное фото */}
+              <div className="relative aspect-[4/5] w-full max-w-[360px] bg-[#fdf8f5] rounded-2xl overflow-hidden flex items-center justify-center">
+                {hasPhotos ? (
+                  <img src={loadedImages[shownIndex]} alt={product.name} className="w-full h-full object-cover" />
+                ) : (
+                  <div className="text-center">
+                    <div className="text-[100px]">{product.category === "bads" ? "💊" : "🌱"}</div>
+                    <p className="text-sm text-[#aaa] mt-2">{product.name}</p>
+                  </div>
+                )}
+                {loadedImages.length > 1 && (
+                  <>
+                    <button onClick={() => setImageIndex((i) => (i - 1 + loadedImages.length) % loadedImages.length)} className="absolute left-2 top-1/2 -translate-y-1/2 w-8 h-8 bg-white/90 rounded-full shadow flex items-center justify-center hover:bg-white">
+                      <ChevronLeft size={16} />
+                    </button>
+                    <button onClick={() => setImageIndex((i) => (i + 1) % loadedImages.length)} className="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 bg-white/90 rounded-full shadow flex items-center justify-center hover:bg-white">
+                      <ChevronRight size={16} />
+                    </button>
+                  </>
+                )}
+                {product.badge && (
+                  <div className={`absolute top-3 left-3 px-3 py-1.5 rounded-full text-xs font-bold
+                    ${product.badge === "Хит" ? "bg-[#E8845A] text-white" : ""}
+                    ${product.badge === "Новинка" ? "bg-[#4CAF50] text-white" : ""}
+                    ${product.badge === "Скидка" ? "bg-[#FF6B6B] text-white" : ""}
+                  `}>
+                    {product.badge}
+                  </div>
+                )}
               </div>
-            )}
+            </div>
           </div>
 
           {/* Инфо */}
