@@ -3,11 +3,14 @@ import { useState } from "react";
 import Link from "next/link";
 import { ShoppingCart, Heart, Check } from "lucide-react";
 import { Product } from "@/lib/products";
+import { productImagePaths } from "@/lib/productImages";
 import { useCartStore } from "@/store/cartStore";
 import { useAuthStore } from "@/store/authStore";
 
 export default function ProductCard({ product }: { product: Product }) {
   const [added, setAdded] = useState(false);
+  const [imgError, setImgError] = useState(false);
+  const mainImage = productImagePaths(product.id, 1)[0];
   const addItem = useCartStore((s) => s.addItem);
   const toggleFavorite = useAuthStore((s) => s.toggleFavorite);
   const isFavorite = useAuthStore((s) => s.isFavorite(product.id));
@@ -28,13 +31,22 @@ export default function ProductCard({ product }: { product: Product }) {
     <div className="group bg-white rounded-3xl border border-[#f0e8e0] overflow-hidden transition-all duration-300 hover:shadow-xl hover:-translate-y-1">
       {/* Фото */}
       <Link href={`/product/${product.id}`}>
-        <div className="relative aspect-square bg-[#fdf8f5] overflow-hidden">
-          <div className="w-full h-full flex items-center justify-center">
-            <div className="text-center">
-              <div className="text-6xl mb-2">{product.category === "bads" ? "💊" : "🌱"}</div>
-              <p className="text-xs text-[#aaa] px-4 text-center">{product.shortName}</p>
+        <div className="relative aspect-[4/5] bg-[#fdf8f5] overflow-hidden">
+          {!imgError ? (
+            <img
+              src={mainImage}
+              alt={product.name}
+              onError={() => setImgError(true)}
+              className="w-full h-full object-cover"
+            />
+          ) : (
+            <div className="w-full h-full flex items-center justify-center">
+              <div className="text-center">
+                <div className="text-6xl mb-2">{product.category === "bads" ? "💊" : "🌱"}</div>
+                <p className="text-xs text-[#aaa] px-4 text-center">{product.shortName}</p>
+              </div>
             </div>
-          </div>
+          )}
           {product.badge && (
             <div className={`absolute top-3 left-3 px-3 py-1 rounded-full text-xs font-semibold
               ${product.badge === "Хит" ? "bg-[#E8845A] text-white" : ""}

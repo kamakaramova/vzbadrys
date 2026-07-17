@@ -11,8 +11,6 @@ import { usePromoStore } from "@/store/promoStore";
 import { useProductStore } from "@/store/productStore";
 import { Product } from "@/lib/products";
 
-const ADMIN_PASSWORD = "vzbadris2026";
-
 type Tab = "dashboard" | "orders" | "customers" | "promos" | "products";
 type SortField = "name" | "email" | "totalSpent" | "ordersCount" | "avgCheck" | "lastOrder" | "createdAt";
 type SortDir = "asc" | "desc";
@@ -51,6 +49,7 @@ export default function AdminPage() {
   const [authed, setAuthed] = useState(false);
   const [pw, setPw] = useState("");
   const [pwError, setPwError] = useState(false);
+  const [loggingIn, setLoggingIn] = useState(false);
   const [tab, setTab] = useState<Tab>("dashboard");
   const [customerSearch, setCustomerSearch] = useState("");
   const [orderSearch, setOrderSearch] = useState("");
@@ -92,6 +91,30 @@ export default function AdminPage() {
   const { addPromo, togglePromo, deletePromo } = promoStore;
   const allProducts = mounted ? productStore.products : [];
   const { updateProduct, deleteProduct, toggleStock, resetToDefault, receiveStock, setStockQty, setAdminPassword, seedDatabase } = productStore;
+
+  // Вход в админку — пароль проверяется на СЕРВЕРЕ, в коде сайта его нет.
+  const doLogin = async () => {
+    if (!pw.trim() || loggingIn) return;
+    setLoggingIn(true);
+    setPwError(false);
+    try {
+      const res = await fetch("/api/admin/login", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ password: pw }),
+      });
+      if (res.ok) {
+        setAuthed(true);
+        setAdminPassword(pw);
+      } else {
+        setPwError(true);
+      }
+    } catch {
+      setPwError(true);
+    } finally {
+      setLoggingIn(false);
+    }
+  };
 
   const customerStats = useMemo(() => {
     return users.map((u) => {
@@ -248,22 +271,18 @@ export default function AdminPage() {
               placeholder="Пароль"
               value={pw}
               onChange={(e) => { setPw(e.target.value); setPwError(false); }}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") {
-                  if (pw === ADMIN_PASSWORD) { setAuthed(true); setAdminPassword(ADMIN_PASSWORD); }
-                  else setPwError(true);
-                }
-              }}
+              onKeyDown={(e) => { if (e.key === "Enter") doLogin(); }}
               className={`w-full px-4 py-3 rounded-2xl border text-sm outline-none transition-colors ${
                 pwError ? "border-red-300 bg-red-50" : "border-[#f0e8e0] focus:border-[#E8845A]"
               }`}
             />
             {pwError && <p className="text-xs text-red-400">Неверный пароль</p>}
             <button
-              onClick={() => { if (pw === ADMIN_PASSWORD) { setAuthed(true); setAdminPassword(ADMIN_PASSWORD); } else setPwError(true); }}
-              className="w-full bg-[#E8845A] hover:bg-[#d4703f] text-white font-bold py-3 rounded-full transition-all"
+              onClick={doLogin}
+              disabled={loggingIn}
+              className="w-full bg-[#E8845A] hover:bg-[#d4703f] disabled:opacity-60 text-white font-bold py-3 rounded-full transition-all"
             >
-              Войти
+              {loggingIn ? "Проверяем…" : "Войти"}
             </button>
           </div>
         </div>

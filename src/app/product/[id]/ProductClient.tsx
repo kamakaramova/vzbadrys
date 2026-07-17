@@ -2,6 +2,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { Product } from "@/lib/products";
+import { productImagePaths } from "@/lib/productImages";
 import { ShoppingCart, Heart, FileText, ChevronLeft, ChevronRight, Check, Shield, AlertCircle } from "lucide-react";
 import { useCartStore } from "@/store/cartStore";
 import { useAuthStore } from "@/store/authStore";
@@ -17,6 +18,11 @@ export default function ProductClient({
 }) {
   const [activeTab, setActiveTab] = useState<Tab>("description");
   const [imageIndex, setImageIndex] = useState(0);
+  // Кандидаты фото: конвенция /products/<id>/1..6.jpg (кладёшь файлы — появляются сами)
+  const imageCandidates = productImagePaths(product.id, 6);
+  const [loadedImages, setLoadedImages] = useState<string[]>([]);
+  const hasPhotos = loadedImages.length > 0;
+  const shownIndex = Math.min(imageIndex, Math.max(0, loadedImages.length - 1));
   const [qty, setQty] = useState(1);
   const [added, setAdded] = useState(false);
   const addItem = useCartStore((s) => s.addItem);
@@ -78,17 +84,34 @@ export default function ProductClient({
         <div className="grid md:grid-cols-2 gap-12">
           {/* Галерея */}
           <div>
-            <div className="relative aspect-square bg-[#fdf8f5] rounded-3xl overflow-hidden mb-4 flex items-center justify-center">
-              <div className="text-center">
-                <div className="text-[120px]">{product.category === "bads" ? "💊" : "🌱"}</div>
-                <p className="text-sm text-[#aaa] mt-2">{product.name}</p>
-              </div>
-              {product.images.length > 1 && (
+            {/* Невидимая предзагрузка — определяем, какие фото реально существуют */}
+            <div style={{ display: "none" }}>
+              {imageCandidates.map((src) => (
+                <img
+                  key={src}
+                  src={src}
+                  alt=""
+                  onLoad={() => setLoadedImages((prev) => (prev.includes(src) ? prev : [...prev, src]))}
+                  onError={() => {}}
+                />
+              ))}
+            </div>
+
+            <div className="relative aspect-[4/5] bg-[#fdf8f5] rounded-3xl overflow-hidden mb-4 flex items-center justify-center">
+              {hasPhotos ? (
+                <img src={loadedImages[shownIndex]} alt={product.name} className="w-full h-full object-cover" />
+              ) : (
+                <div className="text-center">
+                  <div className="text-[120px]">{product.category === "bads" ? "💊" : "🌱"}</div>
+                  <p className="text-sm text-[#aaa] mt-2">{product.name}</p>
+                </div>
+              )}
+              {loadedImages.length > 1 && (
                 <>
                   <button onClick={() => setImageIndex((i) => Math.max(0, i - 1))} className="absolute left-3 top-1/2 -translate-y-1/2 w-9 h-9 bg-white rounded-full shadow flex items-center justify-center hover:bg-[#fdf8f5]">
                     <ChevronLeft size={18} />
                   </button>
-                  <button onClick={() => setImageIndex((i) => Math.min(product.images.length - 1, i + 1))} className="absolute right-3 top-1/2 -translate-y-1/2 w-9 h-9 bg-white rounded-full shadow flex items-center justify-center hover:bg-[#fdf8f5]">
+                  <button onClick={() => setImageIndex((i) => Math.min(loadedImages.length - 1, i + 1))} className="absolute right-3 top-1/2 -translate-y-1/2 w-9 h-9 bg-white rounded-full shadow flex items-center justify-center hover:bg-[#fdf8f5]">
                     <ChevronRight size={18} />
                   </button>
                 </>
@@ -103,13 +126,15 @@ export default function ProductClient({
                 </div>
               )}
             </div>
-            <div className="flex gap-3">
-              {product.images.map((_, i) => (
-                <button key={i} onClick={() => setImageIndex(i)} className={`w-16 h-16 rounded-xl bg-[#fdf8f5] border-2 transition-colors flex items-center justify-center ${i === imageIndex ? "border-[#E8845A]" : "border-transparent"}`}>
-                  <span className="text-2xl">{product.category === "bads" ? "💊" : "🌱"}</span>
-                </button>
-              ))}
-            </div>
+            {loadedImages.length > 1 && (
+              <div className="flex gap-3">
+                {loadedImages.map((src, i) => (
+                  <button key={src} onClick={() => setImageIndex(i)} className={`w-16 h-16 rounded-xl overflow-hidden bg-[#fdf8f5] border-2 transition-colors ${i === shownIndex ? "border-[#E8845A]" : "border-transparent"}`}>
+                    <img src={src} alt="" className="w-full h-full object-cover" />
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
 
           {/* Инфо */}

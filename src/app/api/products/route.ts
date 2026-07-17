@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSupabase } from "@/lib/supabaseServer";
 
-const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || "vzbadris2026";
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD;
 
 // Публичное чтение всех товаров (используется сайтом как запасной путь).
 export async function GET() {
@@ -24,7 +24,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "bad_json" }, { status: 400 });
   }
 
-  if (body.password !== ADMIN_PASSWORD) {
+  if (!ADMIN_PASSWORD || body.password !== ADMIN_PASSWORD) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
 
