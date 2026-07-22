@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { create } from "zustand";
 import { Product, products as defaultProducts } from "@/lib/products";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
@@ -38,7 +38,9 @@ async function persist(product: Product, password: string | null) {
 }
 
 export const useProductStore = create<ProductStore>((set, get) => ({
-  products: [],
+  // Статичный каталог служит мгновенным резервным источником. Благодаря этому
+  // товары и ссылки видны даже до загрузки Supabase и клиентского JavaScript.
+  products: defaultProducts,
   initialized: false,
   loading: false,
   adminPassword: null,
@@ -169,17 +171,14 @@ export const useProductStore = create<ProductStore>((set, get) => ({
 }));
 
 // Удобный хук: сам инициализирует данные и отдаёт актуальный список товаров.
-// Возвращает [] до готовности, чтобы не было рассинхрона SSR/клиента.
+// Сразу отдаёт статичные товары, а после инициализации заменяет их данными из БД.
 export function useProducts(): { products: Product[]; ready: boolean } {
   const products = useProductStore((s) => s.products);
   const initialized = useProductStore((s) => s.initialized);
   const init = useProductStore((s) => s.init);
-  const [mounted, setMounted] = useState(false);
-
   useEffect(() => {
-    setMounted(true);
     if (!initialized) init();
   }, [initialized, init]);
 
-  return { products: mounted && initialized ? products : [], ready: mounted && initialized };
+  return { products, ready: products.length > 0 };
 }

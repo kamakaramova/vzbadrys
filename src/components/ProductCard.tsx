@@ -1,6 +1,5 @@
 "use client";
 import { useState } from "react";
-import Link from "next/link";
 import { ShoppingCart, Heart, Check } from "lucide-react";
 import { Product } from "@/lib/products";
 import { productImagePaths } from "@/lib/productImages";
@@ -30,7 +29,7 @@ export default function ProductCard({ product }: { product: Product }) {
   return (
     <div className="group bg-white rounded-3xl border border-[#f0e8e0] overflow-hidden transition-all duration-300 hover:shadow-xl hover:-translate-y-1">
       {/* Фото */}
-      <Link href={`/product/${product.id}`}>
+      <a href={`/product/${product.id}`}>
         <div className="relative aspect-[4/5] bg-[#fdf8f5] overflow-hidden">
           {!imgError ? (
             <img
@@ -69,13 +68,13 @@ export default function ProductCard({ product }: { product: Product }) {
             <Heart size={16} className={isFavorite ? "fill-[#E8845A] text-[#E8845A]" : "text-[#E8845A]"} />
           </button>
         </div>
-      </Link>
+      </a>
 
       {/* Инфо */}
       <div className="p-4">
-        <Link href={`/product/${product.id}`}>
+        <a href={`/product/${product.id}`}>
           <h3 className="font-semibold text-sm text-[#1a1a1a] hover:text-[#E8845A] transition-colors leading-snug mb-1">{product.name}</h3>
-        </Link>
+        </a>
         <p className="text-xs text-[#aaa] mb-3">{product.weight}</p>
         <div className="flex items-center justify-between">
           <div>
