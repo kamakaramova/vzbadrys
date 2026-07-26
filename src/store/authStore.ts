@@ -29,6 +29,10 @@ export interface Order {
   userName?: string;
   userEmail?: string;
   userPhone?: string;
+  paymentStatus?: string;
+  paidAt?: string;
+  stockWrittenOff?: boolean;
+  isTest?: boolean;
 }
 
 export interface User {
@@ -82,10 +86,10 @@ function generateReferral(name: string) {
 }
 
 const STATUS_LABELS: Record<Order["status"], string> = {
-  processing: "Обрабатывается",
-  confirmed: "Подтверждён",
-  shipped: "Отправлен",
-  delivered: "Доставлен",
+  processing: "Новый / оплачен",
+  confirmed: "На сборке",
+  shipped: "Передан в доставку",
+  delivered: "Завершён",
   cancelled: "Отменён",
 };
 

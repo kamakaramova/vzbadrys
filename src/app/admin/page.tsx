@@ -62,6 +62,9 @@ export default function AdminPage() {
   const [editStatus, setEditStatus] = useState<Order["status"]>("processing");
   const [editTrack, setEditTrack] = useState("");
   const [statusSaved, setStatusSaved] = useState(false);
+  const [dbOrders, setDbOrders] = useState<Order[]>([]);
+  const [ordersLoading, setOrdersLoading] = useState(false);
+  const [ordersError, setOrdersError] = useState("");
 
   const [newPromoCode, setNewPromoCode] = useState("");
   const [newPromoDiscount, setNewPromoDiscount] = useState("");
@@ -109,12 +112,32 @@ export default function AdminPage() {
   useEffect(() => { if (mounted) productStore.init(); }, [mounted]);
 
   const users = mounted ? store.users : [];
-  const orders = mounted ? store.orders : [];
-  const updateOrderStatus = store.updateOrderStatus;
+  const orders = mounted ? dbOrders : [];
   const promos = mounted ? promoStore.promos : [];
   const { addPromo, togglePromo, deletePromo } = promoStore;
   const allProducts = mounted ? productStore.products : [];
   const { updateProduct, deleteProduct, toggleStock, resetToDefault, receiveStock, setStockQty, setAdminPassword, seedDatabase } = productStore;
+
+  const loadAdminOrders = async (password = pw) => {
+    if (!password) return;
+    setOrdersLoading(true);
+    setOrdersError("");
+    try {
+      const response = await fetch("/api/admin/orders", {
+        headers: { "x-admin-password": password },
+        cache: "no-store",
+      });
+      const data = await response.json();
+      if (!response.ok || !Array.isArray(data.orders)) {
+        throw new Error(data.error || "Не удалось загрузить заказы");
+      }
+      setDbOrders(data.orders as Order[]);
+    } catch (error) {
+      setOrdersError(error instanceof Error ? error.message : "Не удалось загрузить заказы");
+    } finally {
+      setOrdersLoading(false);
+    }
+  };
 
   // Вход в админку — пароль проверяется на СЕРВЕРЕ, в коде сайта его нет.
   const doLogin = async () => {
@@ -130,6 +153,7 @@ export default function AdminPage() {
       if (res.ok) {
         setAuthed(true);
         setAdminPassword(pw);
+        await loadAdminOrders(pw);
       } else {
         setPwError(true);
       }
@@ -141,9 +165,43 @@ export default function AdminPage() {
   };
 
   const customerStats = useMemo(() => {
-    return users.map((u) => {
+    const customers = new Map<string, {
+      id: string;
+      name: string;
+      email: string;
+      phone: string;
+      createdAt: string;
+      bonusPoints: number;
+      referralCode: string;
+    }>();
+
+    users.forEach((user) => {
+      const key = user.email.trim().toLowerCase() || user.phone.replace(/\D/g, "") || user.id;
+      customers.set(key, user);
+    });
+    orders.forEach((order) => {
+      const email = (order.userEmail ?? "").trim().toLowerCase();
+      const phone = (order.userPhone ?? "").replace(/\D/g, "");
+      const key = email || phone || order.userId || order.id;
+      if (!customers.has(key)) {
+        customers.set(key, {
+          id: order.userId || `order-${key}`,
+          name: order.userName || "Покупатель",
+          email: order.userEmail || "",
+          phone: order.userPhone || "",
+          createdAt: order.date,
+          bonusPoints: 0,
+          referralCode: "—",
+        });
+      }
+    });
+
+    return [...customers.values()].map((u) => {
       const userOrders = orders.filter(
-        (o) => o.userId === u.id || o.userEmail === u.email
+        (o) =>
+          (o.userId && o.userId === u.id) ||
+          (o.userEmail && o.userEmail.toLowerCase() === u.email.toLowerCase()) ||
+          (o.userPhone && o.userPhone.replace(/\D/g, "") === u.phone.replace(/\D/g, ""))
       );
       const totalSpent = userOrders.reduce((s, o) => s + o.total, 0);
       const ordersCount = userOrders.length;
@@ -466,13 +524,27 @@ export default function AdminPage() {
                   className="w-full pl-10 pr-4 py-2.5 rounded-2xl border border-[#f0e8e0] text-sm outline-none focus:border-[#E8845A] bg-white"
                 />
               </div>
-              <button
-                onClick={exportOrders}
-                className="flex items-center gap-2 bg-[#E8845A] text-white text-sm font-semibold px-5 py-2.5 rounded-full hover:bg-[#d4703f] transition-all"
-              >
-                <Download size={15} /> Скачать CSV
-              </button>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => loadAdminOrders()}
+                  disabled={ordersLoading}
+                  className="text-sm font-semibold px-4 py-2.5 rounded-full border border-[#f0e8e0] bg-white hover:border-[#E8845A] disabled:opacity-50"
+                >
+                  {ordersLoading ? "Обновляем..." : "Обновить"}
+                </button>
+                <button
+                  onClick={exportOrders}
+                  className="flex items-center gap-2 bg-[#E8845A] text-white text-sm font-semibold px-5 py-2.5 rounded-full hover:bg-[#d4703f] transition-all"
+                >
+                  <Download size={15} /> Скачать CSV
+                </button>
+              </div>
             </div>
+            {ordersError && (
+              <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600">
+                Не удалось загрузить заказы: {ordersError}
+              </div>
+            )}
 
             <div className="bg-white rounded-3xl border border-[#f0e8e0] overflow-hidden">
               <div className="overflow-x-auto">
@@ -1286,7 +1358,9 @@ export default function AdminPage() {
                 </div>
                 <div>
                   <p className="text-xs font-semibold text-[#aaa] uppercase tracking-wide mb-1">Оплата</p>
-                  <p>{selectedOrder.paymentMethod}</p>
+                  <p>{selectedOrder.paymentStatus === "paid" ? "Оплачен" : selectedOrder.paymentMethod}</p>
+                  {selectedOrder.paidAt && <p className="text-xs text-[#6b6b6b]">Оплачено {new Date(selectedOrder.paidAt).toLocaleString("ru-RU")}</p>}
+                  {selectedOrder.stockWrittenOff && <p className="text-xs text-green-600">Остаток товара списан</p>}
                   {selectedOrder.promoCode && <p className="text-green-600">Промокод: {selectedOrder.promoCode}</p>}
                 </div>
               </div>
@@ -1312,11 +1386,35 @@ export default function AdminPage() {
                   className="w-full px-4 py-2.5 rounded-xl border border-[#f0e8e0] text-sm outline-none focus:border-[#E8845A] mb-3 bg-white"
                 />
                 <button
-                  onClick={() => {
-                    updateOrderStatus(selectedOrder.id, editStatus, editTrack || undefined);
-                    setSelectedOrder((prev) => prev ? { ...prev, status: editStatus, trackNumber: editTrack || prev.trackNumber } : null);
-                    setStatusSaved(true);
-                    setTimeout(() => setStatusSaved(false), 2000);
+                  onClick={async () => {
+                    setStatusSaved(false);
+                    setOrdersError("");
+                    try {
+                      const response = await fetch("/api/admin/orders", {
+                        method: "PATCH",
+                        headers: {
+                          "content-type": "application/json",
+                          "x-admin-password": pw,
+                        },
+                        body: JSON.stringify({
+                          orderId: selectedOrder.id,
+                          status: editStatus,
+                          trackNumber: editTrack,
+                        }),
+                      });
+                      const data = await response.json();
+                      if (!response.ok) throw new Error(data.error || "Не удалось сохранить статус");
+                      setSelectedOrder((prev) => prev ? { ...prev, status: editStatus, trackNumber: editTrack || undefined } : null);
+                      setDbOrders((current) => current.map((order) =>
+                        order.id === selectedOrder.id
+                          ? { ...order, status: editStatus, trackNumber: editTrack || undefined }
+                          : order
+                      ));
+                      setStatusSaved(true);
+                      setTimeout(() => setStatusSaved(false), 2000);
+                    } catch (error) {
+                      setOrdersError(error instanceof Error ? error.message : "Не удалось сохранить статус");
+                    }
                   }}
                   className="flex items-center gap-2 bg-[#E8845A] text-white text-sm font-semibold px-5 py-2.5 rounded-full hover:bg-[#d4703f] transition-all"
                 >
