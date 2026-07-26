@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 
 import { getServerSupabase } from "@/lib/supabaseServer";
+import { emailAddressFromOrder, toEmailOrder, type PaymentOrderRow } from "@/lib/email/order";
+import { sendEmail, type EmailKind } from "@/lib/email/send";
+import { orderEmail, type OrderEmailStatus } from "@/lib/email/templates";
 
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD;
 const ORDER_STATUSES = new Set(["processing", "confirmed", "shipped", "delivered", "cancelled"]);
@@ -96,7 +99,7 @@ export async function PATCH(request: NextRequest) {
 
   const { data: current, error: readError } = await db
     .from("payment_orders")
-    .select("delivery")
+    .select("id,status,amount_kopecks,customer,items,delivery")
     .eq("id", body.orderId)
     .maybeSingle();
   if (readError || !current) {
@@ -117,5 +120,42 @@ export async function PATCH(request: NextRequest) {
     .eq("id", body.orderId);
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
-  return NextResponse.json({ ok: true });
+  let emailResult: "sent" | "skipped" | "failed" = "skipped";
+  const previousOrderStatus = String(delivery.orderStatus ?? "processing");
+  const emailStatuses = new Set(["confirmed", "shipped", "delivered", "cancelled"]);
+  if (
+    current.status === "paid" &&
+    body.status !== previousOrderStatus &&
+    emailStatuses.has(body.status)
+  ) {
+    const updatedOrder = {
+      ...current,
+      delivery: {
+        ...delivery,
+        orderStatus: body.status,
+        trackNumber: body.trackNumber?.trim() || null,
+      },
+    } as PaymentOrderRow;
+    const recipient = emailAddressFromOrder(updatedOrder);
+    if (recipient) {
+      const emailStatus = body.status as OrderEmailStatus;
+      const message = orderEmail(emailStatus, toEmailOrder(updatedOrder));
+      try {
+        await sendEmail({
+          db,
+          to: recipient,
+          subject: message.subject,
+          html: message.html,
+          kind: `order_${emailStatus}` as EmailKind,
+          orderId: body.orderId,
+          dedupeKey: `${body.orderId}:order_${emailStatus}`,
+        });
+        emailResult = "sent";
+      } catch {
+        emailResult = "failed";
+      }
+    }
+  }
+
+  return NextResponse.json({ ok: true, email: emailResult });
 }

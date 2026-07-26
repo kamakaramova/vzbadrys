@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import CookieBanner from "@/components/CookieBanner";
+import AuthBootstrap from "@/components/AuthBootstrap";
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://xn--80abckmj9cj3h.xn--p1ai"),
@@ -32,6 +33,7 @@ export default function RootLayout({
         <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
       </head>
       <body className="min-h-full flex flex-col" suppressHydrationWarning>
+        <AuthBootstrap />
         {children}
         <CookieBanner />
       </body>

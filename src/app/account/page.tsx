@@ -37,7 +37,7 @@ function formatDate(iso: string) {
 
 export default function AccountPage() {
   const router = useRouter();
-  const { user, logout, getUserOrders, updateProfile, changePassword, toggleFavorite } = useAuthStore();
+  const { user, initialized, logout, getUserOrders, updateProfile, changePassword, toggleFavorite } = useAuthStore();
   const addItem = useCartStore((s) => s.addItem);
 
   const [tab, setTab] = useState<Tab>("orders");
@@ -57,14 +57,23 @@ export default function AccountPage() {
 
   const avatarRef = useRef<HTMLInputElement>(null);
 
-  useEffect(() => { setMounted(true); }, []);
+  useEffect(() => {
+    const timer = window.setTimeout(() => setMounted(true), 0);
+    return () => window.clearTimeout(timer);
+  }, []);
 
   useEffect(() => {
-    if (mounted && !user) router.push("/auth?redirect=/account");
-    if (user) setProfileForm({ name: user.name, email: user.email, phone: user.phone });
-  }, [mounted, user, router]);
+    if (mounted && initialized && !user) router.push("/auth?redirect=/account");
+    if (user) {
+      const timer = window.setTimeout(
+        () => setProfileForm({ name: user.name, email: user.email, phone: user.phone }),
+        0
+      );
+      return () => window.clearTimeout(timer);
+    }
+  }, [mounted, initialized, user, router]);
 
-  if (!mounted || !user) {
+  if (!mounted || !initialized || !user) {
     return (
       <>
         <Header />
@@ -81,7 +90,7 @@ export default function AccountPage() {
     .map((id) => getProductById(id))
     .filter(Boolean) as NonNullable<ReturnType<typeof getProductById>>[];
 
-  const handleLogout = () => { logout(); router.push("/"); };
+  const handleLogout = async () => { await logout(); router.push("/"); };
 
   const copyRef = () => {
     navigator.clipboard.writeText(user.referralCode);
@@ -104,18 +113,18 @@ export default function AccountPage() {
     reader.readAsDataURL(file);
   };
 
-  const handleProfileSave = () => {
+  const handleProfileSave = async () => {
     if (!profileForm.name.trim()) { setProfileMsg({ ok: false, text: "Введите имя" }); return; }
-    const res = updateProfile(profileForm);
+    const res = await updateProfile(profileForm);
     setProfileMsg({ ok: res.ok, text: res.ok ? "Данные сохранены" : (res.error || "Ошибка") });
     if (res.ok) setEditMode(false);
     setTimeout(() => setProfileMsg(null), 3000);
   };
 
-  const handlePasswordChange = () => {
+  const handlePasswordChange = async () => {
     if (!passForm.current || !passForm.next) { setPassMsg({ ok: false, text: "Заполните все поля" }); return; }
     if (passForm.next !== passForm.confirm) { setPassMsg({ ok: false, text: "Новые пароли не совпадают" }); return; }
-    const res = changePassword(passForm.current, passForm.next);
+    const res = await changePassword(passForm.current, passForm.next);
     setPassMsg({ ok: res.ok, text: res.ok ? "Пароль изменён" : (res.error || "Ошибка") });
     if (res.ok) setPassForm({ current: "", next: "", confirm: "" });
     setTimeout(() => setPassMsg(null), 3000);

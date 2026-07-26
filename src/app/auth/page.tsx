@@ -44,7 +44,7 @@ function AuthContent() {
     }
     setLoading(true);
     await new Promise((r) => setTimeout(r, 400));
-    const res = login(form.emailOrPhone, form.password);
+    const res = await login(form.emailOrPhone, form.password);
     setLoading(false);
     if (!res.ok) { setError(res.error || "Ошибка входа"); return; }
     router.push(redirect);
@@ -61,9 +61,13 @@ function AuthContent() {
     }
     setLoading(true);
     await new Promise((r) => setTimeout(r, 500));
-    const res = register({ name: form.name, email: form.email, phone: form.phone, password: form.password });
+    const res = await register({ name: form.name, email: form.email, phone: form.phone, password: form.password });
     setLoading(false);
     if (!res.ok) { setError(res.error || "Ошибка регистрации"); return; }
+    if (res.requiresEmailConfirmation) {
+      setSuccess("Проверьте почту и подтвердите регистрацию");
+      return;
+    }
     setSuccess("Добро пожаловать! Перенаправляем...");
     setTimeout(() => router.push(redirect), 1000);
   };
@@ -125,12 +129,12 @@ function AuthContent() {
             {mode === "login" ? (
               <div className="space-y-4">
                 <InputField
-                  label="Email или телефон"
+                  label="Email"
                   icon={<Mail size={16} />}
                   type="text"
                   value={form.emailOrPhone}
                   onChange={(v) => set("emailOrPhone", v)}
-                  placeholder="email@mail.ru или +7 999 000 00 00"
+                  placeholder="email@mail.ru"
                 />
                 <InputField
                   label="Пароль"

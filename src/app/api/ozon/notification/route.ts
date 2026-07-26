@@ -3,6 +3,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { getOzonConfig, verifyNotificationSignature } from "@/lib/ozonAcquiring";
 import { decrementProductStock } from "@/lib/stock";
 import { getServerSupabase } from "@/lib/supabaseServer";
+import { emailAddressFromOrder, toEmailOrder, type PaymentOrderRow } from "@/lib/email/order";
+import { sendEmail } from "@/lib/email/send";
+import { orderEmail } from "@/lib/email/templates";
 
 export const runtime = "nodejs";
 
@@ -70,7 +73,7 @@ export async function POST(request: NextRequest) {
 
   let orderQuery = db
     .from("payment_orders")
-    .select("id, ozon_order_id, status, amount_kopecks, items, stock_written_off");
+    .select("id, ozon_order_id, status, amount_kopecks, customer, items, delivery, stock_written_off");
   orderQuery = extOrderId
     ? orderQuery.eq("id", extOrderId)
     : orderQuery.eq("ozon_order_id", orderId);
@@ -117,6 +120,23 @@ export async function POST(request: NextRequest) {
         updated_at: now,
       }).eq("id", order.id);
       if (paidError) throw new Error(paidError.message);
+
+      const emailOrder = toEmailOrder(order as PaymentOrderRow);
+      const recipient = emailAddressFromOrder(order as PaymentOrderRow);
+      if (recipient) {
+        const message = orderEmail("paid", emailOrder);
+        await sendEmail({
+          db,
+          to: recipient,
+          subject: message.subject,
+          html: message.html,
+          kind: "payment_paid",
+          orderId: order.id,
+          dedupeKey: `${order.id}:payment_paid`,
+        }).catch((error) => {
+          console.error("Payment email failed:", error instanceof Error ? error.message : error);
+        });
+      }
     } catch {
       await db.from("payment_orders").update({
         status: "payment_processing_error",

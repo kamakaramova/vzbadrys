@@ -1,6 +1,9 @@
 "use client";
+
+import type { User as SupabaseUser } from "@supabase/supabase-js";
 import { create } from "zustand";
-import { persist } from "zustand/middleware";
+
+import { supabase } from "@/lib/supabase";
 
 export interface OrderItem {
   id: string;
@@ -41,49 +44,40 @@ export interface User {
   name: string;
   email: string;
   phone: string;
-  avatar?: string; // base64 или data URL
+  avatar?: string;
   createdAt: string;
   bonusPoints: number;
   referralCode: string;
-  favorites: string[]; // product ids
+  favorites: string[];
 }
+
+type ActionResult = {
+  ok: boolean;
+  error?: string;
+  requiresEmailConfirmation?: boolean;
+};
 
 interface AuthStore {
   user: User | null;
-  users: (User & { passwordHash: string })[];
+  users: User[];
   orders: Order[];
   isLoading: boolean;
+  initialized: boolean;
 
-  register: (data: { name: string; email: string; phone: string; password: string }) => { ok: boolean; error?: string };
-  login: (emailOrPhone: string, password: string) => { ok: boolean; error?: string };
-  logout: () => void;
-  updateProfile: (data: { name?: string; email?: string; phone?: string; avatar?: string }) => { ok: boolean; error?: string };
-  changePassword: (current: string, next: string) => { ok: boolean; error?: string };
-  toggleFavorite: (productId: string) => void;
+  initialize: () => Promise<void>;
+  register: (data: { name: string; email: string; phone: string; password: string }) => Promise<ActionResult>;
+  login: (email: string, password: string) => Promise<ActionResult>;
+  logout: () => Promise<void>;
+  updateProfile: (data: { name?: string; email?: string; phone?: string; avatar?: string }) => Promise<ActionResult>;
+  changePassword: (current: string, next: string) => Promise<ActionResult>;
+  toggleFavorite: (productId: string) => Promise<void>;
   isFavorite: (productId: string) => boolean;
+  loadOrders: () => Promise<void>;
   addOrder: (order: Omit<Order, "id" | "date" | "status">) => string;
   getUserOrders: () => Order[];
   addBonusToUser: (userId: string, points: number) => void;
   updateOrderStatus: (orderId: string, status: Order["status"], trackNumber?: string) => void;
   getAllOrders: () => Order[];
-}
-
-function hashPassword(password: string): string {
-  let hash = 0;
-  for (let i = 0; i < password.length; i++) {
-    const char = password.charCodeAt(i);
-    hash = (hash << 5) - hash + char;
-    hash = hash & hash;
-  }
-  return Math.abs(hash).toString(36) + password.length.toString(36);
-}
-
-function generateId() {
-  return Math.random().toString(36).slice(2, 10).toUpperCase();
-}
-
-function generateReferral(name: string) {
-  return (name.slice(0, 3) + generateId().slice(0, 5)).toUpperCase();
 }
 
 const STATUS_LABELS: Record<Order["status"], string> = {
@@ -96,173 +90,181 @@ const STATUS_LABELS: Record<Order["status"], string> = {
 
 export { STATUS_LABELS };
 
-export const useAuthStore = create<AuthStore>()(
-  persist(
-    (set, get) => ({
-      user: null,
-      users: [],
-      orders: [],
-      isLoading: false,
+function referralCode(user: SupabaseUser) {
+  const existing = String(user.user_metadata?.referralCode || "");
+  if (existing) return existing;
+  return `VZB${user.id.replaceAll("-", "").slice(0, 7).toUpperCase()}`;
+}
 
-      register: ({ name, email, phone, password }) => {
-        const { users } = get();
-        const emailNorm = email.trim().toLowerCase();
-        const phoneNorm = phone.replace(/\D/g, "");
+function mapUser(user: SupabaseUser): User {
+  const metadata = user.user_metadata || {};
+  return {
+    id: user.id,
+    name: String(metadata.name || user.email?.split("@")[0] || "Покупатель"),
+    email: user.email || "",
+    phone: String(metadata.phone || user.phone || ""),
+    avatar: String(metadata.avatar || ""),
+    createdAt: user.created_at,
+    bonusPoints: Number(metadata.bonusPoints || 0),
+    referralCode: referralCode(user),
+    favorites: Array.isArray(metadata.favorites) ? metadata.favorites.map(String) : [],
+  };
+}
 
-        if (users.find((u) => u.email === emailNorm))
-          return { ok: false, error: "Этот email уже зарегистрирован" };
-        if (users.find((u) => u.phone.replace(/\D/g, "") === phoneNorm))
-          return { ok: false, error: "Этот номер телефона уже зарегистрирован" };
-        if (password.length < 6)
-          return { ok: false, error: "Пароль должен быть не менее 6 символов" };
+let authListenerCreated = false;
 
-        const newUser: User & { passwordHash: string } = {
-          id: generateId(),
+export const useAuthStore = create<AuthStore>((set, get) => ({
+  user: null,
+  users: [],
+  orders: [],
+  isLoading: true,
+  initialized: false,
+
+  initialize: async () => {
+    if (get().initialized || !supabase) {
+      set({ initialized: true, isLoading: false });
+      return;
+    }
+    const { data } = await supabase.auth.getSession();
+    const currentUser = data.session?.user ? mapUser(data.session.user) : null;
+    set({ user: currentUser, initialized: true, isLoading: false });
+    if (currentUser) await get().loadOrders();
+
+    if (!authListenerCreated) {
+      authListenerCreated = true;
+      supabase.auth.onAuthStateChange((_event, session) => {
+        const nextUser = session?.user ? mapUser(session.user) : null;
+        set({ user: nextUser, orders: nextUser ? get().orders : [] });
+        if (nextUser) void get().loadOrders();
+      });
+    }
+  },
+
+  register: async ({ name, email, phone, password }) => {
+    if (!supabase) return { ok: false, error: "Авторизация пока не настроена" };
+    const emailNorm = email.trim().toLowerCase();
+    const code = `VZB${crypto.randomUUID().replaceAll("-", "").slice(0, 7).toUpperCase()}`;
+    const { data, error } = await supabase.auth.signUp({
+      email: emailNorm,
+      password,
+      options: {
+        emailRedirectTo: `${window.location.origin}/account`,
+        data: {
           name: name.trim(),
-          email: emailNorm,
           phone: phone.trim(),
-          createdAt: new Date().toISOString(),
+          avatar: "",
           bonusPoints: 0,
-          referralCode: generateReferral(name),
+          referralCode: code,
           favorites: [],
-          passwordHash: hashPassword(password),
-        };
-
-        set((s) => ({ users: [...s.users, newUser] }));
-        const { passwordHash, ...userPublic } = newUser;
-        set({ user: userPublic });
-        return { ok: true };
+        },
       },
+    });
+    if (error) return { ok: false, error: error.message };
+    if (data.user && data.session) {
+      set({ user: mapUser(data.user) });
+      return { ok: true };
+    }
+    return { ok: true, requiresEmailConfirmation: true };
+  },
 
-      login: (emailOrPhone, password) => {
-        const { users } = get();
-        const norm = emailOrPhone.trim().toLowerCase();
-        const phoneNorm = emailOrPhone.replace(/\D/g, "");
-        const found = users.find(
-          (u) => u.email === norm || u.phone.replace(/\D/g, "") === phoneNorm
-        );
-        if (!found) return { ok: false, error: "Пользователь не найден" };
-        if (found.passwordHash !== hashPassword(password))
-          return { ok: false, error: "Неверный пароль" };
-        const { passwordHash, ...userPublic } = found;
-        set({ user: userPublic });
-        return { ok: true };
+  login: async (email, password) => {
+    if (!supabase) return { ok: false, error: "Авторизация пока не настроена" };
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email: email.trim().toLowerCase(),
+      password,
+    });
+    if (error || !data.user) {
+      return { ok: false, error: error?.message || "Не удалось войти" };
+    }
+    set({ user: mapUser(data.user) });
+    await get().loadOrders();
+    return { ok: true };
+  },
+
+  logout: async () => {
+    if (supabase) await supabase.auth.signOut();
+    set({ user: null, orders: [] });
+  },
+
+  updateProfile: async ({ name, email, phone, avatar }) => {
+    if (!supabase || !get().user) return { ok: false, error: "Не авторизован" };
+    const current = get().user!;
+    const metadata = {
+      name: name?.trim() || current.name,
+      phone: phone?.trim() ?? current.phone,
+      avatar: avatar ?? current.avatar ?? "",
+      bonusPoints: current.bonusPoints,
+      referralCode: current.referralCode,
+      favorites: current.favorites,
+    };
+    const attributes: { data: typeof metadata; email?: string } = { data: metadata };
+    if (email?.trim() && email.trim().toLowerCase() !== current.email) {
+      attributes.email = email.trim().toLowerCase();
+    }
+    const { data, error } = await supabase.auth.updateUser(attributes);
+    if (error || !data.user) return { ok: false, error: error?.message || "Не удалось сохранить" };
+    set({ user: mapUser(data.user) });
+    return { ok: true };
+  },
+
+  changePassword: async (current, next) => {
+    if (!supabase || !get().user) return { ok: false, error: "Не авторизован" };
+    const email = get().user!.email;
+    const verified = await supabase.auth.signInWithPassword({ email, password: current });
+    if (verified.error) return { ok: false, error: "Текущий пароль неверный" };
+    const { error } = await supabase.auth.updateUser({ password: next });
+    return error ? { ok: false, error: error.message } : { ok: true };
+  },
+
+  toggleFavorite: async (productId) => {
+    const user = get().user;
+    if (!supabase || !user) return;
+    const favorites = user.favorites.includes(productId)
+      ? user.favorites.filter((id) => id !== productId)
+      : [...user.favorites, productId];
+    set({ user: { ...user, favorites } });
+    const { data, error } = await supabase.auth.updateUser({
+      data: {
+        name: user.name,
+        phone: user.phone,
+        avatar: user.avatar || "",
+        bonusPoints: user.bonusPoints,
+        referralCode: user.referralCode,
+        favorites,
       },
+    });
+    if (error) set({ user });
+    else if (data.user) set({ user: mapUser(data.user) });
+  },
 
-      logout: () => set({ user: null }),
+  isFavorite: (productId) => get().user?.favorites.includes(productId) ?? false,
 
-      updateProfile: ({ name, email, phone, avatar }) => {
-        const { user, users } = get();
-        if (!user) return { ok: false, error: "Не авторизован" };
+  loadOrders: async () => {
+    if (!supabase) return;
+    const { data } = await supabase.auth.getSession();
+    const token = data.session?.access_token;
+    if (!token) {
+      set({ orders: [] });
+      return;
+    }
+    const response = await fetch("/api/account/orders", {
+      headers: { authorization: `Bearer ${token}` },
+      cache: "no-store",
+    });
+    if (!response.ok) return;
+    const payload = await response.json();
+    if (Array.isArray(payload.orders)) set({ orders: payload.orders });
+  },
 
-        const emailNorm = email?.trim().toLowerCase();
-        if (emailNorm && emailNorm !== user.email) {
-          if (users.find((u) => u.id !== user.id && u.email === emailNorm))
-            return { ok: false, error: "Этот email уже используется" };
-        }
-        const phoneNorm = phone?.replace(/\D/g, "");
-        if (phoneNorm && phone !== user.phone) {
-          if (users.find((u) => u.id !== user.id && u.phone.replace(/\D/g, "") === phoneNorm))
-            return { ok: false, error: "Этот телефон уже используется" };
-        }
-
-        const updates: Partial<User> = {};
-        if (name) updates.name = name.trim();
-        if (emailNorm) updates.email = emailNorm;
-        if (phone) updates.phone = phone.trim();
-        if (avatar !== undefined) updates.avatar = avatar;
-
-        const updatedUser = { ...user, ...updates };
-        set({
-          user: updatedUser,
-          users: users.map((u) => u.id === user.id ? { ...u, ...updates } : u),
-        });
-        return { ok: true };
-      },
-
-      changePassword: (current, next) => {
-        const { user, users } = get();
-        if (!user) return { ok: false, error: "Не авторизован" };
-        const found = users.find((u) => u.id === user.id);
-        if (!found) return { ok: false, error: "Пользователь не найден" };
-        if (found.passwordHash !== hashPassword(current))
-          return { ok: false, error: "Текущий пароль неверный" };
-        if (next.length < 6)
-          return { ok: false, error: "Новый пароль должен быть не менее 6 символов" };
-        set({
-          users: users.map((u) =>
-            u.id === user.id ? { ...u, passwordHash: hashPassword(next) } : u
-          ),
-        });
-        return { ok: true };
-      },
-
-      toggleFavorite: (productId) => {
-        const { user } = get();
-        if (!user) return;
-        const isFav = user.favorites.includes(productId);
-        const newFavs = isFav
-          ? user.favorites.filter((id) => id !== productId)
-          : [...user.favorites, productId];
-        const updatedUser = { ...user, favorites: newFavs };
-        set({
-          user: updatedUser,
-          users: get().users.map((u) =>
-            u.id === user.id ? { ...u, favorites: newFavs } : u
-          ),
-        });
-      },
-
-      isFavorite: (productId) => {
-        const { user } = get();
-        return user?.favorites.includes(productId) ?? false;
-      },
-
-      updateOrderStatus: (orderId, status, trackNumber) => {
-        set((s) => ({
-          orders: s.orders.map((o) =>
-            o.id === orderId ? { ...o, status, ...(trackNumber ? { trackNumber } : {}) } : o
-          ),
-        }));
-      },
-
-      getAllOrders: () => get().orders,
-
-      addOrder: (orderData) => {
-        const { user } = get();
-        if (!user) return "";
-        const orderId = "ВЗБ-" + generateId();
-        const order: Order = {
-          ...orderData,
-          id: orderId,
-          date: new Date().toISOString(),
-          status: "processing",
-          userId: user.id,
-          userName: user.name,
-          userEmail: user.email,
-          userPhone: user.phone,
-        };
-        set((s) => ({ orders: [order, ...s.orders] }));
-        const bonusEarned = Math.floor(orderData.total * 0.01);
-        set((s) => ({
-          user: s.user ? { ...s.user, bonusPoints: s.user.bonusPoints + bonusEarned } : null,
-          users: s.users.map((u) => u.id === user.id ? { ...u, bonusPoints: u.bonusPoints + bonusEarned } : u),
-        }));
-        return orderId;
-      },
-
-      getUserOrders: () => {
-        const { orders } = get();
-        return orders;
-      },
-
-      addBonusToUser: (userId, points) => {
-        set((s) => ({
-          users: s.users.map((u) => u.id === userId ? { ...u, bonusPoints: u.bonusPoints + points } : u),
-          user: s.user?.id === userId ? { ...s.user, bonusPoints: s.user.bonusPoints + points } : s.user,
-        }));
-      },
-    }),
-    { name: "vzbadrys-auth" }
-  )
-);
+  addOrder: () => "",
+  getUserOrders: () => get().orders,
+  addBonusToUser: () => undefined,
+  updateOrderStatus: (orderId, status, trackNumber) => {
+    set({
+      orders: get().orders.map((order) =>
+        order.id === orderId ? { ...order, status, trackNumber } : order
+      ),
+    });
+  },
+  getAllOrders: () => get().orders,
+}));

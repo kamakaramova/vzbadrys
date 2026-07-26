@@ -5,16 +5,26 @@ import {
   BarChart2, Users, ShoppingBag, TrendingUp,
   Search, Download, ChevronUp, ChevronDown,
   X, Check, Package, Eye, Tag, Trash2, ToggleLeft, ToggleRight,
-  Plus, Edit2, ImageIcon,
+  Plus, Edit2, ImageIcon, Mail, Send, UserPlus, RefreshCw,
 } from "lucide-react";
 import { usePromoStore } from "@/store/promoStore";
 import { useProductStore } from "@/store/productStore";
 import { Product, WeightVariant } from "@/lib/products";
 
-type Tab = "dashboard" | "orders" | "customers" | "promos" | "products";
+type Tab = "dashboard" | "orders" | "customers" | "promos" | "products" | "emails";
 type SortField = "name" | "email" | "totalSpent" | "ordersCount" | "avgCheck" | "lastOrder" | "createdAt";
 type SortDir = "asc" | "desc";
 type OrderSortField = "date" | "total" | "status" | "userName";
+type EmailLog = {
+  id: string;
+  recipient: string;
+  subject: string;
+  kind: string;
+  order_id?: string;
+  status: "sent" | "failed";
+  error?: string;
+  created_at: string;
+};
 
 const STATUS_COLORS: Record<Order["status"], string> = {
   processing: "bg-yellow-100 text-yellow-700",
@@ -70,9 +80,20 @@ function exportCSV(rows: Record<string, string | number>[], filename: string) {
   URL.revokeObjectURL(url);
 }
 
+function SIcon({ f, cur, dir }: { f: string; cur: string; dir: SortDir }) {
+  return (
+    <span className="inline-flex ml-1 opacity-40">
+      {cur === f ? (dir === "asc" ? <ChevronUp size={12} /> : <ChevronDown size={12} />) : <ChevronDown size={12} />}
+    </span>
+  );
+}
+
 export default function AdminPage() {
   const [mounted, setMounted] = useState(false);
-  useEffect(() => setMounted(true), []);
+  useEffect(() => {
+    const timer = window.setTimeout(() => setMounted(true), 0);
+    return () => window.clearTimeout(timer);
+  }, []);
 
   const [authed, setAuthed] = useState(false);
   const [pw, setPw] = useState("");
@@ -93,6 +114,11 @@ export default function AdminPage() {
   const [dbOrders, setDbOrders] = useState<Order[]>([]);
   const [ordersLoading, setOrdersLoading] = useState(false);
   const [ordersError, setOrdersError] = useState("");
+  const [emailLogs, setEmailLogs] = useState<EmailLog[]>([]);
+  const [testRecipient, setTestRecipient] = useState("vzbadris@yandex.ru");
+  const [emailLoading, setEmailLoading] = useState(false);
+  const [emailMessage, setEmailMessage] = useState("");
+  const [testCredentials, setTestCredentials] = useState<{ email: string; password: string } | null>(null);
 
   const [newPromoCode, setNewPromoCode] = useState("");
   const [newPromoDiscount, setNewPromoDiscount] = useState("");
@@ -166,6 +192,35 @@ export default function AdminPage() {
       setOrdersLoading(false);
     }
   };
+
+  const loadEmailLogs = async () => {
+    if (!pw) return;
+    setEmailLoading(true);
+    try {
+      const response = await fetch("/api/admin/emails", {
+        headers: { "x-admin-password": pw },
+        cache: "no-store",
+      });
+      const data = await response.json();
+      if (response.ok && Array.isArray(data.logs)) {
+        setEmailLogs(data.logs);
+        setEmailMessage("");
+      } else if (data.error === "email_logs_not_created") {
+        setEmailMessage("Сначала создайте таблицу email_logs в Supabase.");
+      } else {
+        setEmailMessage(data.error || "Не удалось загрузить журнал");
+      }
+    } finally {
+      setEmailLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (authed && tab === "emails") {
+      const timer = window.setTimeout(() => void loadEmailLogs(), 0);
+      return () => window.clearTimeout(timer);
+    }
+  }, [authed, tab]);
 
   // Вход в админку — пароль проверяется на СЕРВЕРЕ, в коде сайта его нет.
   const doLogin = async () => {
@@ -321,12 +376,6 @@ export default function AdminPage() {
     else { setOrderSortField(field); setOrderSortDir("desc"); }
   };
 
-  const SIcon = ({ f, cur, dir }: { f: string; cur: string; dir: SortDir }) => (
-    <span className="inline-flex ml-1 opacity-40">
-      {cur === f ? (dir === "asc" ? <ChevronUp size={12} /> : <ChevronDown size={12} />) : <ChevronDown size={12} />}
-    </span>
-  );
-
   const exportCustomers = () =>
     exportCSV(
       sortedCustomers.map((c) => ({
@@ -421,14 +470,15 @@ export default function AdminPage() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Табы */}
         <div className="flex gap-2 mb-8 bg-[#f5f0ec] p-1.5 rounded-2xl w-fit">
-          {(["dashboard", "orders", "customers", "promos", "products"] as const).map((id) => {
-            const labels: Record<typeof id, string> = { dashboard: "Дашборд", orders: "Заказы", customers: "Покупатели", promos: "Промокоды", products: "Товары" };
+          {(["dashboard", "orders", "customers", "promos", "products", "emails"] as const).map((id) => {
+            const labels: Record<typeof id, string> = { dashboard: "Дашборд", orders: "Заказы", customers: "Покупатели", promos: "Промокоды", products: "Товары", emails: "Письма" };
             const icons: Record<typeof id, React.ReactNode> = {
               dashboard: <BarChart2 size={15} />,
               orders: <ShoppingBag size={15} />,
               customers: <Users size={15} />,
               promos: <Tag size={15} />,
               products: <Package size={15} />,
+              emails: <Mail size={15} />,
             };
             return (
               <button
@@ -932,6 +982,155 @@ export default function AdminPage() {
             </div>
           </div>
         )}
+
+        {/* ПИСЬМА И ТЕСТОВЫЙ КАБИНЕТ */}
+        {tab === "emails" && (
+          <div className="space-y-6">
+            <div className="grid lg:grid-cols-2 gap-6">
+              <div className="bg-white rounded-3xl border border-[#f0e8e0] p-6">
+                <h2 className="font-bold flex items-center gap-2 mb-2">
+                  <Send size={17} className="text-[#E8845A]" /> Тестовое письмо
+                </h2>
+                <p className="text-sm text-[#6b6b6b] mb-5">
+                  Проверяет Resend, домен отправителя и фирменный шаблон.
+                </p>
+                <input
+                  type="email"
+                  value={testRecipient}
+                  onChange={(event) => setTestRecipient(event.target.value)}
+                  className="w-full px-4 py-3 rounded-2xl border border-[#f0e8e0] text-sm outline-none focus:border-[#E8845A] mb-3"
+                  placeholder="email получателя"
+                />
+                <button
+                  disabled={emailLoading}
+                  onClick={async () => {
+                    setEmailLoading(true);
+                    setEmailMessage("");
+                    try {
+                      const response = await fetch("/api/admin/emails", {
+                        method: "POST",
+                        headers: {
+                          "content-type": "application/json",
+                          "x-admin-password": pw,
+                        },
+                        body: JSON.stringify({ email: testRecipient }),
+                      });
+                      const data = await response.json();
+                      if (!response.ok) throw new Error(data.error || "Не удалось отправить");
+                      setEmailMessage("Тестовое письмо отправлено.");
+                      await loadEmailLogs();
+                    } catch (error) {
+                      setEmailMessage(error instanceof Error ? error.message : "Не удалось отправить");
+                    } finally {
+                      setEmailLoading(false);
+                    }
+                  }}
+                  className="inline-flex items-center gap-2 bg-[#E8845A] text-white font-semibold px-5 py-3 rounded-2xl hover:bg-[#d4703f] disabled:opacity-50"
+                >
+                  <Send size={15} /> {emailLoading ? "Отправляем..." : "Отправить тест"}
+                </button>
+              </div>
+
+              <div className="bg-white rounded-3xl border border-[#f0e8e0] p-6">
+                <h2 className="font-bold flex items-center gap-2 mb-2">
+                  <UserPlus size={17} className="text-[#E8845A]" /> Тестовый покупатель
+                </h2>
+                <p className="text-sm text-[#6b6b6b] mb-5">
+                  Создаёт настоящий аккаунт Supabase. Пароль показывается только здесь и не хранится в коде.
+                </p>
+                <button
+                  onClick={async () => {
+                    setEmailMessage("");
+                    setTestCredentials(null);
+                    try {
+                      const response = await fetch("/api/admin/test-user", {
+                        method: "POST",
+                        headers: { "x-admin-password": pw },
+                      });
+                      const data = await response.json();
+                      if (!response.ok) throw new Error(data.error || "Не удалось создать пользователя");
+                      setTestCredentials(data.credentials);
+                    } catch (error) {
+                      setEmailMessage(error instanceof Error ? error.message : "Ошибка создания");
+                    }
+                  }}
+                  className="inline-flex items-center gap-2 border border-[#E8845A] text-[#E8845A] font-semibold px-5 py-3 rounded-2xl hover:bg-[#fff7f2]"
+                >
+                  <UserPlus size={15} /> Создать тестовый аккаунт
+                </button>
+                {testCredentials && (
+                  <div className="mt-4 rounded-2xl bg-[#fff7f2] border border-[#f5d5c0] p-4 text-sm">
+                    <p><b>Логин:</b> <span className="font-mono break-all">{testCredentials.email}</span></p>
+                    <p className="mt-2"><b>Пароль:</b> <span className="font-mono break-all">{testCredentials.password}</span></p>
+                    <p className="text-xs text-[#8b6b5d] mt-3">Сохраните пароль сейчас: повторно он не показывается.</p>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {emailMessage && (
+              <div className="rounded-2xl bg-[#fff7f2] border border-[#f5d5c0] px-5 py-3 text-sm text-[#8b4513]">
+                {emailMessage}
+              </div>
+            )}
+
+            <div className="bg-white rounded-3xl border border-[#f0e8e0] overflow-hidden">
+              <div className="px-6 py-4 border-b border-[#f0e8e0] flex items-center justify-between">
+                <div>
+                  <h2 className="font-bold">Журнал писем</h2>
+                  <p className="text-xs text-[#aaa] mt-1">Последние 100 попыток отправки</p>
+                </div>
+                <button
+                  onClick={() => void loadEmailLogs()}
+                  className="p-2 rounded-xl border border-[#f0e8e0] text-[#6b6b6b] hover:text-[#E8845A]"
+                  title="Обновить"
+                >
+                  <RefreshCw size={16} className={emailLoading ? "animate-spin" : ""} />
+                </button>
+              </div>
+              {emailLogs.length === 0 ? (
+                <div className="py-12 text-center text-sm text-[#aaa]">Писем пока нет</div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="bg-[#fdf8f5] text-xs text-[#6b6b6b]">
+                        <th className="text-left px-5 py-3">Дата</th>
+                        <th className="text-left px-5 py-3">Получатель</th>
+                        <th className="text-left px-5 py-3">Письмо</th>
+                        <th className="text-left px-5 py-3">Заказ</th>
+                        <th className="text-left px-5 py-3">Статус</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {emailLogs.map((log) => (
+                        <tr key={log.id} className="border-t border-[#f0e8e0]">
+                          <td className="px-5 py-3 whitespace-nowrap text-xs text-[#6b6b6b]">
+                            {new Date(log.created_at).toLocaleString("ru-RU")}
+                          </td>
+                          <td className="px-5 py-3">{log.recipient}</td>
+                          <td className="px-5 py-3">
+                            <p className="font-medium">{log.subject}</p>
+                            {log.error && <p className="text-xs text-red-500 mt-1">{log.error}</p>}
+                          </td>
+                          <td className="px-5 py-3 font-mono text-xs">{log.order_id || "—"}</td>
+                          <td className="px-5 py-3">
+                            <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${
+                              log.status === "sent" ? "bg-green-100 text-green-700" : "bg-red-100 text-red-600"
+                            }`}>
+                              {log.status === "sent" ? "Отправлено" : "Ошибка"}
+                            </span>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
         {/* ТОВАРЫ */}
         {tab === "products" && (
           <div className="space-y-6">
