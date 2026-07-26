@@ -32,6 +32,9 @@ export default function CartPage() {
 
   const [promoInput, setPromoInput] = useState("");
   const [promoError, setPromoError] = useState("");
+  const freeDeliveryThreshold = 3000;
+  const amountToFreeDelivery = Math.max(0, freeDeliveryThreshold - subtotal);
+  const freeDeliveryProgress = Math.min(100, (subtotal / freeDeliveryThreshold) * 100);
 
   const handlePromo = () => {
     if (!promoInput.trim()) return;
@@ -194,6 +197,58 @@ export default function CartPage() {
             <div className="lg:col-span-1">
               <div className="bg-white rounded-3xl border border-[#f0e8e0] p-6 sticky top-24">
                 <h2 className="font-bold text-lg mb-5">Итог заказа</h2>
+
+                <div className="flex items-center gap-4 rounded-2xl bg-[#fff7f2] p-4 mb-5">
+                  <div className="relative h-16 w-16 flex-shrink-0" aria-hidden="true">
+                    <svg className="-rotate-90 h-16 w-16" viewBox="0 0 64 64">
+                      <circle
+                        cx="32"
+                        cy="32"
+                        r="25"
+                        fill="none"
+                        stroke="#F4E4DA"
+                        strokeWidth="8"
+                      />
+                      <circle
+                        cx="32"
+                        cy="32"
+                        r="25"
+                        fill="none"
+                        stroke="#E8845A"
+                        strokeWidth="8"
+                        strokeLinecap="round"
+                        pathLength="100"
+                        strokeDasharray="100"
+                        strokeDashoffset={100 - freeDeliveryProgress}
+                        className="transition-all duration-500"
+                      />
+                    </svg>
+                    <span className="absolute inset-0 flex items-center justify-center text-xs font-bold text-[#E8845A]">
+                      {Math.round(freeDeliveryProgress)}%
+                    </span>
+                  </div>
+                  <div>
+                    {amountToFreeDelivery > 0 ? (
+                      <>
+                        <p className="text-sm font-semibold leading-snug text-[#3d332e]">
+                          До бесплатной доставки не хватает
+                        </p>
+                        <p className="mt-1 text-lg font-bold text-[#E8845A]">
+                          {amountToFreeDelivery.toLocaleString("ru-RU")} ₽
+                        </p>
+                      </>
+                    ) : (
+                      <>
+                        <p className="text-sm font-bold text-[#3d332e]">
+                          Бесплатная доставка доступна
+                        </p>
+                        <p className="mt-1 text-xs text-[#8b6b5d]">
+                          Вы достигли суммы 3 000 ₽
+                        </p>
+                      </>
+                    )}
+                  </div>
+                </div>
 
                 <div className="space-y-3 mb-5">
                   <div className="flex justify-between text-sm">
