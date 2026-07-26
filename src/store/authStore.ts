@@ -87,7 +87,7 @@ function generateReferral(name: string) {
 }
 
 const STATUS_LABELS: Record<Order["status"], string> = {
-  processing: "Новый / оплачен",
+  processing: "Новый",
   confirmed: "На сборке",
   shipped: "Передан в доставку",
   delivered: "Завершён",
