@@ -5,14 +5,11 @@ import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import { useCartStore } from "@/store/cartStore";
 import { useAuthStore } from "@/store/authStore";
-import { useProductStore } from "@/store/productStore";
 import PochtaWidget, { PochtaPoint } from "@/components/PochtaWidget";
 import PaymentLogos from "@/components/PaymentLogos";
 import { Check, MapPin, Package, CreditCard, MessageSquare } from "lucide-react";
-import { useRouter } from "next/navigation";
 
 type DeliveryMethod = "sdek_pvz" | "yandex_pvz" | "ozon_pvz" | "pochta";
-type PaymentMethod = "card" | "sbp";
 
 // Приводит ввод к российскому формату: 8… или 9… автоматически становятся +7…
 function formatPhone(input: string): string {
@@ -33,24 +30,18 @@ const phoneDigits = (v: string) => v.replace(/\D/g, "").length;
 const isValidEmail = (v: string) => /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(v.trim());
 
 export default function CheckoutPage() {
-  const router = useRouter();
   const items = useCartStore((s) => s.items);
   const subtotal = useCartStore((s) => s.subtotal());
   const discountAmt = useCartStore((s) => s.discount());
   const total = useCartStore((s) => s.total());
   const promoCode = useCartStore((s) => s.promoCode);
   const promoDiscount = useCartStore((s) => s.promoDiscount);
-  const clearCart = useCartStore((s) => s.clearCart);
-  const { user, addOrder, addBonusToUser } = useAuthStore();
-  const writeOffStock = useProductStore((s) => s.writeOffStock);
-  const referrerId = useCartStore((s) => s.referrerId);
-  const promoType = useCartStore((s) => s.promoType);
+  const user = useAuthStore((s) => s.user);
 
   const [delivery, setDelivery] = useState<DeliveryMethod>("sdek_pvz");
-  const [payment, setPayment] = useState<PaymentMethod>("sbp");
   const [comment, setComment] = useState("");
   const [submitting, setSubmitting] = useState(false);
-  const [success, setSuccess] = useState(false);
+  const [submitError, setSubmitError] = useState("");
 
   const [form, setForm] = useState({
     name: "",
@@ -91,63 +82,45 @@ export default function CheckoutPage() {
 
   const handleSubmit = async () => {
     if (!validate()) return;
+    if (!agreeTerms) return;
     setSubmitting(true);
-    await new Promise((r) => setTimeout(r, 1500));
-
-    // Если пользователь авторизован — сохраняем заказ в историю
-    if (user) {
-      const deliveryLabels: Record<string, string> = {
-        sdek_pvz: "СДЭК — ПВЗ",
-        yandex_pvz: "Яндекс — ПВЗ",
-        ozon_pvz: "Ozon — ПВЗ",
-        pochta: "Почта России",
-      };
-      const paymentLabels: Record<string, string> = {
-        card: "Банковская карта",
-        sbp: "СБП",
-      };
-      addOrder({
-        items: items.map((i) => ({ id: i.id, name: i.name, price: i.price, quantity: i.quantity, category: i.category })),
-        subtotal,
-        discount: discountAmt,
-        deliveryCost: selectedDelivery.price,
-        total: finalTotal,
-        promoCode: promoCode || undefined,
-        deliveryMethod: deliveryLabels[delivery] || delivery,
-        deliveryAddress: [form.city, form.address, form.zip].filter(Boolean).join(", "),
-        paymentMethod: paymentLabels[payment] || payment,
-        comment: comment || undefined,
+    setSubmitError("");
+    try {
+      const response = await fetch("/api/ozon/create-order", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          items: items.map((item) => ({ id: item.id, quantity: item.quantity })),
+          customer: {
+            name: form.name,
+            surname: form.surname,
+            phone: form.phone,
+            email: form.email,
+          },
+          delivery: {
+            method: delivery,
+            city: form.city,
+            address: form.address,
+            zip: form.zip,
+          },
+          promoCode,
+          comment,
+          userId: user?.id,
+          agreementAccepted: true,
+        }),
       });
-    }
-
-    // Списываем остатки. Для семян id вида "base-100g" — списываем граммы (вес × кол-во упаковок).
-    const decrements = items.map((item) => {
-      const seedMatch = item.id.match(/^(.+)-(\d+)g$/);
-      if (seedMatch) {
-        return { id: seedMatch[1], amount: Number(seedMatch[2]) * item.quantity };
+      const data = await response.json();
+      if (!response.ok || typeof data.payLink !== "string") {
+        throw new Error(data.error || "Не удалось открыть оплату");
       }
-      return { id: item.id, amount: item.quantity };
-    });
-    // Локально (на случай если база ещё не подключена)
-    decrements.forEach((d) => writeOffStock(d.id, d.amount));
-    // В базе данных (чтобы остаток обновился для всех)
-    fetch("/api/decrement-stock", {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ items: decrements }),
-    }).catch(() => {});
-
-    // Если использован реферальный код — начисляем 100 бонусов рефереру
-    if (promoType === "referral" && referrerId) {
-      addBonusToUser(referrerId, 100);
+      window.location.assign(data.payLink);
+    } catch (error) {
+      setSubmitError(error instanceof Error ? error.message : "Не удалось открыть оплату Ozon. Попробуйте ещё раз.");
+      setSubmitting(false);
     }
-
-    clearCart();
-    setSuccess(true);
-    setSubmitting(false);
   };
 
-  if (items.length === 0 && !success) {
+  if (items.length === 0) {
     return (
       <>
         <Header />
@@ -158,48 +131,6 @@ export default function CheckoutPage() {
             <Link href="/catalog" className="inline-block bg-[#E8845A] text-white font-semibold px-8 py-3.5 rounded-full hover:bg-[#d4703f] transition-all">
               В каталог →
             </Link>
-          </div>
-        </main>
-        <Footer />
-      </>
-    );
-  }
-
-  if (success) {
-    return (
-      <>
-        <Header />
-        <main className="min-h-screen flex flex-col items-center justify-center py-24 px-4">
-          <div className="text-center max-w-md">
-            <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6">
-              <Check size={36} className="text-green-600" />
-            </div>
-            <h1 className="text-2xl font-bold mb-3">Заказ оформлен!</h1>
-            <p className="text-[#6b6b6b] mb-2">Спасибо, {form.name}! Мы получили ваш заказ.</p>
-            <p className="text-[#6b6b6b] mb-8 text-sm">Подтверждение отправлено на <span className="font-semibold text-[#1a1a1a]">{form.email}</span></p>
-            <div className="bg-[#fdf8f5] rounded-2xl p-5 mb-8 text-left">
-              <p className="text-sm font-semibold mb-3">Что дальше:</p>
-              <ul className="space-y-2">
-                {[
-                  "Ваш заказ принят и передан в сборку",
-                  "После оплаты мы соберём и упакуем заказ",
-                  "Как только заказ будет отправлен — сообщим вам и пришлём трек-номер для отслеживания",
-                ].map((t, i) => (
-                  <li key={i} className="flex items-start gap-2 text-sm text-[#555]">
-                    <span className="text-[#E8845A] flex-shrink-0">{i + 1}.</span>
-                    {t}
-                  </li>
-                ))}
-              </ul>
-            </div>
-            <div className="flex flex-col sm:flex-row gap-3 justify-center">
-              <Link href="/" className="inline-block bg-[#E8845A] text-white font-semibold px-8 py-3.5 rounded-full hover:bg-[#d4703f] transition-all">
-                На главную
-              </Link>
-              <Link href="/catalog" className="inline-block border border-[#E8845A] text-[#E8845A] font-semibold px-8 py-3.5 rounded-full hover:bg-[#E8845A] hover:text-white transition-all">
-                Ещё покупки
-              </Link>
-            </div>
           </div>
         </main>
         <Footer />
@@ -344,20 +275,14 @@ export default function CheckoutPage() {
                   <div className="w-7 h-7 rounded-full bg-[#E8845A] text-white text-xs font-bold flex items-center justify-center">3</div>
                   <h2 className="font-bold text-base flex items-center gap-2"><CreditCard size={16} className="text-[#E8845A]" /> Способ оплаты</h2>
                 </div>
-                <div className="space-y-3">
-                  {[
-                    { id: "sbp" as PaymentMethod, label: "СБП (быстрые платежи)", desc: "По QR-коду, без комиссии", icon: "📱" },
-                    { id: "card" as PaymentMethod, label: "Банковская карта", desc: "Visa, Mastercard, Мир — через Ozon Pay", icon: "💳" },
-                  ].map((opt) => (
-                    <label key={opt.id} className={`flex items-center gap-4 p-4 rounded-2xl border-2 cursor-pointer transition-all ${payment === opt.id ? "border-[#E8845A] bg-[#fff8f5]" : "border-[#f0e8e0] hover:border-[#f5c9b0]"}`}>
-                      <input type="radio" name="payment" value={opt.id} checked={payment === opt.id} onChange={() => setPayment(opt.id)} className="accent-[#E8845A]" />
-                      <span className="text-2xl">{opt.icon}</span>
-                      <div>
-                        <p className="font-semibold text-sm">{opt.label}</p>
-                        <p className="text-xs text-[#aaa]">{opt.desc}</p>
-                      </div>
-                    </label>
-                  ))}
+                <div className="flex items-start gap-4 p-4 rounded-2xl border-2 border-[#E8845A] bg-[#fff8f5]">
+                  <span className="text-2xl" aria-hidden="true">🔒</span>
+                  <div>
+                    <p className="font-semibold text-sm">Безопасная оплата через Ozon Pay</p>
+                    <p className="text-xs text-[#777] mt-1 leading-relaxed">
+                      После нажатия кнопки откроется защищённая форма Ozon. В рабочем режиме там можно выбрать СБП, банковскую или Ozon Карту. В тестовом режиме доступна тестовая карта.
+                    </p>
+                  </div>
                 </div>
                 <div className="mt-4 flex items-center gap-3 flex-wrap">
                   <span className="text-xs text-[#aaa]">Принимаем к оплате:</span>
@@ -467,6 +392,12 @@ export default function CheckoutPage() {
                     <>Оплатить заказ {finalTotal.toLocaleString("ru-RU")} ₽</>
                   )}
                 </button>
+
+                {submitError && (
+                  <p role="alert" className="mt-3 text-sm text-red-600 bg-red-50 border border-red-100 rounded-xl p-3">
+                    {submitError}
+                  </p>
+                )}
 
                 <p className="text-xs text-center text-[#aaa] mt-3">
                   Нажимая кнопку, вы подтверждаете ознакомление с условиями оферты и согласие на обработку персональных данных.
