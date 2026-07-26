@@ -4,6 +4,7 @@ import Link from "next/link";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import { useAuthStore } from "@/store/authStore";
+import { supabase } from "@/lib/supabase";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Eye, EyeOff, Check, User, Mail, Phone, Lock } from "lucide-react";
 
@@ -22,6 +23,8 @@ function AuthContent() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
+  const [forgotMode, setForgotMode] = useState(false);
+  const [forgotEmail, setForgotEmail] = useState("");
 
   const [form, setForm] = useState({
     name: "",
@@ -70,6 +73,30 @@ function AuthContent() {
     }
     setSuccess("Добро пожаловать! Перенаправляем...");
     setTimeout(() => router.push(redirect), 1000);
+  };
+
+  const handleForgotPassword = async () => {
+    const email = forgotEmail.trim().toLowerCase();
+    if (!email || !email.includes("@")) {
+      setError("Введите корректный email");
+      return;
+    }
+    if (!supabase) {
+      setError("Восстановление пароля пока не настроено");
+      return;
+    }
+    setLoading(true);
+    setError("");
+    const { error: resetError } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: `${window.location.origin}/auth/reset`,
+    });
+    setLoading(false);
+    if (resetError) {
+      setError("Не удалось отправить письмо. Попробуйте ещё раз.");
+      return;
+    }
+    setSuccess("Ссылка для восстановления пароля отправлена на Вашу почту");
+    setForgotMode(false);
   };
 
   return (
@@ -149,6 +176,20 @@ function AuthContent() {
                     </button>
                   }
                 />
+                <div className="text-right -mt-1">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setForgotEmail(form.emailOrPhone);
+                      setForgotMode(true);
+                      setError("");
+                      setSuccess("");
+                    }}
+                    className="text-sm font-semibold text-[#E8845A] hover:underline"
+                  >
+                    Забыли пароль?
+                  </button>
+                </div>
                 <button
                   onClick={handleLogin}
                   disabled={loading}
@@ -225,7 +266,7 @@ function AuthContent() {
             )}
 
             <p className="text-xs text-center text-[#aaa] mt-5 leading-relaxed">
-              Регистрируясь, вы соглашаетесь с{" "}
+              Регистрируясь, Вы соглашаетесь с{" "}
               <a href="/privacy" target="_blank" className="underline hover:text-[#E8845A]">политикой конфиденциальности</a>{" "}
               и даёте{" "}
               <a href="/soglasie" target="_blank" className="underline hover:text-[#E8845A]">согласие на обработку персональных данных</a>
@@ -233,6 +274,41 @@ function AuthContent() {
           </div>
         </div>
       </main>
+      {forgotMode && (
+        <div className="fixed inset-0 z-[100] bg-black/35 px-4 flex items-center justify-center">
+          <div className="w-full max-w-md bg-white rounded-3xl p-7 shadow-xl">
+            <h2 className="text-xl font-bold text-[#1a1a1a]">Восстановить пароль</h2>
+            <p className="text-sm text-[#6b6b6b] mt-2 mb-5">
+              Укажите email, с которым Вы регистрировались. Мы пришлём защищённую ссылку для создания нового пароля.
+            </p>
+            <InputField
+              label="Email"
+              icon={<Mail size={16} />}
+              type="email"
+              value={forgotEmail}
+              onChange={setForgotEmail}
+              placeholder="email@mail.ru"
+            />
+            <div className="grid grid-cols-2 gap-3 mt-5">
+              <button
+                type="button"
+                onClick={() => setForgotMode(false)}
+                className="py-3 rounded-2xl border border-[#eadfd8] font-semibold"
+              >
+                Отмена
+              </button>
+              <button
+                type="button"
+                onClick={handleForgotPassword}
+                disabled={loading}
+                className="py-3 rounded-2xl bg-[#E8845A] text-white font-bold disabled:opacity-60"
+              >
+                {loading ? "Отправляем..." : "Получить ссылку"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       <Footer />
     </>
   );
