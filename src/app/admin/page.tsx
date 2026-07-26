@@ -42,6 +42,16 @@ function paymentStatusInfo(status?: string) {
   };
 }
 
+function orderBadge(order: Order) {
+  if (order.paymentStatus !== "paid") {
+    return paymentStatusInfo(order.paymentStatus);
+  }
+  return {
+    label: STATUS_LABELS[order.status],
+    color: STATUS_COLORS[order.status],
+  };
+}
+
 function exportCSV(rows: Record<string, string | number>[], filename: string) {
   if (!rows.length) return;
   const headers = Object.keys(rows[0]);
@@ -221,10 +231,11 @@ export default function AdminPage() {
           (o.userEmail && o.userEmail.toLowerCase() === u.email.toLowerCase()) ||
           (o.userPhone && o.userPhone.replace(/\D/g, "") === u.phone.replace(/\D/g, ""))
       );
-      const totalSpent = userOrders.reduce((s, o) => s + o.total, 0);
-      const ordersCount = userOrders.length;
+      const paidUserOrders = userOrders.filter((order) => order.paymentStatus === "paid");
+      const totalSpent = paidUserOrders.reduce((s, o) => s + o.total, 0);
+      const ordersCount = paidUserOrders.length;
       const avgCheck = ordersCount > 0 ? Math.round(totalSpent / ordersCount) : 0;
-      const sorted = [...userOrders].sort(
+      const sorted = [...paidUserOrders].sort(
         (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
       );
       const lastOrder = sorted.length > 0 ? sorted[0].date : null;
@@ -232,7 +243,7 @@ export default function AdminPage() {
     });
   }, [users, orders]);
 
-  const paidOrders = orders.filter((o) => o.status !== "cancelled");
+  const paidOrders = orders.filter((o) => o.paymentStatus === "paid");
   const totalRevenue = paidOrders.reduce((s, o) => s + o.total, 0);
   const avgCheck = paidOrders.length > 0 ? Math.round(totalRevenue / paidOrders.length) : 0;
   const activeCustomers = customerStats.filter((c) => c.ordersCount > 0).length;
@@ -460,11 +471,48 @@ export default function AdminPage() {
 
             <div className="bg-white rounded-3xl border border-[#f0e8e0] p-6">
               <h2 className="font-bold mb-5">Заказы по статусам</h2>
-              <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
-                {(Object.entries(STATUS_LABELS) as [Order["status"], string][]).map(([status, label]) => (
-                  <div key={status} className="text-center p-4 rounded-2xl bg-[#fdf8f5]">
-                    <p className="text-2xl font-bold mb-1">{orders.filter((o) => o.status === status).length}</p>
-                    <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${STATUS_COLORS[status]}`}>{label}</span>
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+                {[
+                  {
+                    key: "awaiting",
+                    label: "Ожидает оплаты",
+                    color: "bg-yellow-100 text-yellow-700",
+                    count: orders.filter((o) => ["creating", "awaiting_payment", "authorized", "processing_payment"].includes(o.paymentStatus ?? "")).length,
+                  },
+                  {
+                    key: "processing",
+                    label: STATUS_LABELS.processing,
+                    color: STATUS_COLORS.processing,
+                    count: orders.filter((o) => o.paymentStatus === "paid" && o.status === "processing").length,
+                  },
+                  {
+                    key: "confirmed",
+                    label: STATUS_LABELS.confirmed,
+                    color: STATUS_COLORS.confirmed,
+                    count: orders.filter((o) => o.paymentStatus === "paid" && o.status === "confirmed").length,
+                  },
+                  {
+                    key: "shipped",
+                    label: STATUS_LABELS.shipped,
+                    color: STATUS_COLORS.shipped,
+                    count: orders.filter((o) => o.paymentStatus === "paid" && o.status === "shipped").length,
+                  },
+                  {
+                    key: "delivered",
+                    label: STATUS_LABELS.delivered,
+                    color: STATUS_COLORS.delivered,
+                    count: orders.filter((o) => o.paymentStatus === "paid" && o.status === "delivered").length,
+                  },
+                  {
+                    key: "cancelled",
+                    label: STATUS_LABELS.cancelled,
+                    color: STATUS_COLORS.cancelled,
+                    count: orders.filter((o) => o.status === "cancelled" || ["payment_failed", "creation_failed", "payment_processing_error"].includes(o.paymentStatus ?? "")).length,
+                  },
+                ].map((item) => (
+                  <div key={item.key} className="text-center p-4 rounded-2xl bg-[#fdf8f5]">
+                    <p className="text-2xl font-bold mb-1">{item.count}</p>
+                    <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${item.color}`}>{item.label}</span>
                   </div>
                 ))}
               </div>
@@ -517,8 +565,8 @@ export default function AdminPage() {
                             <p className="text-xs font-semibold font-mono">{o.id}</p>
                             <p className="text-xs text-[#aaa]">{o.userName ?? "—"} · {new Date(o.date).toLocaleDateString("ru-RU")}</p>
                           </div>
-                          <span className={`text-xs font-semibold px-2 py-0.5 rounded-full flex-shrink-0 ${STATUS_COLORS[o.status]}`}>
-                            {STATUS_LABELS[o.status]}
+                          <span className={`text-xs font-semibold px-2 py-0.5 rounded-full flex-shrink-0 ${orderBadge(o).color}`}>
+                            {orderBadge(o).label}
                           </span>
                           <p className="text-sm font-bold flex-shrink-0">{o.total.toLocaleString("ru-RU")} ₽</p>
                         </div>
