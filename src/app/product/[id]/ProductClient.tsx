@@ -151,7 +151,11 @@ export default function ProductClient({
           {/* Инфо */}
           <div>
             <h1 className="text-2xl md:text-3xl font-bold text-[#1a1a1a] mb-2">{product.name}</h1>
-            <p className="text-sm text-[#aaa] mb-5">{product.weight} · {product.servings} порций</p>
+            <p className="text-sm text-[#aaa] mb-5">
+              {isSeed
+                ? `Фасовки: ${product.weightVariants!.map((v) => v.label).join(" · ")}`
+                : `${product.weight} · ${product.servings} порций`}
+            </p>
 
             {/* Кому подойдёт */}
             <div className="bg-[#fdf8f5] border border-[#f0e8e0] rounded-2xl p-5 mb-5">

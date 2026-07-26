@@ -19,7 +19,11 @@ export default function CatalogClient({ cat, badge }: { cat?: Category; badge?: 
   let filtered = products;
   if (cat) filtered = filtered.filter((product) => product.category === cat);
   if (badge === "new") filtered = filtered.filter((product) => product.badge === "Новинка");
-  if (badge === "sale") filtered = filtered.filter((product) => product.oldPrice);
+  if (badge === "sale") {
+    filtered = filtered.filter(
+      (product) => product.oldPrice || product.weightVariants?.some((variant) => variant.oldPrice)
+    );
+  }
   filtered = filtered.filter((product) => product.inStock);
 
   const tabs: { label: string; value: Category | null }[] = [

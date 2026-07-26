@@ -1,8 +1,9 @@
 export interface WeightVariant {
   label: string;   // "100 г", "200 г", "500 г", "1 кг"
   grams: number;   // 100, 200, 500, 1000
-  price: number;
-  oldPrice?: number;
+  price: number;   // итоговая цена со скидкой
+  oldPrice?: number; // обычная цена
+  discountPercent?: number;
   badge?: string;
 }
 

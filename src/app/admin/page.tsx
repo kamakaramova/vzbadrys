@@ -9,7 +9,7 @@ import {
 } from "lucide-react";
 import { usePromoStore } from "@/store/promoStore";
 import { useProductStore } from "@/store/productStore";
-import { Product } from "@/lib/products";
+import { Product, WeightVariant } from "@/lib/products";
 
 type Tab = "dashboard" | "orders" | "customers" | "promos" | "products";
 type SortField = "name" | "email" | "totalSpent" | "ordersCount" | "avgCheck" | "lastOrder" | "createdAt";
@@ -77,6 +77,30 @@ export default function AdminPage() {
   const [showAddProduct, setShowAddProduct] = useState(false);
   const [receiveQtys, setReceiveQtys] = useState<Record<string, string>>({});
   const [receiveSaved, setReceiveSaved] = useState<Record<string, boolean>>({});
+
+  const openProductEditor = (product: Product) => {
+    if (product.category !== "seeds" || (product.weightVariants?.length ?? 0) > 0) {
+      setEditingProduct({ ...product });
+      return;
+    }
+
+    const standardWeights = [100, 200, 500, 1000];
+    setEditingProduct({
+      ...product,
+      weightVariants: standardWeights.map((grams) => ({
+        grams,
+        label: grams === 1000 ? "1 кг" : `${grams} г`,
+        price: product.price,
+      })),
+    });
+  };
+
+  const updateSeedVariant = (index: number, updates: Partial<WeightVariant>) => {
+    if (!editingProduct) return;
+    const variants = [...(editingProduct.weightVariants ?? [])];
+    variants[index] = { ...variants[index], ...updates };
+    setEditingProduct({ ...editingProduct, weightVariants: variants });
+  };
 
   const store = useAuthStore();
   const promoStore = usePromoStore();
@@ -902,15 +926,26 @@ export default function AdminPage() {
                         </span>
                       </div>
                       <p className="text-xs text-[#aaa] mt-0.5">
-                        {p.category === "bads" ? "БАД" : "Семена"} · {p.weight}
+                        {p.category === "bads" ? `БАД · ${p.weight}` : `Семена · ${(p.weightVariants ?? []).map((v) => v.label).join(" / ") || "фасовки не заданы"}`}
                         {p.stockQty !== undefined && <span> · Остаток: <b>{p.category === "seeds" ? (p.stockQty >= 1000 ? `${(p.stockQty / 1000).toLocaleString("ru-RU")} кг` : `${p.stockQty} г`) : `${p.stockQty} шт.`}</b></span>}
                       </p>
                     </div>
 
                     {/* Цена */}
                     <div className="text-right flex-shrink-0">
-                      <p className="font-bold text-[#E8845A]">{p.price.toLocaleString("ru-RU")} ₽</p>
-                      {p.oldPrice && <p className="text-xs text-[#aaa] line-through">{p.oldPrice.toLocaleString("ru-RU")} ₽</p>}
+                      {p.category === "seeds" && p.weightVariants?.length ? (
+                        <>
+                          <p className="font-bold text-[#E8845A]">
+                            от {Math.min(...p.weightVariants.map((v) => v.price)).toLocaleString("ru-RU")} ₽
+                          </p>
+                          <p className="text-[10px] text-[#aaa]">{p.weightVariants.length} фасовки</p>
+                        </>
+                      ) : (
+                        <>
+                          <p className="font-bold text-[#E8845A]">{p.price.toLocaleString("ru-RU")} ₽</p>
+                          {p.oldPrice && <p className="text-xs text-[#aaa] line-through">{p.oldPrice.toLocaleString("ru-RU")} ₽</p>}
+                        </>
+                      )}
                     </div>
 
                     {/* Действия */}
@@ -923,7 +958,7 @@ export default function AdminPage() {
                         {p.inStock ? <ToggleRight size={20} /> : <ToggleLeft size={20} />}
                       </button>
                       <button
-                        onClick={() => setEditingProduct({ ...p })}
+                        onClick={() => openProductEditor(p)}
                         className="p-2 rounded-xl text-[#6b6b6b] hover:bg-[#fdf8f5] hover:text-[#E8845A] transition-all"
                       >
                         <Edit2 size={16} />
@@ -940,7 +975,7 @@ export default function AdminPage() {
               </div>
             </div>
 
-            <p className="text-xs text-[#aaa] text-center">Изменения сохраняются автоматически. Чтобы обновить сайт — сделай git push.</p>
+            <p className="text-xs text-[#aaa] text-center">Изменения сохраняются в базе и автоматически появляются на сайте.</p>
           </div>
         )}
       </div>{/* /max-w-7xl */}
@@ -962,7 +997,7 @@ export default function AdminPage() {
                   className="w-full px-4 py-3 rounded-2xl border border-[#f0e8e0] text-sm outline-none focus:border-[#E8845A]"
                 />
               </div>
-              {(() => {
+              {editingProduct.category === "bads" && (() => {
                 const regular = editingProduct.oldPrice ?? editingProduct.price;
                 const discount = editingProduct.discountPercent ?? 0;
                 const finalPrice = discount > 0 ? Math.round(regular * (1 - discount / 100)) : regular;
@@ -1040,6 +1075,98 @@ export default function AdminPage() {
                   </select>
                 </div>
               </div>
+              {editingProduct.category === "seeds" && (
+                <div className="rounded-2xl border border-[#f0e8e0] bg-[#fdf8f5] p-4">
+                  <div className="mb-4">
+                    <p className="font-semibold text-sm">Цены по фасовкам</p>
+                    <p className="mt-1 text-xs text-[#6b6b6b]">Для каждого веса укажите обычную цену и скидку. Цена на сайте посчитается автоматически.</p>
+                  </div>
+                  <div className="space-y-3">
+                    {(editingProduct.weightVariants ?? []).map((variant, index) => {
+                      const regular = variant.oldPrice ?? variant.price;
+                      const calculatedDiscount = variant.oldPrice && variant.oldPrice > 0
+                        ? Math.round(((variant.oldPrice - variant.price) / variant.oldPrice) * 100)
+                        : 0;
+                      const discount = variant.discountPercent ?? calculatedDiscount;
+                      const finalPrice = discount > 0
+                        ? Math.round(regular * (1 - discount / 100))
+                        : regular;
+                      const setVariantPricing = (reg: number, disc: number) => {
+                        const safeRegular = Math.max(0, reg);
+                        const safeDiscount = Math.min(99, Math.max(0, disc));
+                        updateSeedVariant(index, safeDiscount > 0
+                          ? {
+                              oldPrice: safeRegular,
+                              discountPercent: safeDiscount,
+                              price: Math.round(safeRegular * (1 - safeDiscount / 100)),
+                            }
+                          : {
+                              oldPrice: undefined,
+                              discountPercent: undefined,
+                              price: safeRegular,
+                            });
+                      };
+
+                      return (
+                        <div key={`${variant.grams}-${index}`} className="rounded-2xl border border-[#f0e8e0] bg-white p-3">
+                          <div className="flex items-center justify-between gap-3 mb-3">
+                            <span className="font-bold text-sm">{variant.label}</span>
+                            <span className="text-sm font-bold text-[#E8845A]">{finalPrice.toLocaleString("ru-RU")} ₽</span>
+                          </div>
+                          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                            <div>
+                              <label className="block text-[10px] font-semibold text-[#6b6b6b] uppercase mb-1">Вес, г</label>
+                              <input
+                                type="number"
+                                min="1"
+                                value={variant.grams}
+                                onChange={(e) => {
+                                  const grams = Math.max(1, Number(e.target.value));
+                                  updateSeedVariant(index, {
+                                    grams,
+                                    label: grams === 1000 ? "1 кг" : `${grams} г`,
+                                  });
+                                }}
+                                className="w-full px-3 py-2 rounded-xl border border-[#f0e8e0] text-sm outline-none focus:border-[#E8845A]"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-[10px] font-semibold text-[#6b6b6b] uppercase mb-1">Обычная цена, ₽</label>
+                              <input
+                                type="number"
+                                min="0"
+                                value={regular}
+                                onChange={(e) => setVariantPricing(Number(e.target.value), discount)}
+                                className="w-full px-3 py-2 rounded-xl border border-[#f0e8e0] text-sm outline-none focus:border-[#E8845A]"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-[10px] font-semibold text-[#6b6b6b] uppercase mb-1">Скидка, %</label>
+                              <input
+                                type="number"
+                                min="0"
+                                max="99"
+                                value={discount || ""}
+                                onChange={(e) => setVariantPricing(regular, Number(e.target.value))}
+                                placeholder="0"
+                                className="w-full px-3 py-2 rounded-xl border border-[#f0e8e0] text-sm outline-none focus:border-[#E8845A]"
+                              />
+                            </div>
+                          </div>
+                          {discount > 0 && (
+                            <p className="mt-2 text-xs text-[#6b6b6b]">
+                              На сайте: <b className="text-[#E8845A]">{finalPrice.toLocaleString("ru-RU")} ₽</b>
+                              <span className="ml-2 line-through text-[#aaa]">{regular.toLocaleString("ru-RU")} ₽</span>
+                              <span className="ml-2 text-[#FF6B6B] font-semibold">−{discount}%</span>
+                            </p>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+              {editingProduct.category === "bads" && (
               <div>
                 <label className="block text-xs font-semibold text-[#6b6b6b] uppercase tracking-wide mb-1.5">Вес / объём</label>
                 <input
@@ -1049,6 +1176,7 @@ export default function AdminPage() {
                   className="w-full px-4 py-3 rounded-2xl border border-[#f0e8e0] text-sm outline-none focus:border-[#E8845A]"
                 />
               </div>
+              )}
               <div>
                 <label className="block text-xs font-semibold text-[#6b6b6b] uppercase tracking-wide mb-1.5">Описание</label>
                 <textarea
@@ -1089,7 +1217,17 @@ export default function AdminPage() {
             <div className="px-6 pb-6 flex gap-3">
               <button
                 onClick={() => {
-                  updateProduct(editingProduct.id, editingProduct);
+                  const variants = editingProduct.weightVariants;
+                  const firstVariant = editingProduct.category === "seeds" && variants?.length ? variants[0] : null;
+                  updateProduct(editingProduct.id, firstVariant
+                    ? {
+                        ...editingProduct,
+                        price: firstVariant.price,
+                        oldPrice: firstVariant.oldPrice,
+                        discountPercent: firstVariant.discountPercent,
+                        weight: variants.map((v) => v.label).join(" / "),
+                      }
+                    : editingProduct);
                   setProductSaved(true);
                   setTimeout(() => { setProductSaved(false); setEditingProduct(null); }, 1200);
                 }}
