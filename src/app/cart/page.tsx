@@ -263,7 +263,9 @@ export default function CartPage() {
                   )}
                   <div className="flex justify-between text-sm">
                     <span className="text-[#6b6b6b]">Доставка</span>
-                    <span className="text-green-600 font-semibold">от 0 ₽</span>
+                    <span className="text-green-600 font-semibold">
+                      {subtotal >= freeDeliveryThreshold ? "0 ₽" : "от 250 ₽"}
+                    </span>
                   </div>
                   <p className="text-xs text-[#aaa] bg-[#fdf8f5] rounded-xl p-3">
                     Самовывоз в Казани — бесплатно. Точную стоимость другого способа выберете при оформлении.
