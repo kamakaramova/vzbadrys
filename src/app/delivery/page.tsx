@@ -30,6 +30,15 @@ export default function DeliveryPage() {
               <div className="space-y-4">
                 {[
                   {
+                    icon: "📍",
+                    title: "Самовывоз в Казани",
+                    time: "После готовности заказа",
+                    price: "Бесплатно",
+                    desc: "Заберите заказ по адресу: г. Казань, ул. Айдарова, 15. Мы сообщим, когда заказ будет готов к выдаче.",
+                    badge: "0 ₽",
+                    badgeColor: "bg-[#e7f5ec] text-[#1a7a4a]",
+                  },
+                  {
                     icon: "🟠",
                     title: "Ozon — Пункт выдачи",
                     time: "3–7 рабочих дней",
@@ -89,7 +98,7 @@ export default function DeliveryPage() {
               <div className="mt-6 bg-gradient-to-r from-[#FDDCCA]/60 to-[#fdf8f5] rounded-3xl p-6 border border-[#f5d5c0]">
                 <p className="text-2xl mb-2">🎁</p>
                 <p className="font-bold text-base mb-1">Бесплатная доставка от 3 000 ₽</p>
-                <p className="text-sm text-[#6b6b6b]">При заказе на сумму от 3 000 ₽ — доставка в пункты выдачи Ozon, СДЭК и Яндекс бесплатно. Самый выгодный вариант — ПВЗ Ozon.</p>
+                <p className="text-sm text-[#6b6b6b]">Самовывоз в Казани бесплатный при любой сумме заказа. При заказе от 3 000 ₽ доставка в пункты выдачи Ozon, СДЭК, Яндекс и Почтой России также бесплатна.</p>
               </div>
             </div>
 

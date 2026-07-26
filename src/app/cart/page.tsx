@@ -32,8 +32,6 @@ export default function CartPage() {
 
   const [promoInput, setPromoInput] = useState("");
   const [promoError, setPromoError] = useState("");
-  const freeDelivery = subtotal >= 3000;
-  const deliveryCost = freeDelivery ? 0 : 300;
 
   const handlePromo = () => {
     if (!promoInput.trim()) return;
@@ -210,21 +208,17 @@ export default function CartPage() {
                   )}
                   <div className="flex justify-between text-sm">
                     <span className="text-[#6b6b6b]">Доставка</span>
-                    <span className={freeDelivery ? "text-green-600 font-semibold" : ""}>
-                      {freeDelivery ? "Бесплатно 🎉" : `${deliveryCost} ₽`}
-                    </span>
+                    <span className="text-green-600 font-semibold">от 0 ₽</span>
                   </div>
-                  {!freeDelivery && (
-                    <p className="text-xs text-[#aaa] bg-[#fdf8f5] rounded-xl p-3">
-                      До бесплатной доставки осталось {(3000 - subtotal).toLocaleString("ru-RU")} ₽
-                    </p>
-                  )}
+                  <p className="text-xs text-[#aaa] bg-[#fdf8f5] rounded-xl p-3">
+                    Самовывоз в Казани — бесплатно. Точную стоимость другого способа выберете при оформлении.
+                  </p>
                 </div>
 
                 <div className="border-t border-[#f0e8e0] pt-4 mb-6">
                   <div className="flex justify-between">
                     <span className="font-bold text-lg">К оплате</span>
-                    <span className="font-bold text-xl text-[#E8845A]">{(total + deliveryCost).toLocaleString("ru-RU")} ₽</span>
+                    <span className="font-bold text-xl text-[#E8845A]">{total.toLocaleString("ru-RU")} ₽</span>
                   </div>
                 </div>
 

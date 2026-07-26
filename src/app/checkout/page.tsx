@@ -9,7 +9,7 @@ import PochtaWidget, { PochtaPoint } from "@/components/PochtaWidget";
 import PaymentLogos from "@/components/PaymentLogos";
 import { Check, MapPin, Package, CreditCard, MessageSquare } from "lucide-react";
 
-type DeliveryMethod = "sdek_pvz" | "yandex_pvz" | "ozon_pvz" | "pochta";
+type DeliveryMethod = "pickup" | "sdek_pvz" | "yandex_pvz" | "ozon_pvz" | "pochta";
 
 // Приводит ввод к российскому формату: 8… или 9… автоматически становятся +7…
 function formatPhone(input: string): string {
@@ -58,6 +58,7 @@ export default function CheckoutPage() {
   const [pochtaPoint, setPochtaPoint] = useState<PochtaPoint | null>(null);
 
   const deliveryOptions: { id: DeliveryMethod; label: string; desc: string; price: number; days: string; isPvz: boolean }[] = [
+    { id: "pickup", label: "Самовывоз — Казань", desc: "г. Казань, ул. Айдарова, 15", price: 0, days: "после готовности заказа", isPvz: false },
     { id: "sdek_pvz", label: "СДЭК — Пункт выдачи", desc: "Укажите адрес удобного ПВЗ СДЭК", price: subtotal >= 3000 ? 0 : 300, days: "2–5 дней", isPvz: true },
     { id: "yandex_pvz", label: "Яндекс — Пункт выдачи", desc: "Укажите адрес удобного ПВЗ Яндекс", price: subtotal >= 3000 ? 0 : 300, days: "3–6 дней", isPvz: true },
     { id: "ozon_pvz", label: "Ozon — Пункт выдачи", desc: "Укажите адрес удобного ПВЗ Ozon", price: subtotal >= 3000 ? 0 : 250, days: "3–7 дней", isPvz: true },
@@ -73,7 +74,7 @@ export default function CheckoutPage() {
     if (!form.surname.trim()) e.surname = "Введите фамилию";
     if (phoneDigits(form.phone) !== 11) e.phone = "Введите номер полностью: +7 и 10 цифр";
     if (!isValidEmail(form.email)) e.email = "Проверьте email — похоже, есть опечатка";
-    if (!form.city.trim()) e.city = "Введите город";
+    if (delivery !== "pickup" && !form.city.trim()) e.city = "Введите город";
     if (selectedDelivery.isPvz && !form.address.trim()) e.address = "Введите адрес пункта выдачи";
     if (delivery === "pochta" && !form.address.trim()) e.address = "Выберите отделение Почты России на карте";
     setErrors(e);
@@ -99,9 +100,9 @@ export default function CheckoutPage() {
           },
           delivery: {
             method: delivery,
-            city: form.city,
-            address: form.address,
-            zip: form.zip,
+            city: delivery === "pickup" ? "Казань" : form.city,
+            address: delivery === "pickup" ? "ул. Айдарова, 15" : form.address,
+            zip: delivery === "pickup" ? "" : form.zip,
           },
           promoCode,
           comment,
@@ -211,12 +212,19 @@ export default function CheckoutPage() {
                   ))}
                 </div>
 
-                {subtotal < 3000 && (
+                {subtotal < 3000 && delivery !== "pickup" && (
                   <div className="bg-[#fff8f5] border border-[#f5d5c0] rounded-2xl p-4 mb-5 text-sm text-[#8b4513]">
                     🎁 До бесплатной доставки не хватает <strong>{(3000 - subtotal).toLocaleString("ru-RU")} ₽</strong>
                   </div>
                 )}
 
+                {delivery === "pickup" ? (
+                  <div className="rounded-2xl border border-[#c8e6d4] bg-[#f0f8f4] p-4">
+                    <p className="font-semibold text-[#1a7a4a]">Адрес самовывоза</p>
+                    <p className="mt-1 text-sm text-[#1a1a1a]">г. Казань, ул. Айдарова, 15</p>
+                    <p className="mt-2 text-xs text-[#6b6b6b]">Когда заказ будет готов, мы сообщим, что его можно забрать.</p>
+                  </div>
+                ) : (
                 <div className="grid sm:grid-cols-2 gap-4">
                   {renderField({ label: "Город", name: "city", placeholder: "Казань" })}
                   {renderField({ label: "Индекс (необязательно)", name: "zip", placeholder: "123456" })}
@@ -267,6 +275,7 @@ export default function CheckoutPage() {
                     </div>
                   )}
                 </div>
+                )}
               </div>
 
               {/* Оплата */}

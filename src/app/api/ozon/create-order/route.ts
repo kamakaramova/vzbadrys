@@ -12,7 +12,7 @@ import { getServerSupabase } from "@/lib/supabaseServer";
 
 export const runtime = "nodejs";
 
-type DeliveryMethod = "sdek_pvz" | "yandex_pvz" | "ozon_pvz" | "pochta";
+type DeliveryMethod = "pickup" | "sdek_pvz" | "yandex_pvz" | "ozon_pvz" | "pochta";
 
 interface CreateOrderBody {
   items?: { id?: string; quantity?: number }[];
@@ -29,6 +29,7 @@ interface OzonCreateOrderResponse {
 }
 
 const DELIVERY_PRICES: Record<DeliveryMethod, number> = {
+  pickup: 0,
   sdek_pvz: 300,
   yandex_pvz: 300,
   ozon_pvz: 250,
