@@ -61,7 +61,7 @@ function resolveProductPrice(product: Product, cartId: string) {
 }
 
 function distributeProductTotal(
-  units: { extId: string; name: string; grossKopecks: number }[],
+  units: { extId: string; name: string; needMark: boolean; grossKopecks: number }[],
   targetKopecks: number
 ) {
   const grossTotal = units.reduce((sum, item) => sum + item.grossKopecks, 0);
