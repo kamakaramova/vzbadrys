@@ -141,30 +141,14 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
   },
 
   register: async ({ name, email, phone, password }) => {
-    if (!supabase) return { ok: false, error: "Авторизация пока не настроена" };
-    const emailNorm = email.trim().toLowerCase();
-    const code = `VZB${crypto.randomUUID().replaceAll("-", "").slice(0, 7).toUpperCase()}`;
-    const { data, error } = await supabase.auth.signUp({
-      email: emailNorm,
-      password,
-      options: {
-        emailRedirectTo: `${window.location.origin}/account`,
-        data: {
-          name: name.trim(),
-          phone: phone.trim(),
-          avatar: "",
-          bonusPoints: 0,
-          referralCode: code,
-          favorites: [],
-        },
-      },
+    const response = await fetch("/api/auth/register", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ name, email, phone, password }),
     });
-    if (error) return { ok: false, error: error.message };
-    if (data.user && data.session) {
-      set({ user: mapUser(data.user) });
-      return { ok: true };
-    }
-    return { ok: true, requiresEmailConfirmation: true };
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) return { ok: false, error: data.error || "Не удалось зарегистрироваться" };
+    return { ok: true, requiresEmailConfirmation: Boolean(data.requiresEmailConfirmation) };
   },
 
   login: async (email, password) => {

@@ -147,3 +147,43 @@ export function testEmail(recipient: string) {
     ),
   };
 }
+
+function actionButton(label: string, url: string) {
+  return `<p style="margin:26px 0">
+    <a href="${escapeHtml(url)}" style="display:inline-block;background:#e8845a;color:#fff;text-decoration:none;font-weight:700;padding:14px 22px;border-radius:8px">
+      ${escapeHtml(label)}
+    </a>
+  </p>`;
+}
+
+export function confirmationEmail(email: string, actionUrl: string) {
+  return {
+    subject: "Подтвердите регистрацию во «взБАДрись»",
+    html: layout(
+      "Добро пожаловать!",
+      "Вы создали аккаунт во «взБАДрись». Остался один небольшой шаг: подтвердите Ваш email.",
+      `<div style="background:#fff3ec;padding:18px;margin-bottom:20px">
+        <p style="margin:0;font-size:14px;line-height:1.6">Ваш логин: <b>${escapeHtml(email)}</b></p>
+        <p style="margin:6px 0 0;font-size:13px;line-height:1.6;color:#806f65">Пароль хранится в защищённом виде и в письмах не отправляется.</p>
+      </div>
+      ${actionButton("Подтвердить почту", actionUrl)}
+      <p style="font-size:14px;line-height:1.6;color:#5f5752">
+        После подтверждения Вы сможете войти в личный кабинет, посмотреть историю заказов и сохранить любимые товары.
+      </p>`
+    ),
+  };
+}
+
+export function recoveryEmail(email: string, actionUrl: string) {
+  return {
+    subject: "Восстановление пароля «взБАДрись»",
+    html: layout(
+      "Создадим новый пароль",
+      `Мы получили запрос на восстановление пароля для аккаунта ${email}.`,
+      `${actionButton("Задать новый пароль", actionUrl)}
+      <p style="font-size:14px;line-height:1.6;color:#806f65">
+        Ссылка одноразовая и действует ограниченное время. Если Вы не запрашивали восстановление, просто проигнорируйте это письмо: Ваш пароль не изменится.
+      </p>`
+    ),
+  };
+}

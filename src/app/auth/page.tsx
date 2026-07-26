@@ -4,7 +4,6 @@ import Link from "next/link";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import { useAuthStore } from "@/store/authStore";
-import { supabase } from "@/lib/supabase";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Eye, EyeOff, Check, User, Mail, Phone, Lock } from "lucide-react";
 
@@ -81,17 +80,15 @@ function AuthContent() {
       setError("Введите корректный email");
       return;
     }
-    if (!supabase) {
-      setError("Восстановление пароля пока не настроено");
-      return;
-    }
     setLoading(true);
     setError("");
-    const { error: resetError } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${window.location.origin}/auth/reset`,
+    const response = await fetch("/api/auth/recovery", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ email }),
     });
     setLoading(false);
-    if (resetError) {
+    if (!response.ok) {
       setError("Не удалось отправить письмо. Попробуйте ещё раз.");
       return;
     }
