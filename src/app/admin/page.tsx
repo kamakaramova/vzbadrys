@@ -452,10 +452,11 @@ export default function AdminPage() {
         {/* ДАШБОРД */}
         {tab === "dashboard" && (
           <div className="space-y-8">
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-4">
               {[
                 { label: "Выручка", value: `${totalRevenue.toLocaleString("ru-RU")} ₽`, Icon: TrendingUp, color: "text-[#E8845A]" },
                 { label: "Заказов всего", value: orders.length, Icon: ShoppingBag, color: "text-blue-500" },
+                { label: "Оплаченных заказов", value: paidOrders.length, Icon: Check, color: "text-green-600" },
                 { label: "Покупателей", value: activeCustomers, Icon: Users, color: "text-purple-500" },
                 { label: "Средний чек", value: `${avgCheck.toLocaleString("ru-RU")} ₽`, Icon: BarChart2, color: "text-green-500" },
               ].map((m, i) => (
