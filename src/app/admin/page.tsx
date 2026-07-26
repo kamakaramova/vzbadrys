@@ -1225,7 +1225,7 @@ export default function AdminPage() {
                         price: firstVariant.price,
                         oldPrice: firstVariant.oldPrice,
                         discountPercent: firstVariant.discountPercent,
-                        weight: variants.map((v) => v.label).join(" / "),
+                        weight: (variants ?? []).map((v) => v.label).join(" / "),
                       }
                     : editingProduct);
                   setProductSaved(true);
