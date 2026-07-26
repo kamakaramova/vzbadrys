@@ -95,6 +95,14 @@ export async function POST(request: NextRequest) {
   if (!delivery?.method || !(delivery.method in DELIVERY_PRICES)) return badRequest("Выберите способ доставки");
   if (!delivery.city?.trim() || !delivery.address?.trim()) return badRequest("Укажите адрес доставки или ПВЗ");
 
+  const customerName = customer.name.trim();
+  const customerSurname = customer.surname.trim();
+  const customerPhone = customer.phone!;
+  const customerEmail = customer.email!.trim().toLowerCase();
+  const deliveryMethod = delivery.method;
+  const deliveryCity = delivery.city.trim();
+  const deliveryAddress = delivery.address.trim();
+
   const requestedItems = (body.items ?? []).filter(
     (item): item is { id: string; quantity: number } =>
       typeof item.id === "string" &&
@@ -155,7 +163,7 @@ export async function POST(request: NextRequest) {
   const promoCode = body.promoCode?.trim().toUpperCase() || "";
   const promoPercent = PROMO_CODES[promoCode] ?? 0;
   const discount = Math.round((subtotal * promoPercent) / 100);
-  const deliveryPrice = subtotal >= 3000 ? 0 : DELIVERY_PRICES[delivery.method];
+  const deliveryPrice = subtotal >= 3000 ? 0 : DELIVERY_PRICES[deliveryMethod];
   const productsTotalKopecks = (subtotal - discount) * 100;
   const totalKopecks = productsTotalKopecks + deliveryPrice * 100;
 
@@ -204,7 +212,7 @@ export async function POST(request: NextRequest) {
   }));
   if (deliveryPrice > 0) {
     ozonItems.push({
-      extId: `delivery-${delivery.method}`,
+      extId: `delivery-${deliveryMethod}`,
       name: "Доставка заказа",
       needMark: false,
       price: { currencyCode: CURRENCY_CODE, value: String(deliveryPrice * 100) },
@@ -220,16 +228,16 @@ export async function POST(request: NextRequest) {
     status: "creating",
     amount_kopecks: totalKopecks,
     customer: {
-      name: customer.name.trim(),
-      surname: customer.surname.trim(),
-      phone: customer.phone,
-      email: customer.email.trim().toLowerCase(),
+      name: customerName,
+      surname: customerSurname,
+      phone: customerPhone,
+      email: customerEmail,
     },
     items: orderLines,
     delivery: {
-      method: delivery.method,
-      city: delivery.city.trim(),
-      address: delivery.address.trim(),
+      method: deliveryMethod,
+      city: deliveryCity,
+      address: deliveryAddress,
       zip: delivery.zip?.trim() || "",
       price: deliveryPrice,
     },
@@ -257,13 +265,13 @@ export async function POST(request: NextRequest) {
       expiresAt,
       extId,
       failUrl: `${config.siteUrl}/payment/fail?order=${encodeURIComponent(extId)}`,
-      fiscalizationPhone: customer.phone.replace(/\D/g, ""),
+      fiscalizationPhone: customerPhone.replace(/\D/g, ""),
       fiscalizationType: config.fiscalizationType,
       items: ozonItems,
       mode: "MODE_FULL",
       notificationUrl: `${config.siteUrl}/api/ozon/notification`,
       paymentAlgorithm,
-      receiptEmail: customer.email.trim().toLowerCase(),
+      receiptEmail: customerEmail,
       requestSign,
       successUrl: `${config.siteUrl}/payment/success?order=${encodeURIComponent(extId)}`,
     });
