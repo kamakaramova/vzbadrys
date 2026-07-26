@@ -13,10 +13,11 @@ function AuthContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const redirect = searchParams.get("redirect") || "/account";
+  const requestedMode = searchParams.get("mode");
 
   const { login, register } = useAuthStore();
 
-  const [mode, setMode] = useState<Mode>("login");
+  const [mode, setMode] = useState<Mode>(() => requestedMode === "register" ? "register" : "login");
   const [showPass, setShowPass] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");

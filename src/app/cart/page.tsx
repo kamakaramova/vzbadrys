@@ -6,7 +6,7 @@ import Footer from "@/components/Footer";
 import { useCartStore } from "@/store/cartStore";
 import { useAuthStore } from "@/store/authStore";
 import { usePromoStore } from "@/store/promoStore";
-import { Trash2, Tag, ChevronRight, ShoppingBag, Check, X, Gift, Percent } from "lucide-react";
+import { Trash2, Tag, ShoppingBag, Check, X, Gift, Percent } from "lucide-react";
 import { useRouter } from "next/navigation";
 
 export default function CartPage() {
@@ -22,6 +22,7 @@ export default function CartPage() {
   const promoType = useCartStore((s) => s.promoType);
   const applyPromo = useCartStore((s) => s.applyPromo);
   const removePromo = useCartStore((s) => s.removePromo);
+  const user = useAuthStore((s) => s.user);
   const users = useAuthStore((s) => s.users);
   const promos = usePromoStore((s) => s.promos);
   const activePromos = useMemo(() => {
@@ -31,8 +32,6 @@ export default function CartPage() {
 
   const [promoInput, setPromoInput] = useState("");
   const [promoError, setPromoError] = useState("");
-  const [promoType2, setPromoType2] = useState<"promo" | "referral" | null>(null);
-
   const freeDelivery = subtotal >= 3000;
   const deliveryCost = freeDelivery ? 0 : 300;
 
@@ -44,11 +43,9 @@ export default function CartPage() {
       activePromos.map((p) => ({ code: p.code, discount: p.discount }))
     );
     if (result.ok) {
-      setPromoType2(result.type || null);
       setPromoError("");
     } else {
       setPromoError(result.error || "Промокод не найден");
-      setPromoType2(null);
     }
   };
 
@@ -85,6 +82,27 @@ export default function CartPage() {
             </nav>
             <h1 className="text-3xl font-bold">Корзина <span className="text-[#aaa] font-normal text-xl">({items.length} {items.length === 1 ? "товар" : items.length < 5 ? "товара" : "товаров"})</span></h1>
           </div>
+
+          {!user && (
+            <div className="mb-8 bg-[#fff4ee] border-l-4 border-[#E8845A] px-6 py-5 sm:px-8 sm:py-6">
+              <p className="text-lg sm:text-xl text-[#3d332e] leading-relaxed">
+                Покупали ранее?{" "}
+                <Link
+                  href="/auth?mode=login&redirect=/cart"
+                  className="font-semibold underline underline-offset-4 decoration-[#E8845A] hover:text-[#E8845A] transition-colors"
+                >
+                  Авторизуйтесь
+                </Link>
+                {" "}или{" "}
+                <Link
+                  href="/auth?mode=register&redirect=/cart"
+                  className="font-semibold underline underline-offset-4 decoration-[#E8845A] hover:text-[#E8845A] transition-colors"
+                >
+                  зарегистрируйтесь
+                </Link>
+              </p>
+            </div>
+          )}
 
           <div className="grid lg:grid-cols-3 gap-8">
             {/* Левая часть — товары */}
@@ -147,7 +165,7 @@ export default function CartPage() {
                         {promoType === "referral" ? `— реферальная скидка ${promoDiscount}%` : `— скидка ${promoDiscount}%`}
                       </span>
                     </div>
-                    <button onClick={() => { removePromo(); setPromoType2(null); }} className="text-[#aaa] hover:text-red-400 ml-2">
+                    <button onClick={removePromo} className="text-[#aaa] hover:text-red-400 ml-2">
                       <X size={16} />
                     </button>
                   </div>
