@@ -34,7 +34,9 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ ok: true });
   }
 
-  const message = recoveryEmail(email, data.properties.action_link);
+  const actionUrl = new URL(data.properties.action_link);
+  actionUrl.searchParams.set("redirect_to", `${siteUrl}/auth/reset`);
+  const message = recoveryEmail(email, actionUrl.toString());
   await sendEmail({
     db,
     to: email,

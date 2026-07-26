@@ -55,7 +55,9 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const message = confirmationEmail(email, data.properties.action_link);
+  const actionUrl = new URL(data.properties.action_link);
+  actionUrl.searchParams.set("redirect_to", `${siteUrl}/account`);
+  const message = confirmationEmail(email, actionUrl.toString());
   try {
     await sendEmail({
       db,
