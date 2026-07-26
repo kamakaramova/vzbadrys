@@ -241,6 +241,8 @@ export async function POST(request: NextRequest) {
       address: deliveryAddress,
       zip: delivery.zip?.trim() || "",
       price: deliveryPrice,
+      promoPercent,
+      discountAmount: discount,
     },
     promo_code: promoCode || null,
     comment: body.comment?.trim().slice(0, 1000) || null,

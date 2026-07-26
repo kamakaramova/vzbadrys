@@ -20,6 +20,7 @@ export interface Order {
   deliveryCost: number;
   total: number;
   promoCode?: string;
+  promoDiscountPercent?: number;
   deliveryMethod: string;
   deliveryAddress: string;
   paymentMethod: string;

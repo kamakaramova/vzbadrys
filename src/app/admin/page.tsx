@@ -24,6 +24,24 @@ const STATUS_COLORS: Record<Order["status"], string> = {
   cancelled: "bg-red-100 text-red-600",
 };
 
+const PAYMENT_STATUS: Record<string, { label: string; color: string }> = {
+  creating: { label: "Создаётся", color: "bg-gray-100 text-gray-600" },
+  awaiting_payment: { label: "Ожидает оплаты", color: "bg-yellow-100 text-yellow-700" },
+  authorized: { label: "Авторизован", color: "bg-blue-100 text-blue-700" },
+  processing_payment: { label: "Платёж обрабатывается", color: "bg-blue-100 text-blue-700" },
+  paid: { label: "Оплачен", color: "bg-green-100 text-green-700" },
+  payment_failed: { label: "Оплата отменена", color: "bg-red-100 text-red-600" },
+  payment_processing_error: { label: "Ошибка обработки", color: "bg-red-100 text-red-600" },
+  creation_failed: { label: "Не создан", color: "bg-red-100 text-red-600" },
+};
+
+function paymentStatusInfo(status?: string) {
+  return PAYMENT_STATUS[status ?? ""] ?? {
+    label: status || "Нет данных",
+    color: "bg-gray-100 text-gray-600",
+  };
+}
+
 function exportCSV(rows: Record<string, string | number>[], filename: string) {
   if (!rows.length) return;
   const headers = Object.keys(rows[0]);
@@ -317,6 +335,7 @@ export default function AdminPage() {
         "Номер": o.id, "Дата": new Date(o.date).toLocaleDateString("ru-RU"),
         "Покупатель": o.userName ?? "", "Email": o.userEmail ?? "",
         "Телефон": o.userPhone ?? "", "Статус": STATUS_LABELS[o.status],
+        "Статус оплаты": paymentStatusInfo(o.paymentStatus).label,
         "Товары (руб)": o.subtotal, "Скидка (руб)": o.discount,
         "Доставка (руб)": o.deliveryCost, "Итого (руб)": o.total,
         "Промокод": o.promoCode ?? "", "Доставка": o.deliveryMethod,
@@ -567,6 +586,7 @@ export default function AdminPage() {
                           Статус<SIcon f="status" cur={orderSortField} dir={orderSortDir} />
                         </button>
                       </th>
+                      <th className="text-left px-5 py-3">Оплата</th>
                       <th className="text-left px-5 py-3">
                         <button onClick={() => toggleOrderSort("total")} className="flex items-center hover:text-[#1a1a1a]">
                           Сумма<SIcon f="total" cur={orderSortField} dir={orderSortDir} />
@@ -577,7 +597,7 @@ export default function AdminPage() {
                   </thead>
                   <tbody>
                     {sortedOrders.length === 0 ? (
-                      <tr><td colSpan={6} className="text-center py-12 text-[#aaa] text-sm">Заказов нет</td></tr>
+                      <tr><td colSpan={7} className="text-center py-12 text-[#aaa] text-sm">Заказов нет</td></tr>
                     ) : sortedOrders.map((o) => (
                       <tr key={o.id} className="border-b border-[#f0e8e0] last:border-0 hover:bg-[#fdf8f5] transition-colors">
                         <td className="px-5 py-3 font-mono text-xs font-semibold text-[#E8845A]">{o.id}</td>
@@ -588,6 +608,11 @@ export default function AdminPage() {
                         </td>
                         <td className="px-5 py-3">
                           <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${STATUS_COLORS[o.status]}`}>{STATUS_LABELS[o.status]}</span>
+                        </td>
+                        <td className="px-5 py-3">
+                          <span className={`text-xs font-semibold px-2.5 py-1 rounded-full whitespace-nowrap ${paymentStatusInfo(o.paymentStatus).color}`}>
+                            {paymentStatusInfo(o.paymentStatus).label}
+                          </span>
                         </td>
                         <td className="px-5 py-3 font-bold whitespace-nowrap">{o.total.toLocaleString("ru-RU")} ₽</td>
                         <td className="px-5 py-3">
@@ -1344,7 +1369,14 @@ export default function AdminPage() {
                 <div className="mt-3 space-y-1 text-sm">
                   <div className="flex justify-between text-[#6b6b6b]"><span>Товары</span><span>{selectedOrder.subtotal.toLocaleString("ru-RU")} ₽</span></div>
                   {selectedOrder.discount > 0 && (
-                    <div className="flex justify-between text-green-600"><span>Скидка</span><span>−{selectedOrder.discount.toLocaleString("ru-RU")} ₽</span></div>
+                    <div className="flex justify-between text-green-600">
+                      <span>
+                        Скидка
+                        {selectedOrder.promoCode && ` · ${selectedOrder.promoCode}`}
+                        {selectedOrder.promoDiscountPercent && ` (${selectedOrder.promoDiscountPercent}%)`}
+                      </span>
+                      <span>−{selectedOrder.discount.toLocaleString("ru-RU")} ₽</span>
+                    </div>
                   )}
                   <div className="flex justify-between text-[#6b6b6b]"><span>Доставка</span><span>{selectedOrder.deliveryCost === 0 ? "Бесплатно" : `${selectedOrder.deliveryCost} ₽`}</span></div>
                   <div className="flex justify-between font-bold border-t border-[#f0e8e0] pt-2"><span>Итого</span><span className="text-[#E8845A]">{selectedOrder.total.toLocaleString("ru-RU")} ₽</span></div>
@@ -1358,10 +1390,18 @@ export default function AdminPage() {
                 </div>
                 <div>
                   <p className="text-xs font-semibold text-[#aaa] uppercase tracking-wide mb-1">Оплата</p>
-                  <p>{selectedOrder.paymentStatus === "paid" ? "Оплачен" : selectedOrder.paymentMethod}</p>
+                  <span className={`inline-flex text-xs font-semibold px-2.5 py-1 rounded-full ${paymentStatusInfo(selectedOrder.paymentStatus).color}`}>
+                    {paymentStatusInfo(selectedOrder.paymentStatus).label}
+                  </span>
+                  <p className="mt-1 text-xs text-[#6b6b6b]">{selectedOrder.paymentMethod}</p>
                   {selectedOrder.paidAt && <p className="text-xs text-[#6b6b6b]">Оплачено {new Date(selectedOrder.paidAt).toLocaleString("ru-RU")}</p>}
                   {selectedOrder.stockWrittenOff && <p className="text-xs text-green-600">Остаток товара списан</p>}
-                  {selectedOrder.promoCode && <p className="text-green-600">Промокод: {selectedOrder.promoCode}</p>}
+                  {selectedOrder.promoCode && (
+                    <p className="text-green-600">
+                      Промокод: {selectedOrder.promoCode}
+                      {selectedOrder.promoDiscountPercent ? ` · скидка ${selectedOrder.promoDiscountPercent}%` : ""}
+                    </p>
+                  )}
                 </div>
               </div>
               <div className="bg-[#fdf8f5] rounded-2xl p-5">

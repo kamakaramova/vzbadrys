@@ -22,6 +22,10 @@ function mapOrder(row: Record<string, unknown>) {
   const subtotal = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
   const deliveryCost = Number(delivery.price ?? 0);
   const total = Number(row.amount_kopecks ?? 0) / 100;
+  const discount = Math.max(0, subtotal + deliveryCost - total);
+  const promoDiscountPercent = row.promo_code && subtotal > 0
+    ? Number(delivery.promoPercent ?? Math.round((discount / subtotal) * 100))
+    : undefined;
   const rawOrderStatus = String(delivery.orderStatus ?? "");
   const paymentStatus = String(row.status ?? "");
   const status = ORDER_STATUSES.has(rawOrderStatus)
@@ -36,10 +40,11 @@ function mapOrder(row: Record<string, unknown>) {
     status,
     items,
     subtotal,
-    discount: Math.max(0, subtotal + deliveryCost - total),
+    discount,
     deliveryCost,
     total,
     promoCode: row.promo_code ? String(row.promo_code) : undefined,
+    promoDiscountPercent,
     deliveryMethod: String(delivery.method ?? ""),
     deliveryAddress: [delivery.city, delivery.address].filter(Boolean).join(", "),
     paymentMethod: row.payment_method ? String(row.payment_method) : "Ozon Pay",
