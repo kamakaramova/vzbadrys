@@ -73,3 +73,94 @@ create unique index if not exists email_logs_sent_dedupe_idx
 
 create index if not exists email_logs_created_idx
   on public.email_logs (created_at desc);
+
+-- ============================================================
+-- Программа лояльности: промокоды, рефералы, бонусы, отзывы
+-- ============================================================
+
+-- Промокоды магазина и блогеров. Управляются только через серверную админку.
+create table if not exists public.promo_codes (
+  id uuid primary key default gen_random_uuid(),
+  code text not null unique,
+  discount_percent integer not null check (discount_percent between 1 and 90),
+  active boolean not null default true,
+  max_uses integer check (max_uses is null or max_uses > 0),
+  usage_count integer not null default 0 check (usage_count >= 0),
+  expires_at timestamptz,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+alter table public.promo_codes enable row level security;
+create index if not exists promo_codes_active_idx on public.promo_codes (active, expires_at);
+
+-- Дополняем заказ зафиксированными условиями скидки и бонусов.
+alter table public.payment_orders add column if not exists referral_code text;
+alter table public.payment_orders add column if not exists referral_owner_id text;
+alter table public.payment_orders add column if not exists promo_discount_percent integer not null default 0;
+alter table public.payment_orders add column if not exists referral_discount_percent integer not null default 0;
+alter table public.payment_orders add column if not exists bonus_spent integer not null default 0;
+alter table public.payment_orders add column if not exists bonus_discount_amount integer not null default 0;
+create index if not exists payment_orders_referral_owner_idx on public.payment_orders (referral_owner_id, paid_at desc);
+
+-- Каждая строка — прозрачное начисление или списание. Сумма в бонусах/рублях.
+create table if not exists public.bonus_ledger (
+  id uuid primary key default gen_random_uuid(),
+  user_id text not null,
+  amount integer not null check (amount <> 0),
+  kind text not null check (kind in ('order_reward', 'referral_reward', 'review_reward', 'order_payment')),
+  order_id text references public.payment_orders(id) on delete set null,
+  product_id text,
+  status text not null default 'posted' check (status in ('reserved', 'posted', 'reversed')),
+  created_at timestamptz not null default now(),
+  unique (kind, order_id, product_id)
+);
+alter table public.bonus_ledger enable row level security;
+create index if not exists bonus_ledger_user_idx on public.bonus_ledger (user_id, created_at desc);
+
+-- Один человек получает реферальную награду только за первый оплаченный заказ друга.
+create table if not exists public.referral_rewards (
+  referred_user_id text primary key,
+  referrer_user_id text not null,
+  order_id text not null references public.payment_orders(id) on delete cascade,
+  created_at timestamptz not null default now()
+);
+alter table public.referral_rewards enable row level security;
+create index if not exists referral_rewards_referrer_idx on public.referral_rewards (referrer_user_id, created_at desc);
+
+-- Отзывы оставляют только авторизованные покупатели через серверный API.
+create table if not exists public.product_reviews (
+  id uuid primary key default gen_random_uuid(),
+  product_id text not null,
+  user_id text not null,
+  order_id text not null references public.payment_orders(id) on delete cascade,
+  author_name text not null,
+  rating integer not null check (rating between 1 and 5),
+  body text not null check (char_length(body) between 3 and 3000),
+  image_url text,
+  created_at timestamptz not null default now(),
+  unique (product_id, user_id)
+);
+alter table public.product_reviews enable row level security;
+create index if not exists product_reviews_product_idx on public.product_reviews (product_id, created_at desc);
+
+-- Вопрос можно задать после входа; покупка для вопроса не требуется.
+create table if not exists public.product_questions (
+  id uuid primary key default gen_random_uuid(),
+  product_id text not null,
+  user_id text not null,
+  author_name text not null,
+  body text not null check (char_length(body) between 3 and 1500),
+  created_at timestamptz not null default now()
+);
+alter table public.product_questions enable row level security;
+create index if not exists product_questions_product_idx on public.product_questions (product_id, created_at desc);
+
+-- Необязательные фото отзывов. Загрузка выполняется сервером с секретным ключом.
+insert into storage.buckets (id, name, public)
+values ('review-media', 'review-media', true)
+on conflict (id) do update set public = true;
+
+-- Начальные промокоды из прежней версии сайта. Их можно отключить в админке.
+insert into public.promo_codes (code, discount_percent)
+values ('ВЗБАДРИСЬ10', 10), ('ВЗБАДРИСЬ15', 15), ('KAMA10', 10)
+on conflict (code) do nothing;

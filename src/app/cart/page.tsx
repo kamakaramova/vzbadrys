@@ -1,13 +1,13 @@
 "use client";
-import { useState, useMemo } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import { useCartStore } from "@/store/cartStore";
 import { useAuthStore } from "@/store/authStore";
-import { usePromoStore } from "@/store/promoStore";
 import { Trash2, Tag, ShoppingBag, Check, X, Gift, Percent } from "lucide-react";
 import { useRouter } from "next/navigation";
+import { supabase } from "@/lib/supabase";
 
 export default function CartPage() {
   const router = useRouter();
@@ -19,36 +19,55 @@ export default function CartPage() {
   const total = useCartStore((s) => s.total());
   const promoCode = useCartStore((s) => s.promoCode);
   const promoDiscount = useCartStore((s) => s.promoDiscount);
-  const promoType = useCartStore((s) => s.promoType);
-  const applyPromo = useCartStore((s) => s.applyPromo);
+  const referralCode = useCartStore((s) => s.referralCode);
+  const referralDiscount = useCartStore((s) => s.referralDiscount);
+  const setPromo = useCartStore((s) => s.setPromo);
+  const setReferral = useCartStore((s) => s.setReferral);
   const removePromo = useCartStore((s) => s.removePromo);
+  const removeReferral = useCartStore((s) => s.removeReferral);
   const user = useAuthStore((s) => s.user);
-  const users = useAuthStore((s) => s.users);
-  const promos = usePromoStore((s) => s.promos);
-  const activePromos = useMemo(() => {
-    const now = new Date();
-    return promos.filter((p) => p.active && (!p.expiresAt || new Date(p.expiresAt) >= now));
-  }, [promos]);
 
   const [promoInput, setPromoInput] = useState("");
+  const [referralInput, setReferralInput] = useState("");
   const [promoError, setPromoError] = useState("");
+  const [referralError, setReferralError] = useState("");
   const freeDeliveryThreshold = 3000;
   const amountToFreeDelivery = Math.max(0, freeDeliveryThreshold - subtotal);
   const freeDeliveryProgress = Math.min(100, (subtotal / freeDeliveryThreshold) * 100);
 
-  const handlePromo = () => {
-    if (!promoInput.trim()) return;
-    const result = applyPromo(
-      promoInput,
-      users.map((u) => ({ id: u.id, referralCode: u.referralCode })),
-      activePromos.map((p) => ({ code: p.code, discount: p.discount }))
-    );
-    if (result.ok) {
+  const validateCode = async (kind: "promo" | "referral", rawCode: string) => {
+    if (!rawCode.trim()) return;
+    const sessionResult = supabase ? await supabase.auth.getSession() : null;
+    const token = sessionResult?.data.session?.access_token;
+    const response = await fetch("/api/loyalty/validate", {
+      method: "POST",
+      headers: { "content-type": "application/json", ...(token ? { authorization: `Bearer ${token}` } : {}) },
+      body: JSON.stringify({ kind, code: rawCode }),
+    });
+    const payload = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      if (kind === "promo") setPromoError(payload.error || "Промокод не найден");
+      else setReferralError(payload.error || "Реферальный код не найден");
+      return;
+    }
+    if (kind === "promo") {
+      setPromo(payload.code, payload.discountPercent);
       setPromoError("");
     } else {
-      setPromoError(result.error || "Промокод не найден");
+      setReferral(payload.code, payload.discountPercent, payload.ownerId);
+      setReferralError("");
     }
   };
+
+  useEffect(() => {
+    const code = new URLSearchParams(window.location.search).get("ref");
+    if (code && !referralCode) {
+      setReferralInput(code.toUpperCase());
+      void validateCode("referral", code);
+    }
+  // Реферальный код из ссылки проверяется один раз при открытии корзины.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   if (items.length === 0) {
     return (
@@ -147,24 +166,21 @@ export default function CartPage() {
                 </div>
               ))}
 
-              {/* Промокод / реферальный код */}
+              {/* Промокод и реферальный код */}
               <div className="bg-white rounded-3xl border border-[#f0e8e0] p-5">
                 <div className="flex items-center gap-2 mb-4">
                   <Tag size={16} className="text-[#E8845A]" />
-                  <p className="font-semibold text-sm">Промокод или реферальный код</p>
+                  <p className="font-semibold text-sm">Скидки</p>
                 </div>
-
+                <div className="space-y-4">
+                  <div>
+                    <p className="text-xs font-semibold text-[#6b6b6b] uppercase tracking-wide mb-2">Промокод</p>
                 {promoCode ? (
-                  <div className={`flex items-center justify-between rounded-2xl px-4 py-3 ${promoType === "referral" ? "bg-[#fff8f5] border border-[#f5d5c0]" : "bg-[#e8f5ee]"}`}>
+                  <div className="flex items-center justify-between rounded-2xl px-4 py-3 bg-[#e8f5ee]">
                     <div className="flex items-center gap-2">
-                      {promoType === "referral"
-                        ? <Gift size={16} className="text-[#E8845A]" />
-                        : <Percent size={16} className="text-green-600" />
-                      }
-                      <span className={`font-bold text-sm font-mono tracking-wide ${promoType === "referral" ? "text-[#E8845A]" : "text-green-700"}`}>{promoCode}</span>
-                      <span className={`text-sm ${promoType === "referral" ? "text-[#8b4513]" : "text-green-600"}`}>
-                        {promoType === "referral" ? `— реферальная скидка ${promoDiscount}%` : `— скидка ${promoDiscount}%`}
-                      </span>
+                      <Percent size={16} className="text-green-600" />
+                      <span className="font-bold text-sm font-mono tracking-wide text-green-700">{promoCode}</span>
+                      <span className="text-sm text-green-600">— скидка {promoDiscount}%</span>
                     </div>
                     <button onClick={removePromo} className="text-[#aaa] hover:text-red-400 ml-2">
                       <X size={16} />
@@ -176,12 +192,12 @@ export default function CartPage() {
                       type="text"
                       value={promoInput}
                       onChange={(e) => { setPromoInput(e.target.value.toUpperCase()); setPromoError(""); }}
-                      onKeyDown={(e) => e.key === "Enter" && handlePromo()}
-                      placeholder="ВЗБАДРИСЬ10 или реферальный код"
+                      onKeyDown={(e) => e.key === "Enter" && void validateCode("promo", promoInput)}
+                      placeholder="Например, ВЗБАДРИСЬ10"
                       className="flex-1 px-4 py-2.5 border border-[#f0e8e0] rounded-2xl text-sm outline-none focus:border-[#E8845A] transition-colors font-mono tracking-wide uppercase"
                     />
                     <button
-                      onClick={handlePromo}
+                      onClick={() => void validateCode("promo", promoInput)}
                       className="px-5 py-2.5 bg-[#E8845A] hover:bg-[#d4703f] text-white font-semibold text-sm rounded-2xl transition-colors"
                     >
                       Применить
@@ -189,7 +205,25 @@ export default function CartPage() {
                   </div>
                 )}
                 {promoError && <p className="text-xs text-red-400 mt-2">{promoError}</p>}
-                <p className="text-xs text-[#aaa] mt-2">Промокод магазина или код от подруги — вводятся в одно поле</p>
+                  </div>
+
+                  <div>
+                    <p className="text-xs font-semibold text-[#6b6b6b] uppercase tracking-wide mb-2">Реферальный код</p>
+                    {referralCode ? (
+                      <div className="flex items-center justify-between rounded-2xl px-4 py-3 bg-[#fff8f5] border border-[#f5d5c0]">
+                        <div className="flex items-center gap-2"><Gift size={16} className="text-[#E8845A]" /><span className="font-bold text-sm font-mono tracking-wide text-[#E8845A]">{referralCode}</span><span className="text-sm text-[#8b4513]">— скидка {referralDiscount}%</span></div>
+                        <button onClick={removeReferral} className="text-[#aaa] hover:text-red-400 ml-2"><X size={16} /></button>
+                      </div>
+                    ) : (
+                      <div className="flex gap-3">
+                        <input type="text" value={referralInput} onChange={(e) => { setReferralInput(e.target.value.toUpperCase()); setReferralError(""); }} onKeyDown={(e) => e.key === "Enter" && void validateCode("referral", referralInput)} placeholder="Код от подруги или блогера" className="flex-1 px-4 py-2.5 border border-[#f0e8e0] rounded-2xl text-sm outline-none focus:border-[#E8845A] transition-colors font-mono tracking-wide uppercase" />
+                        <button onClick={() => void validateCode("referral", referralInput)} className="px-5 py-2.5 bg-[#E8845A] hover:bg-[#d4703f] text-white font-semibold text-sm rounded-2xl transition-colors">Применить</button>
+                      </div>
+                    )}
+                    {referralError && <p className="text-xs text-red-400 mt-2">{referralError}</p>}
+                  </div>
+                </div>
+                <p className="text-xs text-[#aaa] mt-3">Можно применить один промокод и один реферальный код — скидки суммируются.</p>
               </div>
             </div>
 

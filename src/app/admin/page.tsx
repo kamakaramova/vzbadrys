@@ -7,7 +7,6 @@ import {
   X, Check, Package, Eye, Tag, Trash2, ToggleLeft, ToggleRight,
   Plus, Edit2, ImageIcon, Mail, Send, UserPlus, RefreshCw,
 } from "lucide-react";
-import { usePromoStore } from "@/store/promoStore";
 import { useProductStore } from "@/store/productStore";
 import { Product, WeightVariant } from "@/lib/products";
 
@@ -32,6 +31,7 @@ type MarketingContact = {
   consentAt: string;
   source: "registration" | "order" | "registration_and_order";
 };
+type AdminPromo = { id: string; code: string; discount: number; active: boolean; createdAt: string; usageCount: number; expiresAt?: string };
 
 const STATUS_COLORS: Record<Order["status"], string> = {
   processing: "bg-yellow-100 text-yellow-700",
@@ -136,6 +136,7 @@ export default function AdminPage() {
   const [newPromoExpiry, setNewPromoExpiry] = useState("");
   const [promoFormError, setPromoFormError] = useState("");
   const [promoAdded, setPromoAdded] = useState(false);
+  const [dbPromos, setDbPromos] = useState<AdminPromo[]>([]);
 
   // Состояние редактора товаров
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
@@ -170,15 +171,13 @@ export default function AdminPage() {
   };
 
   const store = useAuthStore();
-  const promoStore = usePromoStore();
   const productStore = useProductStore();
 
   useEffect(() => { if (mounted) productStore.init(); }, [mounted]);
 
   const users = mounted ? store.users : [];
   const orders = mounted ? dbOrders : [];
-  const promos = mounted ? promoStore.promos : [];
-  const { addPromo, togglePromo, deletePromo } = promoStore;
+  const promos = mounted ? dbPromos : [];
   const allProducts = mounted ? productStore.products : [];
   const { updateProduct, deleteProduct, toggleStock, resetToDefault, receiveStock, setStockQty, setAdminPassword, seedDatabase } = productStore;
 
@@ -200,6 +199,18 @@ export default function AdminPage() {
       setOrdersError(error instanceof Error ? error.message : "Не удалось загрузить заказы");
     } finally {
       setOrdersLoading(false);
+    }
+  };
+
+  const loadPromos = async (password = pw) => {
+    if (!password) return;
+    const response = await fetch("/api/admin/promos", { headers: { "x-admin-password": password }, cache: "no-store" });
+    const data = await response.json().catch(() => ({}));
+    if (response.ok && Array.isArray(data.promos)) {
+      setDbPromos(data.promos.map((promo: Record<string, unknown>) => ({
+        id: String(promo.id), code: String(promo.code), discount: Number(promo.discount_percent), active: Boolean(promo.active),
+        createdAt: String(promo.created_at), usageCount: Number(promo.usage_count), expiresAt: promo.expires_at ? String(promo.expires_at) : undefined,
+      })));
     }
   };
 
@@ -256,6 +267,8 @@ export default function AdminPage() {
     }
   }, [authed, tab]);
 
+  useEffect(() => { if (authed && tab === "promos") void loadPromos(); }, [authed, tab]);
+
   // Вход в админку — пароль проверяется на СЕРВЕРЕ, в коде сайта его нет.
   const doLogin = async () => {
     if (!pw.trim() || loggingIn) return;
@@ -271,6 +284,7 @@ export default function AdminPage() {
         setAuthed(true);
         setAdminPassword(pw);
         await loadAdminOrders(pw);
+        await loadPromos(pw);
       } else {
         setPwError(true);
       }
@@ -882,17 +896,14 @@ export default function AdminPage() {
                 </div>
                 <div className="flex items-end">
                   <button
-                    onClick={() => {
+                    onClick={async () => {
                       if (promoHasExpiry && !newPromoExpiry) {
                         setPromoFormError("Укажите дату окончания");
                         return;
                       }
-                      const result = addPromo(
-                        newPromoCode,
-                        Number(newPromoDiscount),
-                        promoHasExpiry ? newPromoExpiry : undefined
-                      );
-                      if (result.ok) {
+                      const response = await fetch("/api/admin/promos", { method: "POST", headers: { "content-type": "application/json", "x-admin-password": pw }, body: JSON.stringify({ code: newPromoCode, discountPercent: Number(newPromoDiscount), expiresAt: promoHasExpiry ? newPromoExpiry : undefined }) });
+                      const data = await response.json().catch(() => ({}));
+                      if (response.ok) {
                         setNewPromoCode("");
                         setNewPromoDiscount("");
                         setNewPromoExpiry("");
@@ -900,8 +911,9 @@ export default function AdminPage() {
                         setPromoFormError("");
                         setPromoAdded(true);
                         setTimeout(() => setPromoAdded(false), 2000);
+                        await loadPromos();
                       } else {
-                        setPromoFormError(result.error ?? "Ошибка");
+                        setPromoFormError(data.error ?? "Ошибка");
                       }
                     }}
                     className="w-full sm:w-auto flex items-center gap-2 bg-[#E8845A] hover:bg-[#d4703f] text-white font-semibold px-6 py-3 rounded-2xl transition-all whitespace-nowrap"
@@ -954,7 +966,7 @@ export default function AdminPage() {
                   {promos.map((p) => (
                     <div key={p.id} className="flex items-center gap-4 px-6 py-4">
                       {/* Статус */}
-                      <button onClick={() => togglePromo(p.id)} className="flex-shrink-0">
+                      <button onClick={async () => { const response = await fetch("/api/admin/promos", { method: "PATCH", headers: { "content-type": "application/json", "x-admin-password": pw }, body: JSON.stringify({ id: p.id, active: !p.active }) }); if (response.ok) void loadPromos(); }} className="flex-shrink-0">
                         {p.active
                           ? <ToggleRight size={28} className="text-[#E8845A]" />
                           : <ToggleLeft size={28} className="text-[#ccc]" />}
@@ -995,7 +1007,7 @@ export default function AdminPage() {
                       </div>
                       {/* Удалить */}
                       <button
-                        onClick={() => { if (confirm(`Удалить промокод ${p.code}?`)) deletePromo(p.id); }}
+                        onClick={async () => { if (confirm(`Удалить промокод ${p.code}?`)) { const response = await fetch(`/api/admin/promos?id=${encodeURIComponent(p.id)}`, { method: "DELETE", headers: { "x-admin-password": pw } }); if (response.ok) void loadPromos(); } }}
                         className="flex-shrink-0 p-2 rounded-xl hover:bg-red-50 text-[#ccc] hover:text-red-400 transition-all"
                       >
                         <Trash2 size={16} />
@@ -1012,7 +1024,7 @@ export default function AdminPage() {
               <p>· Активные промокоды сразу работают в корзине — покупатель вводит код и получает скидку</p>
               <p>· Отключённый промокод перестаёт работать мгновенно, код никуда не исчезает</p>
               <p>· Реферальные коды покупателей (из личного кабинета) дают фиксированную скидку 5%</p>
-              <p>· Промокод нельзя совмещать с другим промокодом или реферальным кодом</p>
+              <p>· Один промокод можно совмещать с одним реферальным кодом — скидки суммируются</p>
             </div>
           </div>
         )}

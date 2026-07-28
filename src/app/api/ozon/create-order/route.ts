@@ -8,6 +8,7 @@ import {
   getOzonConfig,
   postToOzon,
 } from "@/lib/ozonAcquiring";
+import { findReferralOwner, getAuthenticatedUser, getBonusBalance, normalizeCode, REFERRAL_DISCOUNT_PERCENT } from "@/lib/loyalty";
 import { getServerSupabase } from "@/lib/supabaseServer";
 
 export const runtime = "nodejs";
@@ -19,6 +20,8 @@ interface CreateOrderBody {
   customer?: { name?: string; surname?: string; phone?: string; email?: string };
   delivery?: { method?: DeliveryMethod; city?: string; address?: string; zip?: string };
   promoCode?: string;
+  referralCode?: string;
+  bonusPointsToSpend?: number;
   comment?: string;
   userId?: string;
   agreementAccepted?: boolean;
@@ -35,12 +38,6 @@ const DELIVERY_PRICES: Record<DeliveryMethod, number> = {
   yandex_pvz: 300,
   ozon_pvz: 250,
   pochta: 250,
-};
-
-const PROMO_CODES: Record<string, number> = {
-  "ВЗБАДРИСЬ10": 10,
-  "ВЗБАДРИСЬ15": 15,
-  KAMA10: 10,
 };
 
 const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
@@ -88,6 +85,9 @@ export async function POST(request: NextRequest) {
     return badRequest("Некорректные данные заказа");
   }
 
+  const token = request.headers.get("authorization")?.replace(/^Bearer\s+/i, "") || null;
+  const authUser = await getAuthenticatedUser(db, token);
+
   const customer = body.customer;
   const delivery = body.delivery;
   if (!body.agreementAccepted) return badRequest("Необходимо принять условия оферты");
@@ -134,6 +134,7 @@ export async function POST(request: NextRequest) {
     quantity: number;
     unitPrice: number;
     stockAmount: number;
+    category: string;
   }[] = [];
 
   try {
@@ -155,6 +156,7 @@ export async function POST(request: NextRequest) {
         quantity: item.quantity,
         unitPrice: resolved.price,
         stockAmount: requiredStock,
+        category: product.category,
       });
     }
   } catch (error) {
@@ -162,9 +164,44 @@ export async function POST(request: NextRequest) {
   }
 
   const subtotal = orderLines.reduce((sum, item) => sum + item.unitPrice * item.quantity, 0);
-  const promoCode = body.promoCode?.trim().toUpperCase() || "";
-  const promoPercent = PROMO_CODES[promoCode] ?? 0;
-  const discount = Math.round((subtotal * promoPercent) / 100);
+  const promoCode = normalizeCode(body.promoCode);
+  const referralCode = normalizeCode(body.referralCode);
+  let promoPercent = 0;
+  let referralPercent = 0;
+  let referrerId: string | null = null;
+  if (promoCode) {
+    const { data: promo, error: promoError } = await db.from("promo_codes")
+      .select("discount_percent, active, max_uses, usage_count, expires_at").eq("code", promoCode).maybeSingle();
+    const isExpired = promo?.expires_at && new Date(promo.expires_at).getTime() < Date.now();
+    const isExhausted = promo?.max_uses != null && Number(promo.usage_count) >= Number(promo.max_uses);
+    if (promoError || !promo || !promo.active || isExpired || isExhausted) {
+      return badRequest("Промокод не найден или больше не действует");
+    }
+    promoPercent = Number(promo.discount_percent);
+  }
+  if (referralCode) {
+    try {
+      const owner = await findReferralOwner(db, referralCode);
+      if (!owner) return badRequest("Реферальный код не найден");
+      if (owner.id === authUser?.id) return badRequest("Нельзя применить собственный реферальный код");
+      referrerId = owner.id;
+      referralPercent = REFERRAL_DISCOUNT_PERCENT;
+    } catch (error) {
+      return badRequest(error instanceof Error ? error.message : "Не удалось проверить реферальный код");
+    }
+  }
+  const percentageDiscount = Math.round((subtotal * (promoPercent + referralPercent)) / 100);
+  const requestedBonusPoints = Math.max(0, Math.floor(Number(body.bonusPointsToSpend || 0)));
+  let bonusSpent = 0;
+  if (requestedBonusPoints) {
+    if (!authUser) return badRequest("Войдите в личный кабинет, чтобы списать бонусы");
+    const balance = await getBonusBalance(db, authUser.id, Number(authUser.user_metadata?.bonusPoints || 0));
+    const maxBonus = Math.floor(subtotal * 0.3);
+    if (requestedBonusPoints > balance) return badRequest("Недостаточно бонусов");
+    if (requestedBonusPoints > maxBonus) return badRequest(`Бонусами можно оплатить не более ${maxBonus} ₽`);
+    bonusSpent = requestedBonusPoints;
+  }
+  const discount = percentageDiscount + bonusSpent;
   const deliveryPrice = subtotal >= 3000 ? 0 : DELIVERY_PRICES[deliveryMethod];
   const productsTotalKopecks = (subtotal - discount) * 100;
   const totalKopecks = productsTotalKopecks + deliveryPrice * 100;
@@ -246,11 +283,18 @@ export async function POST(request: NextRequest) {
       zip: delivery.zip?.trim() || "",
       price: deliveryPrice,
       promoPercent,
+      referralPercent,
       discountAmount: discount,
     },
     promo_code: promoCode || null,
+    referral_code: referralCode || null,
+    referral_owner_id: referrerId,
+    promo_discount_percent: promoPercent,
+    referral_discount_percent: referralPercent,
+    bonus_spent: bonusSpent,
+    bonus_discount_amount: bonusSpent,
     comment: body.comment?.trim().slice(0, 1000) || null,
-    user_id: body.userId || null,
+    user_id: authUser?.id || null,
     agreement_accepted_at: now,
     offer_version: "2026-07-21",
     created_at: now,
@@ -261,6 +305,20 @@ export async function POST(request: NextRequest) {
       { error: "Не удалось сохранить заказ. Проверьте таблицу payment_orders в Supabase" },
       { status: 500 }
     );
+  }
+
+  if (bonusSpent && authUser) {
+    const { error: bonusError } = await db.from("bonus_ledger").insert({
+      user_id: authUser.id,
+      amount: -bonusSpent,
+      kind: "order_payment",
+      order_id: extId,
+      status: "reserved",
+    });
+    if (bonusError) {
+      await db.from("payment_orders").update({ status: "creation_failed", updated_at: new Date().toISOString() }).eq("id", extId);
+      return NextResponse.json({ error: "Не удалось зарезервировать бонусы" }, { status: 500 });
+    }
   }
 
   try {

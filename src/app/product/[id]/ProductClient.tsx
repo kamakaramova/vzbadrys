@@ -6,8 +6,9 @@ import { productImagePaths } from "@/lib/productImages";
 import { ShoppingCart, Heart, FileText, ChevronLeft, ChevronRight, Check, Shield, AlertCircle } from "lucide-react";
 import { useCartStore } from "@/store/cartStore";
 import { useAuthStore } from "@/store/authStore";
+import ProductReviews from "./ProductReviews";
 
-type Tab = "description" | "composition" | "howto" | "docs";
+type Tab = "description" | "composition" | "howto" | "docs" | "reviews";
 
 export default function ProductClient({
   product,
@@ -62,6 +63,7 @@ export default function ProductClient({
     { key: "composition", label: "Состав" },
     { key: "howto", label: "Как принимать" },
     { key: "docs", label: `Документы (${product.documents.length})` },
+    { key: "reviews", label: "Отзывы" },
   ];
 
   return (
@@ -303,6 +305,10 @@ export default function ProductClient({
                 ))}
               </ul>
             </div>
+            <div className="pt-2">
+              <h3 className="text-xl font-bold mb-5">Отзывы покупателей</h3>
+              <ProductReviews productId={product.id} />
+            </div>
           </div>
         )}
 
@@ -344,6 +350,8 @@ export default function ProductClient({
             ))}
           </div>
         )}
+
+        {activeTab === "reviews" && <ProductReviews productId={product.id} />}
       </section>
 
       {/* Похожие */}

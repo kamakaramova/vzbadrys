@@ -1,0 +1,25 @@
+import { NextRequest, NextResponse } from "next/server";
+
+import { getBonusBalance } from "@/lib/loyalty";
+import { getServerSupabase } from "@/lib/supabaseServer";
+
+export const runtime = "nodejs";
+
+export async function GET(request: NextRequest) {
+  const token = request.headers.get("authorization")?.replace(/^Bearer\s+/i, "");
+  const db = getServerSupabase();
+  if (!token || !db) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+  const { data, error } = await db.auth.getUser(token);
+  if (error || !data.user) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+  try {
+    const basePoints = Number(data.user.user_metadata?.bonusPoints || 0);
+    const [bonusPoints, referrals] = await Promise.all([
+      getBonusBalance(db, data.user.id, basePoints),
+      db.from("payment_orders").select("id", { count: "exact", head: true }).eq("referral_owner_id", data.user.id).eq("status", "paid"),
+    ]);
+    if (referrals.error) throw new Error(referrals.error.message);
+    return NextResponse.json({ bonusPoints, referralOrders: referrals.count || 0 });
+  } catch (error) {
+    return NextResponse.json({ error: error instanceof Error ? error.message : "Не удалось получить бонусы" }, { status: 500 });
+  }
+}

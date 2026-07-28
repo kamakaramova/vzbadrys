@@ -5,6 +5,7 @@ import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import { useCartStore } from "@/store/cartStore";
 import { useAuthStore } from "@/store/authStore";
+import { supabase } from "@/lib/supabase";
 import PochtaWidget, { PochtaPoint } from "@/components/PochtaWidget";
 import PaymentLogos from "@/components/PaymentLogos";
 import { Check, MapPin, Package, CreditCard, MessageSquare } from "lucide-react";
@@ -36,6 +37,10 @@ export default function CheckoutPage() {
   const total = useCartStore((s) => s.total());
   const promoCode = useCartStore((s) => s.promoCode);
   const promoDiscount = useCartStore((s) => s.promoDiscount);
+  const referralCode = useCartStore((s) => s.referralCode);
+  const referralDiscount = useCartStore((s) => s.referralDiscount);
+  const bonusPointsToSpend = useCartStore((s) => s.bonusPointsToSpend);
+  const setBonusPointsToSpend = useCartStore((s) => s.setBonusPointsToSpend);
   const user = useAuthStore((s) => s.user);
 
   const [delivery, setDelivery] = useState<DeliveryMethod>("sdek_pvz");
@@ -67,7 +72,9 @@ export default function CheckoutPage() {
   ];
 
   const selectedDelivery = deliveryOptions.find((d) => d.id === delivery)!;
-  const finalTotal = total + selectedDelivery.price;
+  const maxBonusPayment = Math.floor(subtotal * 0.3);
+  const allowedBonusPayment = Math.min(bonusPointsToSpend, maxBonusPayment, user?.bonusPoints || 0);
+  const finalTotal = Math.max(0, total - allowedBonusPayment) + selectedDelivery.price;
 
   const validate = () => {
     const e: Partial<typeof form> = {};
@@ -88,9 +95,10 @@ export default function CheckoutPage() {
     setSubmitting(true);
     setSubmitError("");
     try {
+      const session = supabase ? await supabase.auth.getSession() : null;
       const response = await fetch("/api/ozon/create-order", {
         method: "POST",
-        headers: { "content-type": "application/json" },
+        headers: { "content-type": "application/json", ...(session?.data.session?.access_token ? { authorization: `Bearer ${session.data.session.access_token}` } : {}) },
         body: JSON.stringify({
           items: items.map((item) => ({ id: item.id, quantity: item.quantity })),
           customer: {
@@ -106,6 +114,8 @@ export default function CheckoutPage() {
             zip: delivery === "pickup" ? "" : form.zip,
           },
           promoCode,
+          referralCode,
+          bonusPointsToSpend: allowedBonusPayment,
           comment,
           userId: user?.id,
           agreementAccepted: true,
@@ -349,9 +359,12 @@ export default function CheckoutPage() {
                   </div>
                   {discountAmt > 0 && (
                     <div className="flex justify-between text-sm">
-                      <span className="text-green-600">Промокод {promoCode} ({promoDiscount}%)</span>
+                      <span className="text-green-600">Скидка {promoCode && `${promoCode} (${promoDiscount}%)`}{promoCode && referralCode && " + "}{referralCode && `${referralCode} (${referralDiscount}%)`}</span>
                       <span className="text-green-600 font-semibold">−{discountAmt.toLocaleString("ru-RU")} ₽</span>
                     </div>
+                  )}
+                  {allowedBonusPayment > 0 && (
+                    <div className="flex justify-between text-sm"><span className="text-[#E8845A]">Бонусы</span><span className="text-[#E8845A] font-semibold">−{allowedBonusPayment.toLocaleString("ru-RU")} ₽</span></div>
                   )}
                   <div className="flex justify-between text-sm">
                     <span className="text-[#6b6b6b]">Доставка</span>
@@ -367,6 +380,16 @@ export default function CheckoutPage() {
                     <span className="font-bold text-2xl text-[#E8845A]">{finalTotal.toLocaleString("ru-RU")} ₽</span>
                   </div>
                 </div>
+
+                {user ? (
+                  <div className="mb-5 rounded-2xl bg-[#fff8f5] border border-[#f5d5c0] p-4">
+                    <div className="flex justify-between gap-3 mb-2"><span className="text-sm font-semibold">Оплатить бонусами</span><span className="text-xs text-[#8b4513]">Доступно: {user.bonusPoints}</span></div>
+                    <input type="number" min="0" max={Math.min(user.bonusPoints, maxBonusPayment)} value={bonusPointsToSpend || ""} onChange={(e) => setBonusPointsToSpend(Math.min(Math.max(0, Number(e.target.value || 0)), user.bonusPoints, maxBonusPayment))} placeholder="0" className="w-full bg-white px-3 py-2.5 rounded-xl border border-[#f0e8e0] text-sm outline-none focus:border-[#E8845A]" />
+                    <p className="text-xs text-[#8b6b5d] mt-2">1 бонус = 1 ₽. Бонусами можно оплатить до 30% стоимости товаров.</p>
+                  </div>
+                ) : (
+                  <p className="mb-5 text-xs text-[#8b6b5d] bg-[#fff8f5] rounded-xl p-3">Войдите в личный кабинет, чтобы оплатить часть заказа бонусами.</p>
+                )}
 
                 {/* Чекбоксы */}
                 <div className="space-y-3 mb-5">

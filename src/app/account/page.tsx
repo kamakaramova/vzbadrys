@@ -5,15 +5,18 @@ import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import { useAuthStore, Order, STATUS_LABELS } from "@/store/authStore";
 import { getProductById } from "@/lib/products";
+import { productImagePaths } from "@/lib/productImages";
 import { useCartStore } from "@/store/cartStore";
 import { useRouter } from "next/navigation";
+import { supabase } from "@/lib/supabase";
 import {
   User, Package, LogOut, Gift, Copy, Check, ChevronRight,
   Clock, Truck, CheckCircle, XCircle, RotateCcw, ShoppingBag,
   Heart, Camera, Eye, EyeOff, Save, MapPin, Pencil,
+  Star,
 } from "lucide-react";
 
-type Tab = "orders" | "favorites" | "profile" | "bonuses";
+type Tab = "orders" | "favorites" | "profile" | "bonuses" | "reviews";
 
 const STATUS_COLORS: Record<Order["status"], string> = {
   processing: "bg-yellow-100 text-yellow-700",
@@ -44,6 +47,10 @@ export default function AccountPage() {
   const [copiedRef, setCopiedRef] = useState(false);
   const [expandedOrder, setExpandedOrder] = useState<string | null>(null);
   const [mounted, setMounted] = useState(false);
+  const [loyalty, setLoyalty] = useState({ bonusPoints: 0, referralOrders: 0 });
+  const [reviewForm, setReviewForm] = useState({ productId: "", orderId: "", productName: "", rating: 0, body: "", imageData: "" });
+  const [reviewMessage, setReviewMessage] = useState<{ ok: boolean; text: string } | null>(null);
+  const [reviewSubmitting, setReviewSubmitting] = useState(false);
 
   // Профиль
   const [editMode, setEditMode] = useState(false);
@@ -73,6 +80,18 @@ export default function AccountPage() {
     }
   }, [mounted, initialized, user, router]);
 
+  useEffect(() => {
+    if (!user || !supabase) return;
+    void (async () => {
+      const { data } = await supabase.auth.getSession();
+      const token = data.session?.access_token;
+      if (!token) return;
+      const response = await fetch("/api/account/loyalty", { headers: { authorization: `Bearer ${token}` }, cache: "no-store" });
+      const payload = await response.json().catch(() => ({}));
+      if (response.ok) setLoyalty({ bonusPoints: Number(payload.bonusPoints || 0), referralOrders: Number(payload.referralOrders || 0) });
+    })();
+  }, [user]);
+
   if (!mounted || !initialized || !user) {
     return (
       <>
@@ -93,7 +112,7 @@ export default function AccountPage() {
   const handleLogout = async () => { await logout(); router.push("/"); };
 
   const copyRef = () => {
-    navigator.clipboard.writeText(user.referralCode);
+    navigator.clipboard.writeText(`${window.location.origin}/cart?ref=${encodeURIComponent(user.referralCode)}`);
     setCopiedRef(true);
     setTimeout(() => setCopiedRef(false), 2000);
   };
@@ -130,11 +149,34 @@ export default function AccountPage() {
     setTimeout(() => setPassMsg(null), 3000);
   };
 
+  const submitReview = async () => {
+    if (!reviewForm.productId || reviewForm.rating < 1 || reviewForm.body.trim().length < 3) {
+      setReviewMessage({ ok: false, text: "Поставьте оценку и напишите хотя бы несколько слов" }); return;
+    }
+    if (!supabase) return;
+    setReviewSubmitting(true); setReviewMessage(null);
+    const { data } = await supabase.auth.getSession();
+    const response = await fetch(`/api/products/${reviewForm.productId}/reviews`, {
+      method: "POST",
+      headers: { "content-type": "application/json", ...(data.session?.access_token ? { authorization: `Bearer ${data.session.access_token}` } : {}) },
+      body: JSON.stringify({ rating: reviewForm.rating, body: reviewForm.body, imageData: reviewForm.imageData || undefined }),
+    });
+    const payload = await response.json().catch(() => ({}));
+    setReviewSubmitting(false);
+    if (!response.ok) { setReviewMessage({ ok: false, text: payload.error || "Не удалось отправить отзыв" }); return; }
+    setReviewMessage({ ok: true, text: "Спасибо! Отзыв опубликован, вам начислено 20 бонусов." });
+    setReviewForm({ productId: "", orderId: "", productName: "", rating: 0, body: "", imageData: "" });
+    const responseLoyalty = await fetch("/api/account/loyalty", { headers: { authorization: `Bearer ${data.session?.access_token}` } });
+    const loyaltyData = await responseLoyalty.json().catch(() => ({}));
+    if (responseLoyalty.ok) setLoyalty({ bonusPoints: Number(loyaltyData.bonusPoints || 0), referralOrders: Number(loyaltyData.referralOrders || 0) });
+  };
+
   const tabs: { key: Tab; label: string; icon: React.ReactNode; count?: number }[] = [
     { key: "orders",    label: "Мои заказы",  icon: <Package size={16} />, count: orders.length },
     { key: "favorites", label: "Избранное",   icon: <Heart size={16} />,   count: favoriteProducts.length },
     { key: "profile",   label: "Профиль",     icon: <User size={16} /> },
     { key: "bonuses",   label: "Бонусы",      icon: <Gift size={16} /> },
+    { key: "reviews",   label: "Отзывы",      icon: <Star size={16} /> },
   ];
 
   return (
@@ -171,7 +213,7 @@ export default function AccountPage() {
             <div className="flex items-center gap-3">
               <div className="text-right hidden sm:block">
                 <p className="text-xs text-[#aaa]">Бонусные баллы</p>
-                <p className="text-2xl font-bold text-[#E8845A]">{user.bonusPoints}</p>
+                <p className="text-2xl font-bold text-[#E8845A]">{loyalty.bonusPoints}</p>
               </div>
               <button
                 onClick={handleLogout}
@@ -245,6 +287,15 @@ export default function AccountPage() {
                                 <span>{order.items.reduce((s, i) => s + i.quantity, 0)} товара</span>
                                 <span className="flex items-center gap-1"><MapPin size={11} /> {order.deliveryMethod}</span>
                               </div>
+                              <div className="flex -space-x-2 mt-3" aria-label="Товары в заказе">
+                                {order.items.slice(0, 4).map((item, index) => {
+                                  const productId = item.id.replace(/-(\d+)g$/, "");
+                                  return <div key={`${item.id}-${index}`} className="w-9 h-9 rounded-lg border-2 border-white bg-[#fdf8f5] overflow-hidden flex items-center justify-center text-sm">
+                                    <img src={productImagePaths(productId, 1)[0]} alt={item.name} className="w-full h-full object-cover" onError={(event) => { event.currentTarget.style.display = "none"; }} />
+                                    <span className="absolute sr-only">{item.name}</span>
+                                  </div>;
+                                })}
+                              </div>
                             </div>
                             <div className="flex items-center gap-4 flex-shrink-0">
                               <span className="font-bold text-lg text-[#E8845A]">{order.total.toLocaleString("ru-RU")} ₽</span>
@@ -285,6 +336,30 @@ export default function AccountPage() {
                       ))}
                     </div>
                   )}
+                </div>
+              )}
+
+              {/* ── ОТЗЫВЫ ── */}
+              {tab === "reviews" && (
+                <div>
+                  <h2 className="text-xl font-bold mb-2">Отзывы о БАДах</h2>
+                  <p className="text-sm text-[#6b6b6b] mb-5">Оставьте отзыв о купленном БАДе — за него начислим 20 бонусов. Фото можно добавить по желанию.</p>
+                  {reviewMessage && <div className={`mb-5 rounded-2xl px-4 py-3 text-sm ${reviewMessage.ok ? "bg-green-50 text-green-700" : "bg-red-50 text-red-600"}`}>{reviewMessage.text}</div>}
+                  <div className="space-y-4">
+                    {orders.filter((order) => order.paymentStatus === "paid").flatMap((order) => order.items.filter((item) => item.category === "bads").map((item) => ({ order, item }))).map(({ order, item }) => {
+                      const productId = item.id.replace(/-(\d+)g$/, "");
+                      const editing = reviewForm.productId === productId;
+                      return <div key={`${order.id}-${item.id}`} className="bg-white rounded-3xl border border-[#f0e8e0] p-5">
+                        <div className="flex items-center gap-4">
+                          <div className="w-14 h-14 rounded-2xl overflow-hidden bg-[#fdf8f5]"><img src={productImagePaths(productId, 1)[0]} alt="" className="w-full h-full object-cover" /></div>
+                          <div className="flex-1"><p className="font-semibold text-sm">{item.name}</p><p className="text-xs text-[#aaa] mt-1">Заказ #{order.id} · {formatDate(order.date)}</p></div>
+                          {!editing && <button onClick={() => { setReviewMessage(null); setReviewForm({ productId, orderId: order.id, productName: item.name, rating: 0, body: "", imageData: "" }); }} className="px-4 py-2.5 rounded-xl bg-[#E8845A] text-white text-sm font-semibold">Оставить отзыв</button>}
+                        </div>
+                        {editing && <div className="mt-5 pt-5 border-t border-[#f0e8e0]"><p className="text-sm font-semibold mb-3">Ваша оценка</p><div className="flex gap-1 mb-4">{[1,2,3,4,5].map((star) => <button key={star} onClick={() => setReviewForm((form) => ({ ...form, rating: star }))} aria-label={`${star} из 5`}><Star size={30} className={star <= reviewForm.rating ? "fill-[#E8845A] text-[#E8845A]" : "text-[#d9d2cd]"} /></button>)}</div><textarea value={reviewForm.body} onChange={(event) => setReviewForm((form) => ({ ...form, body: event.target.value }))} rows={4} placeholder="Расскажите, как вам товар" className="w-full rounded-2xl border border-[#f0e8e0] px-4 py-3 text-sm outline-none focus:border-[#E8845A]" /><label className="mt-3 inline-flex items-center gap-2 text-sm text-[#6b6b6b] cursor-pointer"><Camera size={16} className="text-[#E8845A]" /> Добавить фото (необязательно)<input type="file" accept="image/jpeg,image/png,image/webp" className="hidden" onChange={(event) => { const file = event.target.files?.[0]; if (!file) return; if (file.size > 5 * 1024 * 1024) { setReviewMessage({ ok: false, text: "Фото должно быть не больше 5 МБ" }); return; } const reader = new FileReader(); reader.onload = () => setReviewForm((form) => ({ ...form, imageData: String(reader.result || "") })); reader.readAsDataURL(file); }} /></label>{reviewForm.imageData && <p className="text-xs text-green-600 mt-2">Фото прикреплено</p>}<div className="flex gap-3 mt-4"><button onClick={() => void submitReview()} disabled={reviewSubmitting} className="px-5 py-3 rounded-xl bg-[#E8845A] text-white font-semibold text-sm disabled:opacity-60">{reviewSubmitting ? "Отправляем…" : "Опубликовать отзыв"}</button><button onClick={() => setReviewForm({ productId: "", orderId: "", productName: "", rating: 0, body: "", imageData: "" })} className="px-5 py-3 rounded-xl border border-[#f0e8e0] text-sm">Отмена</button></div></div>}
+                      </div>;
+                    })}
+                    {!orders.some((order) => order.paymentStatus === "paid" && order.items.some((item) => item.category === "bads")) && <div className="bg-white rounded-3xl border border-[#f0e8e0] p-10 text-center"><Star size={42} className="mx-auto text-[#f0e8e0] mb-3" /><p className="font-semibold">Пока нет БАДов для отзыва</p><p className="text-sm text-[#aaa] mt-2">После оплаченного заказа здесь появится возможность поделиться впечатлением.</p></div>}
+                  </div>
                 </div>
               )}
 
@@ -477,21 +552,22 @@ export default function AccountPage() {
                   <div className="space-y-4">
                     <div className="bg-gradient-to-br from-[#E8845A] to-[#d4703f] rounded-3xl p-7 text-white">
                       <p className="text-sm opacity-80 mb-1">Ваши бонусные баллы</p>
-                      <p className="text-5xl font-black mb-1">{user.bonusPoints}</p>
-                      <p className="text-sm opacity-70">1 балл = 1 рубль скидки при следующем заказе</p>
+                      <p className="text-5xl font-black mb-1">{loyalty.bonusPoints}</p>
+                      <p className="text-sm opacity-70">1 бонус = 1 рубль. Бонусами можно оплатить до 30% покупки.</p>
                     </div>
 
                     <div className="bg-white rounded-3xl border border-[#f0e8e0] p-6">
                       <h3 className="font-bold text-base mb-2 flex items-center gap-2"><Gift size={18} className="text-[#E8845A]" /> Ваш реферальный код</h3>
-                      <p className="text-sm text-[#6b6b6b] mb-4">Поделитесь с подругой — она получит скидку 5%, а вам начислится 100 баллов после её первого заказа.</p>
+                      <p className="text-sm text-[#6b6b6b] mb-4">Поделитесь ссылкой с подругой: ей — скидка 5%, вам — 50 бонусов после её первого оплаченного заказа.</p>
                       <div className="flex items-center gap-3">
                         <div className="flex-1 bg-[#fdf8f5] border border-[#f0e8e0] rounded-2xl px-5 py-3">
                           <p className="font-black text-xl tracking-widest text-[#E8845A] font-mono">{user.referralCode}</p>
                         </div>
                         <button onClick={copyRef} className={`flex items-center gap-2 px-5 py-3 rounded-2xl font-semibold text-sm transition-all ${copiedRef ? "bg-green-500 text-white" : "bg-[#E8845A] hover:bg-[#d4703f] text-white"}`}>
-                          {copiedRef ? <><Check size={15} /> Скопировано!</> : <><Copy size={15} /> Копировать</>}
+                          {copiedRef ? <><Check size={15} /> Ссылка скопирована!</> : <><Copy size={15} /> Скопировать ссылку</>}
                         </button>
                       </div>
+                      <p className="text-xs text-[#aaa] mt-3">Заказов по вашей ссылке: {loyalty.referralOrders}</p>
                     </div>
 
                     <div className="bg-white rounded-3xl border border-[#f0e8e0] p-6">
@@ -499,8 +575,8 @@ export default function AccountPage() {
                       <div className="space-y-3">
                         {[
                           { icon: "🛒", title: "1% с каждого заказа", desc: "Автоматически после подтверждения заказа" },
-                          { icon: "👭", title: "100 баллов за реферала", desc: "Когда друг делает первый заказ по вашему коду" },
-                          { icon: "⭐", title: "50 баллов за отзыв с фото", desc: "Скоро" },
+                          { icon: "👭", title: "50 бонусов за реферала", desc: "Когда друг делает первый оплаченный заказ по вашей ссылке" },
+                          { icon: "⭐", title: "20 бонусов за отзыв на БАД", desc: "Фото можно добавить по желанию" },
                         ].map((item, i) => (
                           <div key={i} className="flex items-start gap-4">
                             <span className="text-2xl">{item.icon}</span>

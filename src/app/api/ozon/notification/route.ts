@@ -6,6 +6,7 @@ import { getServerSupabase } from "@/lib/supabaseServer";
 import { emailAddressFromOrder, toEmailOrder, type PaymentOrderRow } from "@/lib/email/order";
 import { sendEmail } from "@/lib/email/send";
 import { orderEmail } from "@/lib/email/templates";
+import { ORDER_BONUS_PERCENT, REFERRER_FIRST_ORDER_BONUS } from "@/lib/loyalty";
 
 export const runtime = "nodejs";
 
@@ -73,7 +74,7 @@ export async function POST(request: NextRequest) {
 
   let orderQuery = db
     .from("payment_orders")
-    .select("id, ozon_order_id, status, amount_kopecks, customer, items, delivery, stock_written_off");
+    .select("id, ozon_order_id, status, amount_kopecks, customer, items, delivery, stock_written_off, user_id, promo_code, referral_owner_id");
   orderQuery = extOrderId
     ? orderQuery.eq("id", extOrderId)
     : orderQuery.eq("ozon_order_id", orderId);
@@ -121,6 +122,41 @@ export async function POST(request: NextRequest) {
       }).eq("id", order.id);
       if (paidError) throw new Error(paidError.message);
 
+      // Бонусы и статистика начисляются только после подтверждённой оплаты.
+      await db.from("bonus_ledger").update({ status: "posted" }).eq("order_id", order.id).eq("status", "reserved");
+      if (order.user_id) {
+        const orderBonus = Math.floor((Number(order.amount_kopecks) / 100) * ORDER_BONUS_PERCENT / 100);
+        if (orderBonus > 0) {
+          await db.from("bonus_ledger").insert({
+            user_id: order.user_id,
+            amount: orderBonus,
+            kind: "order_reward",
+            order_id: order.id,
+            status: "posted",
+          });
+        }
+        if (order.referral_owner_id && order.referral_owner_id !== order.user_id) {
+          const { error: rewardClaimError } = await db.from("referral_rewards").insert({
+            referred_user_id: order.user_id,
+            referrer_user_id: order.referral_owner_id,
+            order_id: order.id,
+          });
+          if (!rewardClaimError) {
+            await db.from("bonus_ledger").insert({
+              user_id: order.referral_owner_id,
+              amount: REFERRER_FIRST_ORDER_BONUS,
+              kind: "referral_reward",
+              order_id: order.id,
+              status: "posted",
+            });
+          }
+        }
+      }
+      if (order.promo_code) {
+        const { data: promo } = await db.from("promo_codes").select("usage_count").eq("code", order.promo_code).maybeSingle();
+        if (promo) await db.from("promo_codes").update({ usage_count: Number(promo.usage_count) + 1, updated_at: now }).eq("code", order.promo_code);
+      }
+
       const emailOrder = toEmailOrder(order as PaymentOrderRow);
       const recipient = emailAddressFromOrder(order as PaymentOrderRow);
       if (recipient) {
@@ -145,6 +181,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "payment_processing_failed" }, { status: 500 });
     }
   } else if (body.status === "Rejected") {
+    await db.from("bonus_ledger").update({ status: "reversed" }).eq("order_id", order.id).eq("status", "reserved");
     await db.from("payment_orders").update({
       status: "payment_failed",
       payment_method: body.paymentMethod || null,
