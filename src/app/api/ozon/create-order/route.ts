@@ -22,6 +22,7 @@ interface CreateOrderBody {
   comment?: string;
   userId?: string;
   agreementAccepted?: boolean;
+  marketingAccepted?: boolean;
 }
 
 interface OzonCreateOrderResponse {
@@ -233,6 +234,9 @@ export async function POST(request: NextRequest) {
       surname: customerSurname,
       phone: customerPhone,
       email: customerEmail,
+      marketingConsent: body.marketingAccepted === true
+        ? { acceptedAt: now, documentVersion: "2026-07-27" }
+        : null,
     },
     items: orderLines,
     delivery: {

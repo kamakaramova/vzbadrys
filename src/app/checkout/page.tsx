@@ -54,6 +54,7 @@ export default function CheckoutPage() {
   });
   const [errors, setErrors] = useState<Partial<typeof form>>({});
   const [agreeTerms, setAgreeTerms] = useState(false);
+  const [marketingAccepted, setMarketingAccepted] = useState(false);
   const [showPochtaMap, setShowPochtaMap] = useState(false);
   const [pochtaPoint, setPochtaPoint] = useState<PochtaPoint | null>(null);
 
@@ -108,6 +109,7 @@ export default function CheckoutPage() {
           comment,
           userId: user?.id,
           agreementAccepted: true,
+          marketingAccepted,
         }),
       });
       const data = await response.json();
@@ -382,6 +384,18 @@ export default function CheckoutPage() {
                       и даю{" "}
                       <a href="/soglasie" target="_blank" className="underline text-[#E8845A] hover:text-[#d4703f]">согласие на обработку персональных данных</a>{" "}
                       в целях выполнения заказа.
+                    </span>
+                  </label>
+                  <label className="flex items-start gap-3 cursor-pointer group">
+                    <input
+                      type="checkbox"
+                      checked={marketingAccepted}
+                      onChange={(e) => setMarketingAccepted(e.target.checked)}
+                      className="mt-0.5 flex-shrink-0 w-4 h-4 accent-[#E8845A] cursor-pointer"
+                    />
+                    <span className="text-xs text-[#555] leading-relaxed">
+                      Я хочу получать акции, новинки и полезные материалы «взБАДрись» и даю{" "}
+                      <a href="/soglasie-na-reklamnuyu-rassylku.html" target="_blank" rel="noreferrer" className="underline text-[#E8845A] hover:text-[#d4703f]">согласие на рекламную рассылку</a>. Отказаться можно в любое время.
                     </span>
                   </label>
                 </div>

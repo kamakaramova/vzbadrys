@@ -28,7 +28,7 @@ export default function Header() {
         <div className="flex items-center justify-between h-16">
           {/* Логотип */}
           <Link href="/" className="flex items-center">
-            <img src="/logo.png" alt="Взбадрись — БАДы и суперфуды" className="h-12 w-auto" />
+            <img src="/logo.png" alt="взБАДрись — БАДы и суперфуды" className="h-12 w-auto" />
           </Link>
 
           {/* Навигация десктоп */}

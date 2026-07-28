@@ -3,8 +3,8 @@ import Footer from "@/components/Footer";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "Политика использования файлов cookie — Взбадрись",
-  description: "Как интернет-магазин Взбадрись использует файлы cookie.",
+  title: "Политика использования файлов cookie — взБАДрись",
+  description: "Как интернет-магазин взБАДрись использует файлы cookie.",
 };
 
 export default function CookiePage() {
@@ -48,7 +48,7 @@ export default function CookiePage() {
           <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
             <p className="text-xs font-semibold text-[#E8845A] uppercase tracking-widest mb-3">Правовая информация</p>
             <h1 className="text-3xl md:text-4xl font-bold mb-3">Политика использования файлов cookie</h1>
-            <p className="text-[#6b6b6b]">ИП Абдулкина Полина Валентиновна · интернет-магазин «Взбадрись»</p>
+            <p className="text-[#6b6b6b]">ИП Абдулкина Полина Валентиновна · интернет-магазин «взБАДрись»</p>
           </div>
         </section>
 

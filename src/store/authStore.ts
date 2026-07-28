@@ -65,7 +65,15 @@ interface AuthStore {
   initialized: boolean;
 
   initialize: () => Promise<void>;
-  register: (data: { name: string; email: string; phone: string; password: string }) => Promise<ActionResult>;
+  register: (data: {
+    name: string;
+    email: string;
+    phone: string;
+    password: string;
+    privacyAccepted: boolean;
+    personalDataAccepted: boolean;
+    marketingAccepted: boolean;
+  }) => Promise<ActionResult>;
   login: (email: string, password: string) => Promise<ActionResult>;
   logout: () => Promise<void>;
   updateProfile: (data: { name?: string; email?: string; phone?: string; avatar?: string }) => Promise<ActionResult>;
@@ -140,11 +148,11 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
     }
   },
 
-  register: async ({ name, email, phone, password }) => {
+  register: async ({ name, email, phone, password, privacyAccepted, personalDataAccepted, marketingAccepted }) => {
     const response = await fetch("/api/auth/register", {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ name, email, phone, password }),
+      body: JSON.stringify({ name, email, phone, password, privacyAccepted, personalDataAccepted, marketingAccepted }),
     });
     const data = await response.json().catch(() => ({}));
     if (!response.ok) return { ok: false, error: data.error || "Не удалось зарегистрироваться" };

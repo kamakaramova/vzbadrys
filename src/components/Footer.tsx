@@ -12,7 +12,7 @@ export default function Footer() {
               <div className="w-9 h-9 rounded-full bg-[#E8845A] flex items-center justify-center">
                 <span className="text-white font-bold text-sm">В</span>
               </div>
-              <span className="font-bold text-xl">Взбадрись</span>
+              <span className="font-bold text-xl">взБАДрись</span>
             </div>
             <p className="text-sm text-[#6b6b6b] leading-relaxed">
               БАДы и суперфуды с документами. Только проверенные составы и честная информация.
@@ -64,11 +64,12 @@ export default function Footer() {
 
         {/* Правовые ссылки */}
         <div className="border-t border-[#f0e8e0] mt-6 pt-6 flex flex-col sm:flex-row justify-between items-center gap-4">
-          <p className="text-xs text-[#aaa]">© 2026 Взбадрись · ИП Абдулкина П. В. · ИНН 166107199180</p>
+          <p className="text-xs text-[#aaa]">© 2026 взБАДрись · ИП Абдулкина П. В. · ИНН 166107199180</p>
           <div className="flex flex-wrap gap-4 justify-center sm:justify-end">
             <Link href="/oferta" target="_blank" className="text-xs text-[#aaa] hover:text-[#E8845A] transition-colors">Публичная оферта</Link>
             <Link href="/privacy" target="_blank" className="text-xs text-[#aaa] hover:text-[#E8845A] transition-colors">Политика конфиденциальности</Link>
             <Link href="/soglasie" target="_blank" className="text-xs text-[#aaa] hover:text-[#E8845A] transition-colors">Согласие на обработку данных</Link>
+            <Link href="/soglasie-na-reklamnuyu-rassylku.html" target="_blank" className="text-xs text-[#aaa] hover:text-[#E8845A] transition-colors">Согласие на рекламную рассылку</Link>
             <Link href="/cookie" className="text-xs text-[#aaa] hover:text-[#E8845A] transition-colors">Cookie</Link>
           </div>
         </div>

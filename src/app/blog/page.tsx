@@ -4,7 +4,7 @@ import Footer from "@/components/Footer";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "Статьи о здоровье — Взбадрись",
+  title: "Статьи о здоровье — взБАДрись",
   description: "Полезные статьи о витаминах, БАДах, питании и здоровье от нутрициолога Камы Карамовой. Магний, цинк, железо, ЖКТ и многое другое.",
 };
 

@@ -7,7 +7,15 @@ import { getServerSupabase } from "@/lib/supabaseServer";
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 
 export async function POST(request: NextRequest) {
-  let body: { name?: string; email?: string; phone?: string; password?: string };
+  let body: {
+    name?: string;
+    email?: string;
+    phone?: string;
+    password?: string;
+    privacyAccepted?: boolean;
+    personalDataAccepted?: boolean;
+    marketingAccepted?: boolean;
+  };
   try {
     body = await request.json();
   } catch {
@@ -24,11 +32,18 @@ export async function POST(request: NextRequest) {
       { status: 400 }
     );
   }
+  if (body.privacyAccepted !== true || body.personalDataAccepted !== true) {
+    return NextResponse.json(
+      { error: "Необходимо подтвердить согласия для регистрации" },
+      { status: 400 }
+    );
+  }
 
   const db = getServerSupabase();
   if (!db) return NextResponse.json({ error: "Регистрация пока не настроена" }, { status: 503 });
 
   const referralCode = `VZB${crypto.randomUUID().replaceAll("-", "").slice(0, 7).toUpperCase()}`;
+  const consentAcceptedAt = new Date().toISOString();
   const siteUrl = (process.env.NEXT_PUBLIC_SITE_URL || "https://xn--80abckmj9cj3h.xn--p1ai").replace(/\/$/, "");
   const { data, error } = await db.auth.admin.generateLink({
     type: "signup",
@@ -43,6 +58,14 @@ export async function POST(request: NextRequest) {
         bonusPoints: 0,
         referralCode,
         favorites: [],
+        consents: {
+          privacy: true,
+          personalData: true,
+          acceptedAt: consentAcceptedAt,
+          marketing: body.marketingAccepted === true,
+          marketingAcceptedAt: body.marketingAccepted === true ? consentAcceptedAt : null,
+          marketingConsentVersion: body.marketingAccepted === true ? "2026-07-27" : null,
+        },
       },
     },
   });

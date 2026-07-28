@@ -25,6 +25,13 @@ type EmailLog = {
   error?: string;
   created_at: string;
 };
+type MarketingContact = {
+  email: string;
+  name: string;
+  phone: string;
+  consentAt: string;
+  source: "registration" | "order" | "registration_and_order";
+};
 
 const STATUS_COLORS: Record<Order["status"], string> = {
   processing: "bg-yellow-100 text-yellow-700",
@@ -119,6 +126,9 @@ export default function AdminPage() {
   const [emailLoading, setEmailLoading] = useState(false);
   const [emailMessage, setEmailMessage] = useState("");
   const [testCredentials, setTestCredentials] = useState<{ email: string; password: string } | null>(null);
+  const [marketingContacts, setMarketingContacts] = useState<MarketingContact[]>([]);
+  const [marketingLoading, setMarketingLoading] = useState(false);
+  const [marketingError, setMarketingError] = useState("");
 
   const [newPromoCode, setNewPromoCode] = useState("");
   const [newPromoDiscount, setNewPromoDiscount] = useState("");
@@ -215,9 +225,33 @@ export default function AdminPage() {
     }
   };
 
+  const loadMarketingContacts = async () => {
+    if (!pw) return;
+    setMarketingLoading(true);
+    setMarketingError("");
+    try {
+      const response = await fetch("/api/admin/marketing-contacts", {
+        headers: { "x-admin-password": pw },
+        cache: "no-store",
+      });
+      const data = await response.json();
+      if (!response.ok || !Array.isArray(data.contacts)) {
+        throw new Error(data.error || "Не удалось загрузить список");
+      }
+      setMarketingContacts(data.contacts as MarketingContact[]);
+    } catch (error) {
+      setMarketingError(error instanceof Error ? error.message : "Не удалось загрузить список");
+    } finally {
+      setMarketingLoading(false);
+    }
+  };
+
   useEffect(() => {
     if (authed && tab === "emails") {
-      const timer = window.setTimeout(() => void loadEmailLogs(), 0);
+      const timer = window.setTimeout(() => {
+        void loadEmailLogs();
+        void loadMarketingContacts();
+      }, 0);
       return () => window.clearTimeout(timer);
     }
   }, [authed, tab]);
@@ -425,7 +459,7 @@ export default function AdminPage() {
             <span className="text-white font-black text-xl">В</span>
           </div>
           <h1 className="text-2xl font-bold text-center mb-1">Админ-панель</h1>
-          <p className="text-sm text-[#aaa] text-center mb-8">Взбадрись</p>
+          <p className="text-sm text-[#aaa] text-center mb-8">взБАДрись</p>
           <div className="space-y-4">
             <input
               type="password"
@@ -460,7 +494,7 @@ export default function AdminPage() {
             <span className="text-white font-black text-sm">В</span>
           </div>
           <div>
-            <p className="font-bold leading-tight">Взбадрись</p>
+            <p className="font-bold leading-tight">взБАДрись</p>
             <p className="text-xs text-[#aaa]">Панель управления</p>
           </div>
         </div>
@@ -1073,6 +1107,56 @@ export default function AdminPage() {
                 {emailMessage}
               </div>
             )}
+
+            <div className="bg-white rounded-3xl border border-[#f0e8e0] overflow-hidden">
+              <div className="px-6 py-4 border-b border-[#f0e8e0] flex items-center justify-between gap-4">
+                <div>
+                  <h2 className="font-bold">Контакты для рекламной рассылки</h2>
+                  <p className="text-xs text-[#6b6b6b] mt-1">Только пользователи, которые сами поставили необязательную галочку.</p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => exportCSV(marketingContacts.map((contact) => ({
+                      "Email": contact.email,
+                      "Имя": contact.name,
+                      "Телефон": contact.phone,
+                      "Дата согласия": new Date(contact.consentAt).toLocaleString("ru-RU"),
+                      "Источник": contact.source === "registration" ? "Регистрация" : contact.source === "order" ? "Заказ" : "Регистрация и заказ",
+                    })), "kontakty-dlya-rassylki.csv")}
+                    disabled={!marketingContacts.length}
+                    className="inline-flex items-center gap-2 px-3 py-2 rounded-xl border border-[#f0e8e0] text-xs font-semibold text-[#6b6b6b] hover:text-[#E8845A] disabled:opacity-40"
+                  >
+                    <Download size={14} /> CSV
+                  </button>
+                  <button
+                    onClick={() => void loadMarketingContacts()}
+                    className="p-2 rounded-xl border border-[#f0e8e0] text-[#6b6b6b] hover:text-[#E8845A]"
+                    title="Обновить"
+                  >
+                    <RefreshCw size={16} className={marketingLoading ? "animate-spin" : ""} />
+                  </button>
+                </div>
+              </div>
+              {marketingError ? (
+                <p className="m-5 rounded-xl bg-red-50 p-3 text-sm text-red-600">{marketingError}</p>
+              ) : marketingContacts.length === 0 ? (
+                <div className="py-10 text-center text-sm text-[#aaa]">
+                  {marketingLoading ? "Загружаем список…" : "Согласий на рекламную рассылку пока нет"}
+                </div>
+              ) : (
+                <div className="divide-y divide-[#f0e8e0]">
+                  {marketingContacts.map((contact) => (
+                    <div key={contact.email} className="flex flex-col gap-1 px-6 py-3 sm:flex-row sm:items-center sm:justify-between">
+                      <div>
+                        <p className="text-sm font-semibold">{contact.name || "Покупатель"}</p>
+                        <p className="text-xs text-[#6b6b6b]">{contact.email}{contact.phone ? ` · ${contact.phone}` : ""}</p>
+                      </div>
+                      <p className="text-xs text-[#8A817C]">Согласие: {new Date(contact.consentAt).toLocaleString("ru-RU")}</p>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
 
             <div className="bg-white rounded-3xl border border-[#f0e8e0] overflow-hidden">
               <div className="px-6 py-4 border-b border-[#f0e8e0] flex items-center justify-between">

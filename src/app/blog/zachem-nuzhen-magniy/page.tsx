@@ -37,7 +37,7 @@ export default function MagniyArticle() {
             <div className="w-10 h-10 rounded-full bg-[#FDDCCA] flex items-center justify-center text-lg">👩‍🔬</div>
             <div>
               <p className="text-sm font-semibold">Кама Карамова</p>
-              <p className="text-xs text-[#aaa]">Нутрициолог, основатель бренда Взбадрись</p>
+              <p className="text-xs text-[#aaa]">Нутрициолог, основатель бренда взБАДрись</p>
             </div>
           </div>
         </section>
@@ -215,7 +215,7 @@ export default function MagniyArticle() {
 
             {/* CTA — карточки товаров */}
             <div className="pt-4">
-              <p className="text-center text-[#6b6b6b] mb-6 text-lg font-medium">Попробуйте магний от Взбадрись</p>
+              <p className="text-center text-[#6b6b6b] mb-6 text-lg font-medium">Попробуйте магний от взБАДрись</p>
               <div className="grid sm:grid-cols-2 gap-5">
                 {[
                   {

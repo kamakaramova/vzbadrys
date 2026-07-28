@@ -4,8 +4,8 @@ import Footer from "@/components/Footer";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "Обмен и возврат — Взбадрись",
-  description: "Условия возврата и обмена товаров в магазине Взбадрись. Что делать если пришёл повреждённый товар, как оформить возврат, сроки и способы.",
+  title: "Обмен и возврат — взБАДрись",
+  description: "Условия возврата и обмена товаров в магазине взБАДрись. Что делать если пришёл повреждённый товар, как оформить возврат, сроки и способы.",
 };
 
 export default function ReturnsPage() {

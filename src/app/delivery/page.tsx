@@ -3,7 +3,7 @@ import Footer from "@/components/Footer";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "Доставка и оплата — Взбадрись",
+  title: "Доставка и оплата — взБАДрись",
   description: "Доставка БАДов и семян по всей России. Быстрая доставка, удобная оплата, официальные документы на каждый товар.",
 };
 

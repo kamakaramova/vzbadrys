@@ -4,8 +4,8 @@ import Footer from "@/components/Footer";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "Контакты — Взбадрись",
-  description: "Контакты интернет-магазина Взбадрись. Напишите нам в Telegram, по email или телефону.",
+  title: "Контакты — взБАДрись",
+  description: "Контакты интернет-магазина взБАДрись. Напишите нам в Telegram, по email или телефону.",
 };
 
 export default function ContactsPage() {

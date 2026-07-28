@@ -24,6 +24,9 @@ function AuthContent() {
   const [success, setSuccess] = useState("");
   const [forgotMode, setForgotMode] = useState(false);
   const [forgotEmail, setForgotEmail] = useState("");
+  const [privacyAccepted, setPrivacyAccepted] = useState(false);
+  const [personalDataAccepted, setPersonalDataAccepted] = useState(false);
+  const [marketingAccepted, setMarketingAccepted] = useState(false);
 
   const [form, setForm] = useState({
     name: "",
@@ -57,13 +60,25 @@ function AuthContent() {
       setError("Заполните все обязательные поля");
       return;
     }
+    if (!privacyAccepted || !personalDataAccepted) {
+      setError("Подтвердите согласия для регистрации");
+      return;
+    }
     if (form.password !== form.passwordConfirm) {
       setError("Пароли не совпадают");
       return;
     }
     setLoading(true);
     await new Promise((r) => setTimeout(r, 500));
-    const res = await register({ name: form.name, email: form.email, phone: form.phone, password: form.password });
+    const res = await register({
+      name: form.name,
+      email: form.email,
+      phone: form.phone,
+      password: form.password,
+      privacyAccepted,
+      personalDataAccepted,
+      marketingAccepted,
+    });
     setLoading(false);
     if (!res.ok) { setError(res.error || "Ошибка регистрации"); return; }
     if (res.requiresEmailConfirmation) {
@@ -117,7 +132,15 @@ function AuthContent() {
             <p className="text-sm text-[#6b6b6b] mt-1">
               {mode === "login" ? "Ещё нет аккаунта?" : "Уже есть аккаунт?"}{" "}
               <button
-                onClick={() => { setMode(mode === "login" ? "register" : "login"); setError(""); setForm({ name: "", emailOrPhone: "", email: "", phone: "", password: "", passwordConfirm: "" }); }}
+                onClick={() => {
+                  setMode(mode === "login" ? "register" : "login");
+                  setError("");
+                  setSuccess("");
+                  setPrivacyAccepted(false);
+                  setPersonalDataAccepted(false);
+                  setMarketingAccepted(false);
+                  setForm({ name: "", emailOrPhone: "", email: "", phone: "", password: "", passwordConfirm: "" });
+                }}
                 className="font-semibold text-[#E8845A] hover:underline"
               >
                 {mode === "login" ? "Зарегистрироваться" : "Войти"}
@@ -131,7 +154,14 @@ function AuthContent() {
               {(["login", "register"] as Mode[]).map((m) => (
                 <button
                   key={m}
-                  onClick={() => { setMode(m); setError(""); }}
+                  onClick={() => {
+                    setMode(m);
+                    setError("");
+                    setSuccess("");
+                    setPrivacyAccepted(false);
+                    setPersonalDataAccepted(false);
+                    setMarketingAccepted(false);
+                  }}
                   className={`flex-1 py-2 rounded-xl text-sm font-semibold transition-all ${mode === m ? "bg-white shadow text-[#E8845A]" : "text-[#6b6b6b] hover:text-[#1a1a1a]"}`}
                 >
                   {m === "login" ? "Войти" : "Регистрация"}
@@ -144,7 +174,7 @@ function AuthContent() {
                 {error}
               </div>
             )}
-            {success && (
+            {mode === "login" && success && (
               <div className="mb-4 bg-green-50 border border-green-200 rounded-2xl px-4 py-3 text-sm text-green-700 flex items-center gap-2">
                 <Check size={16} /> {success}
               </div>
@@ -177,7 +207,8 @@ function AuthContent() {
                   <button
                     type="button"
                     onClick={() => {
-                      setForgotEmail(form.emailOrPhone);
+                      const loginEmail = form.emailOrPhone.trim();
+                      setForgotEmail(loginEmail.includes("@") ? loginEmail : "");
                       setForgotMode(true);
                       setError("");
                       setSuccess("");
@@ -252,22 +283,68 @@ function AuthContent() {
                   </ul>
                 </div>
 
+                <div className="space-y-3 rounded-2xl border border-[#f0e8e0] bg-[#fdfcfb] p-4">
+                  <ConsentCheckbox
+                    checked={privacyAccepted}
+                    onChange={setPrivacyAccepted}
+                  >
+                    Я ознакомилась и согласна с{" "}
+                    <a href="/privacy" target="_blank" rel="noreferrer" className="font-semibold text-[#C9653E] underline decoration-[#E9AA8C] underline-offset-2 hover:text-[#A94E2E]">
+                      политикой конфиденциальности
+                    </a>
+                  </ConsentCheckbox>
+                  <ConsentCheckbox
+                    checked={personalDataAccepted}
+                    onChange={setPersonalDataAccepted}
+                  >
+                    Даю{" "}
+                    <a href="/soglasie" target="_blank" rel="noreferrer" className="font-semibold text-[#C9653E] underline decoration-[#E9AA8C] underline-offset-2 hover:text-[#A94E2E]">
+                      согласие на обработку персональных данных
+                    </a>
+                  </ConsentCheckbox>
+                  <ConsentCheckbox
+                    checked={marketingAccepted}
+                    onChange={setMarketingAccepted}
+                  >
+                    Я хочу получать акции, новинки и полезные материалы «взБАДрись» и даю{" "}
+                    <a href="/soglasie-na-reklamnuyu-rassylku.html" target="_blank" rel="noreferrer" className="font-semibold text-[#C9653E] underline decoration-[#E9AA8C] underline-offset-2 hover:text-[#A94E2E]">
+                      согласие на рекламную рассылку
+                    </a>
+                  </ConsentCheckbox>
+                  <p className="pl-7 text-xs leading-relaxed text-[#8A817C]">
+                    Согласия на Политику и обработку данных обязательны для создания аккаунта. Рассылка — по желанию.
+                  </p>
+                </div>
+
                 <button
                   onClick={handleRegister}
-                  disabled={loading}
+                  disabled={loading || !privacyAccepted || !personalDataAccepted}
                   className="w-full bg-[#E8845A] hover:bg-[#d4703f] disabled:bg-[#f5c9b0] text-white font-bold py-3.5 rounded-2xl transition-all hover:-translate-y-0.5 hover:shadow-md"
                 >
                   {loading ? "Создаём аккаунт..." : "Зарегистрироваться"}
                 </button>
+
+                {success && (
+                  <div
+                    role="status"
+                    aria-live="polite"
+                    className="rounded-2xl border-2 border-[#A8E1C4] bg-[#ECFBF3] px-5 py-4 text-[#176B45] shadow-[0_8px_24px_rgba(23,107,69,0.10)]"
+                  >
+                    <div className="flex items-start gap-3">
+                      <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#26A269] text-white">
+                        <Check size={18} strokeWidth={3} />
+                      </span>
+                      <div>
+                        <p className="font-bold">Письмо отправлено</p>
+                        <p className="mt-1 text-sm leading-relaxed">
+                          {success}. Откройте письмо и нажмите кнопку подтверждения, чтобы войти в аккаунт.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
             )}
-
-            <p className="text-xs text-center text-[#aaa] mt-5 leading-relaxed">
-              Регистрируясь, Вы соглашаетесь с{" "}
-              <a href="/privacy" target="_blank" className="underline hover:text-[#E8845A]">политикой конфиденциальности</a>{" "}
-              и даёте{" "}
-              <a href="/soglasie" target="_blank" className="underline hover:text-[#E8845A]">согласие на обработку персональных данных</a>
-            </p>
           </div>
         </div>
       </main>
@@ -345,5 +422,33 @@ function InputField({
         {suffix && <span className="absolute right-4 top-1/2 -translate-y-1/2">{suffix}</span>}
       </div>
     </div>
+  );
+}
+
+function ConsentCheckbox({
+  checked,
+  onChange,
+  children,
+}: {
+  checked: boolean;
+  onChange: (checked: boolean) => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <label className="group flex cursor-pointer items-start gap-3 text-sm leading-relaxed text-[#4F4945]">
+      <input
+        type="checkbox"
+        checked={checked}
+        onChange={(event) => onChange(event.target.checked)}
+        className="peer sr-only"
+      />
+      <span
+        aria-hidden="true"
+        className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-md border-2 border-[#CFC4BC] bg-white text-transparent transition-all group-hover:border-[#E8845A] peer-focus-visible:ring-2 peer-focus-visible:ring-[#E8845A]/40 peer-focus-visible:ring-offset-2 peer-checked:border-[#E8845A] peer-checked:bg-[#E8845A] peer-checked:text-white"
+      >
+        <Check size={13} strokeWidth={3} />
+      </span>
+      <span>{children}</span>
+    </label>
   );
 }

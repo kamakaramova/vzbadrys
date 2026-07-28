@@ -1,0 +1,369 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="robots" content="index, follow" />
+  <title>Согласие на получение рекламных и информационных рассылок — взБАДрись</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&display=swap');
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: 'Montserrat', sans-serif;
+      background: #fdf9f6;
+      color: #2d2d2d;
+      line-height: 1.8;
+      font-size: 15px;
+    }
+
+    .header {
+      background: #fff;
+      border-bottom: 1px solid #f0ebe5;
+      padding: 32px 0;
+      text-align: center;
+    }
+
+    .logo {
+      font-size: 22px;
+      font-weight: 700;
+      color: #e07b4a;
+      letter-spacing: 0.04em;
+    }
+
+    .header-subtitle {
+      font-size: 12px;
+      color: #b0a89e;
+      margin-top: 4px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .container {
+      max-width: 820px;
+      margin: 0 auto;
+      padding: 52px 24px 88px;
+    }
+
+    .doc-title {
+      font-size: 26px;
+      font-weight: 700;
+      color: #1a1a1a;
+      margin-bottom: 6px;
+      text-align: center;
+      line-height: 1.3;
+    }
+
+    .doc-meta {
+      text-align: center;
+      color: #b0a89e;
+      font-size: 13px;
+      margin-bottom: 40px;
+    }
+
+    .alert-box {
+      background: #fff8f4;
+      border-left: 4px solid #e07b4a;
+      border-radius: 0 12px 12px 0;
+      padding: 18px 22px;
+      margin-bottom: 36px;
+      font-size: 14px;
+      color: #4a4a4a;
+      line-height: 1.7;
+    }
+
+    .alert-box strong { color: #c96530; }
+
+    h2 {
+      font-size: 16px;
+      font-weight: 700;
+      color: #1a1a1a;
+      margin: 44px 0 14px;
+      padding-bottom: 10px;
+      border-bottom: 2px solid #f0e8e0;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .num {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 28px;
+      height: 28px;
+      background: #e07b4a;
+      color: #fff;
+      border-radius: 50%;
+      font-size: 12px;
+      font-weight: 700;
+      flex-shrink: 0;
+    }
+
+    p { margin-bottom: 12px; color: #3d3d3d; }
+
+    ul {
+      list-style: none;
+      padding-left: 0;
+      margin-bottom: 16px;
+    }
+
+    ul li {
+      position: relative;
+      padding-left: 18px;
+      margin-bottom: 8px;
+      color: #3d3d3d;
+      font-size: 14.5px;
+    }
+
+    ul li::before {
+      content: '–';
+      position: absolute;
+      left: 0;
+      color: #e07b4a;
+      font-weight: 700;
+    }
+
+    .info-card {
+      background: #fff;
+      border: 1px solid #ede5dc;
+      border-radius: 14px;
+      padding: 22px 26px;
+      margin: 14px 0;
+    }
+
+    .card-row {
+      display: flex;
+      gap: 14px;
+      padding: 9px 0;
+      border-bottom: 1px solid #f7f2ee;
+      font-size: 14px;
+    }
+
+    .card-row:last-child { border-bottom: none; }
+    .cl { color: #b0a89e; min-width: 210px; flex-shrink: 0; }
+    .cv { color: #1a1a1a; font-weight: 500; }
+
+    .consent-main {
+      background: #fff;
+      border: 2px solid #e07b4a;
+      border-radius: 16px;
+      padding: 34px 38px;
+      margin: 24px 0;
+    }
+
+    .consent-main-label {
+      font-size: 11px;
+      font-weight: 700;
+      color: #e07b4a;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      margin-bottom: 20px;
+    }
+
+    .consent-main p {
+      font-size: 14.5px;
+      line-height: 1.85;
+      color: #2d2d2d;
+      margin-bottom: 16px;
+    }
+
+    .consent-main p:last-child { margin-bottom: 0; }
+
+    .checkbox-example {
+      background: #fdf9f6;
+      border: 1px dashed #d5c8be;
+      border-radius: 10px;
+      padding: 16px 18px;
+      margin: 20px 0 0;
+      font-size: 13.5px;
+      color: #555;
+      line-height: 1.65;
+    }
+
+    .checkbox-example-label {
+      font-size: 11px;
+      font-weight: 700;
+      color: #b0a89e;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      margin-bottom: 12px;
+    }
+
+    .cb-row {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+    }
+
+    .cb-box {
+      width: 18px;
+      height: 18px;
+      border: 2px solid #e07b4a;
+      border-radius: 4px;
+      flex-shrink: 0;
+      margin-top: 2px;
+    }
+
+    .note {
+      background: #f9f6f3;
+      border-radius: 10px;
+      padding: 14px 18px;
+      font-size: 13.5px;
+      color: #666;
+      margin: 14px 0;
+      line-height: 1.65;
+    }
+
+    .note strong { color: #333; }
+
+    .revoke-block {
+      background: #f9f6f3;
+      border: 1px solid #e0d5ca;
+      border-radius: 12px;
+      padding: 22px 26px;
+      margin-top: 14px;
+    }
+
+    .revoke-block p { font-size: 14px; margin-bottom: 8px; }
+    .revoke-block p:last-child { margin-bottom: 0; }
+    .revoke-block strong { color: #1a1a1a; }
+
+    .footer-block {
+      margin-top: 64px;
+      padding-top: 28px;
+      border-top: 1px solid #ede5dc;
+      text-align: center;
+      color: #b0a89e;
+      font-size: 13px;
+      line-height: 1.7;
+    }
+
+    .footer-block strong {
+      display: block;
+      font-size: 15px;
+      color: #e07b4a;
+      margin-bottom: 6px;
+    }
+
+    a { color: #e07b4a; text-decoration: none; }
+    a:hover { text-decoration: underline; }
+
+    @media (max-width: 600px) {
+      .card-row { flex-direction: column; gap: 4px; }
+      .cl { min-width: unset; }
+      .doc-title { font-size: 20px; }
+      .consent-main { padding: 24px 20px; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="header">
+  <div class="logo">взБАДрись</div>
+  <div class="header-subtitle">Официальный документ</div>
+</div>
+
+<main class="container">
+
+  <h1 class="doc-title">Согласие на получение рекламных<br/>и информационных рассылок</h1>
+  <div class="doc-meta">Редакция от 27 июля 2026 года · Электронная форма — подпись не требуется</div>
+
+  <div class="alert-box">
+    Настоящее согласие предоставляется <strong>отдельно и добровольно</strong>. Отказ от рекламной рассылки не ограничивает возможность пользоваться сайтом, оформлять и получать заказы бренда «взБАДрись».
+  </div>
+
+  <h2><span class="num">1</span>Оператор персональных данных и отправитель рассылки</h2>
+  <div class="info-card">
+    <div class="card-row"><span class="cl">Наименование</span><span class="cv">ИП Абдулкина Полина Валентиновна</span></div>
+    <div class="card-row"><span class="cl">Бренд</span><span class="cv">«взБАДрись»</span></div>
+    <div class="card-row"><span class="cl">ИНН</span><span class="cv">166107199180</span></div>
+    <div class="card-row"><span class="cl">ОГРНИП</span><span class="cv">326169000086855</span></div>
+    <div class="card-row"><span class="cl">Адрес</span><span class="cv">123112, г. Москва, Пресненская наб., д. 10, эт. 19</span></div>
+    <div class="card-row"><span class="cl">Электронная почта</span><span class="cv"><a href="mailto:PABDULKINA@GMAIL.COM">PABDULKINA@GMAIL.COM</a></span></div>
+  </div>
+
+  <h2><span class="num">2</span>Текст согласия</h2>
+  <div class="consent-main">
+    <div class="consent-main-label">Настоящим пользователь подтверждает</div>
+
+    <p>Проставляя отметку в отдельном поле (чекбоксе) на сайте бренда «взБАДрись» и нажимая кнопку отправки формы, я свободно, своей волей и в своём интересе даю <strong>ИП Абдулкиной Полине Валентиновне</strong> (ИНН 166107199180, ОГРНИП 326169000086855) предварительное согласие на получение рекламных, информационных и рекламно-информационных сообщений.</p>
+
+    <p>Я соглашаюсь получать информацию о товарах бренда «взБАДрись», новинках, специальных предложениях, скидках, акциях, мероприятиях, программах лояльности, полезных материалах и иных предложениях Оператора.</p>
+
+    <p>Для организации рассылки я даю согласие на обработку предоставленных мной контактных данных: <strong>адреса электронной почты и/или номера телефона</strong>, а также сведений о факте предоставления, изменении или отзыве настоящего согласия.</p>
+
+    <p>Согласие распространяется только на те каналы связи, контактные данные для которых я предоставил(а) Оператору: электронную почту, SMS-сообщения, телефонные звонки, push-уведомления, сообщения в мессенджерах и социальных сетях.</p>
+
+    <p>Настоящее согласие действует с момента его предоставления до момента отзыва. Я могу в любое время отказаться от рассылки по ссылке «Отписаться» в сообщении или направив требование на <a href="mailto:PABDULKINA@GMAIL.COM">PABDULKINA@GMAIL.COM</a>.</p>
+  </div>
+
+  <h2><span class="num">3</span>Цели и содержание рассылки</h2>
+  <p>Контактные данные используются исключительно для:</p>
+  <ul>
+    <li>направления рекламы товаров и предложений бренда «взБАДрись»;</li>
+    <li>информирования о новинках, наличии товаров, скидках, акциях и специальных предложениях;</li>
+    <li>направления подборок, рекомендаций и полезных информационных материалов;</li>
+    <li>приглашения к участию в опросах, мероприятиях и программах лояльности;</li>
+    <li>учёта факта предоставления и отзыва согласия.</li>
+  </ul>
+  <div class="note">
+    <strong>Важно:</strong> БАД не является лекарственным средством. Материалы рассылки носят информационный и рекламный характер и не заменяют консультацию врача.
+  </div>
+
+  <h2><span class="num">4</span>Действия с персональными данными</h2>
+  <p>В целях рассылки Оператор вправе осуществлять с контактными данными следующие действия:</p>
+  <ul>
+    <li>сбор, запись, систематизацию, накопление и хранение;</li>
+    <li>уточнение (обновление, изменение), извлечение и использование;</li>
+    <li>передачу (предоставление, доступ) лицам, действующим по поручению Оператора;</li>
+    <li>блокирование, удаление и уничтожение.</li>
+  </ul>
+  <p>Обработка может осуществляться автоматизированным способом или без использования средств автоматизации.</p>
+
+  <h2><span class="num">5</span>Привлечение сервисов рассылки</h2>
+  <p>Оператор вправе поручать техническую обработку контактных данных хостинг-провайдерам, CRM-системам, сервисам email-, SMS- и мессенджер-рассылок. Такие лица получают данные только в объёме, необходимом для отправки сообщений, и обязаны соблюдать конфиденциальность и требования законодательства о персональных данных.</p>
+  <p>Актуальные сведения об обработке и используемых категориях получателей данных приведены в <a href="/privacy">Политике конфиденциальности</a>.</p>
+
+  <h2><span class="num">6</span>Как фиксируется согласие</h2>
+  <p>Датой и временем предоставления согласия считается момент, когда пользователь самостоятельно проставил отметку в отдельном незаполненном заранее чекбоксе и отправил форму на сайте.</p>
+  <p>Для подтверждения согласия Оператор вправе сохранять дату и время его предоставления, источник и адрес страницы, текст принятой редакции согласия, указанный контакт, технические сведения о сессии, а также сведения о подтверждении адреса электронной почты или номера телефона.</p>
+
+  <div class="checkbox-example">
+    <div class="checkbox-example-label">Рекомендуемый текст отдельного чекбокса на сайте</div>
+    <div class="cb-row">
+      <div class="cb-box"></div>
+      <span>Я хочу получать акции, новинки и полезные материалы бренда «взБАДрись» по email, SMS и в мессенджерах и даю <a href="/soglasie-na-reklamnuyu-rassylku">согласие на рекламную рассылку</a>. Отказаться можно в любое время. <em style="color:#b0a89e">(необязательный чекбокс)</em></span>
+    </div>
+  </div>
+
+  <h2><span class="num">7</span>Отзыв согласия и отказ от рассылки</h2>
+  <div class="revoke-block">
+    <p><strong>По электронной почте:</strong> направьте сообщение на <a href="mailto:PABDULKINA@GMAIL.COM">PABDULKINA@GMAIL.COM</a> с темой «Отказ от рекламной рассылки» и укажите email или номер телефона, который нужно исключить.</p>
+    <p><strong>По ссылке в письме:</strong> нажмите «Отписаться» в нижней части рекламного письма.</p>
+    <p><strong>Срок прекращения:</strong> Оператор прекращает рекламную рассылку по соответствующему каналу незамедлительно после получения требования и выполнения необходимых технических действий.</p>
+  </div>
+  <p>Отзыв согласия не влияет на законность обработки, осуществлённой до его получения. Оператор вправе продолжить хранение минимального объёма сведений о предоставлении и отзыве согласия, если это необходимо для подтверждения соблюдения требований законодательства.</p>
+
+  <h2><span class="num">8</span>Сервисные сообщения</h2>
+  <p>Настоящее согласие не относится к сообщениям, необходимым для оформления и исполнения заказа: подтверждению заказа и оплаты, сведениям о доставке, возврате, безопасности товара, ответам службы поддержки и иным обязательным уведомлениям. Такие сообщения не содержат самостоятельной рекламы и направляются на иных законных основаниях.</p>
+
+  <h2><span class="num">9</span>Права пользователя и правовые основания</h2>
+  <p>Пользователь вправе получить сведения об обработке контактных данных, потребовать их уточнения, блокирования или уничтожения, а также отозвать настоящее согласие.</p>
+  <p>Документ подготовлен с учётом Федерального закона от 27.07.2006 № 152-ФЗ «О персональных данных» и статьи 18 Федерального закона от 13.03.2006 № 38-ФЗ «О рекламе».</p>
+
+  <div class="footer-block">
+    <strong>взБАДрись</strong>
+    ИП Абдулкина Полина Валентиновна · ИНН 166107199180 · ОГРНИП 326169000086855<br/>
+    123112, г. Москва, Пресненская наб., д. 10, эт. 19<br/>
+    <a href="mailto:PABDULKINA@GMAIL.COM">PABDULKINA@GMAIL.COM</a><br/><br/>
+    <a href="/oferta">Публичная оферта</a> &nbsp;·&nbsp;
+    <a href="/privacy">Политика конфиденциальности</a> &nbsp;·&nbsp;
+    <a href="/soglasie">Согласие на обработку данных</a> &nbsp;·&nbsp;
+    <a href="/soglasie-na-reklamnuyu-rassylku">Согласие на рекламную рассылку</a>
+  </div>
+
+</main>
+</body>
+</html>

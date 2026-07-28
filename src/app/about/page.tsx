@@ -4,8 +4,8 @@ import Footer from "@/components/Footer";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "О компании — Взбадрись",
-  description: "Бренд «Взбадрись» создали Кама Карамова и Полина Абдулкина — два специалиста с биологическим образованием и опытом в научной лаборатории. Мы ездим на производство сами и проверяем каждый состав.",
+  title: "О компании — взБАДрись",
+  description: "Бренд «взБАДрись» создали Кама Карамова и Полина Абдулкина — два специалиста с биологическим образованием и опытом в научной лаборатории. Мы ездим на производство сами и проверяем каждый состав.",
 };
 
 export default function AboutPage() {
@@ -21,7 +21,7 @@ export default function AboutPage() {
               Наука, документы и личная проверка каждого продукта
             </h1>
             <p className="text-[#6b6b6b] max-w-2xl mx-auto leading-relaxed">
-              «Взбадрись» — это БАДы и суперфуды, к которым мы подходим как учёные.
+              «взБАДрись» — это БАДы и суперфуды, к которым мы подходим как учёные.
               Мы не перепродаём то, что нашли у поставщика, — мы сами разбираем составы,
               ездим на производство и проверяем каждый документ.
             </p>
@@ -37,12 +37,12 @@ export default function AboutPage() {
                   <div className="w-full aspect-[3/2] rounded-3xl overflow-hidden shadow-xl">
                     <img
                       src="/komanda-photo.png"
-                      alt="Кама Карамова и Полина Абдулкина — основатели бренда Взбадрись"
+                      alt="Кама Карамова и Полина Абдулкина — основатели бренда взБАДрись"
                       className="w-full h-full object-cover object-center"
                     />
                   </div>
                   <div className="absolute -bottom-3 -right-3 bg-[#E8845A] text-white text-xs font-bold px-3 py-1.5 rounded-full shadow-lg">
-                    Основатели «Взбадрись»
+                    Основатели «взБАДрись»
                   </div>
                 </div>
               </div>

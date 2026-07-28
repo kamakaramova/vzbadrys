@@ -84,7 +84,7 @@ export default function Home() {
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <p className="text-xs font-semibold text-[#E8845A] uppercase tracking-widest mb-6 text-center">О компании</p>
             <p className="text-center text-[#6b6b6b] max-w-2xl mx-auto mb-14 leading-relaxed">
-              Бренд «Взбадрись» создали две девушки с биологическим образованием — Кама и Полина.
+              Бренд «взБАДрись» создали две девушки с биологическим образованием — Кама и Полина.
               Мы познакомились в научной лаборатории и обе по шесть лет проработали с исследованиями,
               анализами и документами. Поэтому к продукту подходим как учёные: разбираем каждый состав,
               ездим на производства вживую и сами смотрим, как и из чего делают то, что потом окажется у вас дома.
@@ -97,12 +97,12 @@ export default function Home() {
                   <div className="w-full aspect-[3/2] rounded-3xl overflow-hidden shadow-xl">
                     <img
                       src="/komanda-photo.png"
-                      alt="Кама Карамова и Полина Абдулкина — основатели бренда Взбадрись"
+                      alt="Кама Карамова и Полина Абдулкина — основатели бренда взБАДрись"
                       className="w-full h-full object-cover object-center"
                     />
                   </div>
                   <div className="absolute -bottom-3 -right-3 bg-[#E8845A] text-white text-xs font-bold px-3 py-1.5 rounded-full shadow-lg">
-                    Основатели «Взбадрись»
+                    Основатели «взБАДрись»
                   </div>
                 </div>
               </div>
