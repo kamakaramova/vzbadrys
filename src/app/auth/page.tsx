@@ -288,7 +288,7 @@ function AuthContent() {
                     checked={privacyAccepted}
                     onChange={setPrivacyAccepted}
                   >
-                    Я ознакомилась и согласна с{" "}
+                    Соглашаюсь с{" "}
                     <a href="/privacy" target="_blank" rel="noreferrer" className="font-semibold text-[#C9653E] underline decoration-[#E9AA8C] underline-offset-2 hover:text-[#A94E2E]">
                       политикой конфиденциальности
                     </a>
