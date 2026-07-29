@@ -44,7 +44,8 @@ export default function AccountPage() {
   const addItem = useCartStore((s) => s.addItem);
 
   const [tab, setTab] = useState<Tab>("orders");
-  const [copiedRef, setCopiedRef] = useState(false);
+  const [copiedReferralLink, setCopiedReferralLink] = useState(false);
+  const [copiedReferralCode, setCopiedReferralCode] = useState(false);
   const [expandedOrder, setExpandedOrder] = useState<string | null>(null);
   const [mounted, setMounted] = useState(false);
   const [loyalty, setLoyalty] = useState({ bonusPoints: 0, referralOrders: 0 });
@@ -112,9 +113,14 @@ export default function AccountPage() {
   const handleLogout = async () => { await logout(); router.push("/"); };
 
   const copyRef = () => {
-    navigator.clipboard.writeText(`${window.location.origin}/cart?ref=${encodeURIComponent(user.referralCode)}`);
-    setCopiedRef(true);
-    setTimeout(() => setCopiedRef(false), 2000);
+    navigator.clipboard.writeText(`https://взбадрись.рф/cart?ref=${encodeURIComponent(user.referralCode)}`);
+    setCopiedReferralLink(true);
+    setTimeout(() => setCopiedReferralLink(false), 2000);
+  };
+  const copyReferralCode = () => {
+    navigator.clipboard.writeText(user.referralCode);
+    setCopiedReferralCode(true);
+    setTimeout(() => setCopiedReferralCode(false), 2000);
   };
 
   const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -342,11 +348,11 @@ export default function AccountPage() {
               {/* ── ОТЗЫВЫ ── */}
               {tab === "reviews" && (
                 <div>
-                  <h2 className="text-xl font-bold mb-2">Отзывы о БАДах</h2>
-                  <p className="text-sm text-[#6b6b6b] mb-5">Оставьте отзыв о купленном БАДе — за него начислим 20 бонусов. Фото можно добавить по желанию.</p>
+                  <h2 className="text-xl font-bold mb-2">Отзывы</h2>
+                  <p className="text-sm text-[#6b6b6b] mb-5">Оставьте отзыв о купленном товаре — за него начислим 20 бонусов. Фото можно добавить по желанию.</p>
                   {reviewMessage && <div className={`mb-5 rounded-2xl px-4 py-3 text-sm ${reviewMessage.ok ? "bg-green-50 text-green-700" : "bg-red-50 text-red-600"}`}>{reviewMessage.text}</div>}
                   <div className="space-y-4">
-                    {orders.filter((order) => order.paymentStatus === "paid").flatMap((order) => order.items.filter((item) => item.category === "bads").map((item) => ({ order, item }))).map(({ order, item }) => {
+                    {orders.filter((order) => order.paymentStatus === "paid").flatMap((order) => order.items.map((item) => ({ order, item }))).map(({ order, item }) => {
                       const productId = item.id.replace(/-(\d+)g$/, "");
                       const editing = reviewForm.productId === productId;
                       return <div key={`${order.id}-${item.id}`} className="bg-white rounded-3xl border border-[#f0e8e0] p-5">
@@ -358,7 +364,7 @@ export default function AccountPage() {
                         {editing && <div className="mt-5 pt-5 border-t border-[#f0e8e0]"><p className="text-sm font-semibold mb-3">Ваша оценка</p><div className="flex gap-1 mb-4">{[1,2,3,4,5].map((star) => <button key={star} onClick={() => setReviewForm((form) => ({ ...form, rating: star }))} aria-label={`${star} из 5`}><Star size={30} className={star <= reviewForm.rating ? "fill-[#E8845A] text-[#E8845A]" : "text-[#d9d2cd]"} /></button>)}</div><textarea value={reviewForm.body} onChange={(event) => setReviewForm((form) => ({ ...form, body: event.target.value }))} rows={4} placeholder="Расскажите, как вам товар" className="w-full rounded-2xl border border-[#f0e8e0] px-4 py-3 text-sm outline-none focus:border-[#E8845A]" /><label className="mt-3 inline-flex items-center gap-2 text-sm text-[#6b6b6b] cursor-pointer"><Camera size={16} className="text-[#E8845A]" /> Добавить фото (необязательно)<input type="file" accept="image/jpeg,image/png,image/webp" className="hidden" onChange={(event) => { const file = event.target.files?.[0]; if (!file) return; if (file.size > 5 * 1024 * 1024) { setReviewMessage({ ok: false, text: "Фото должно быть не больше 5 МБ" }); return; } const reader = new FileReader(); reader.onload = () => setReviewForm((form) => ({ ...form, imageData: String(reader.result || "") })); reader.readAsDataURL(file); }} /></label>{reviewForm.imageData && <p className="text-xs text-green-600 mt-2">Фото прикреплено</p>}<div className="flex gap-3 mt-4"><button onClick={() => void submitReview()} disabled={reviewSubmitting} className="px-5 py-3 rounded-xl bg-[#E8845A] text-white font-semibold text-sm disabled:opacity-60">{reviewSubmitting ? "Отправляем…" : "Опубликовать отзыв"}</button><button onClick={() => setReviewForm({ productId: "", orderId: "", productName: "", rating: 0, body: "", imageData: "" })} className="px-5 py-3 rounded-xl border border-[#f0e8e0] text-sm">Отмена</button></div></div>}
                       </div>;
                     })}
-                    {!orders.some((order) => order.paymentStatus === "paid" && order.items.some((item) => item.category === "bads")) && <div className="bg-white rounded-3xl border border-[#f0e8e0] p-10 text-center"><Star size={42} className="mx-auto text-[#f0e8e0] mb-3" /><p className="font-semibold">Пока нет БАДов для отзыва</p><p className="text-sm text-[#aaa] mt-2">После оплаченного заказа здесь появится возможность поделиться впечатлением.</p></div>}
+                    {!orders.some((order) => order.paymentStatus === "paid" && order.items.length > 0) && <div className="bg-white rounded-3xl border border-[#f0e8e0] p-10 text-center"><Star size={42} className="mx-auto text-[#f0e8e0] mb-3" /><p className="font-semibold">Пока нет товаров для отзыва</p><p className="text-sm text-[#aaa] mt-2">После оплаченного заказа здесь появится возможность поделиться впечатлением.</p></div>}
                   </div>
                 </div>
               )}
@@ -557,15 +563,23 @@ export default function AccountPage() {
                     </div>
 
                     <div className="bg-white rounded-3xl border border-[#f0e8e0] p-6">
-                      <h3 className="font-bold text-base mb-2 flex items-center gap-2"><Gift size={18} className="text-[#E8845A]" /> Ваш реферальный код</h3>
+                      <h3 className="font-bold text-base mb-2 flex items-center gap-2"><Gift size={18} className="text-[#E8845A]" /> Пригласить подругу</h3>
                       <p className="text-sm text-[#6b6b6b] mb-4">Поделитесь ссылкой с подругой: ей — скидка 5%, вам — 50 бонусов после её первого оплаченного заказа.</p>
-                      <div className="flex items-center gap-3">
-                        <div className="flex-1 bg-[#fdf8f5] border border-[#f0e8e0] rounded-2xl px-5 py-3">
-                          <p className="font-black text-xl tracking-widest text-[#E8845A] font-mono">{user.referralCode}</p>
+                      <div className="grid sm:grid-cols-2 gap-3">
+                        <div className="bg-[#fff8f5] border border-[#f5d5c0] rounded-2xl p-4">
+                          <p className="text-xs font-semibold text-[#8b6b5d] uppercase tracking-wide">Реферальная ссылка</p>
+                          <p className="mt-2 text-xs text-[#6b6b6b] truncate">взбадрись.рф/cart?ref={user.referralCode}</p>
+                          <button onClick={copyRef} className={`mt-3 w-full flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl font-semibold text-sm transition-all ${copiedReferralLink ? "bg-green-500 text-white" : "bg-[#E8845A] hover:bg-[#d4703f] text-white"}`}>
+                            {copiedReferralLink ? <><Check size={15} /> Скопировано</> : <><Copy size={15} /> Копировать ссылку</>}
+                          </button>
                         </div>
-                        <button onClick={copyRef} className={`flex items-center gap-2 px-5 py-3 rounded-2xl font-semibold text-sm transition-all ${copiedRef ? "bg-green-500 text-white" : "bg-[#E8845A] hover:bg-[#d4703f] text-white"}`}>
-                          {copiedRef ? <><Check size={15} /> Ссылка скопирована!</> : <><Copy size={15} /> Скопировать ссылку</>}
-                        </button>
+                        <div className="bg-[#fdf8f5] border border-[#f0e8e0] rounded-2xl p-4">
+                          <p className="text-xs font-semibold text-[#6b6b6b] uppercase tracking-wide">Ваш реферальный код</p>
+                          <p className="mt-2 font-black text-xl tracking-widest text-[#E8845A] font-mono">{user.referralCode}</p>
+                          <button onClick={copyReferralCode} className={`mt-3 w-full flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl font-semibold text-sm transition-all ${copiedReferralCode ? "bg-green-500 text-white" : "border border-[#E8845A] text-[#E8845A] hover:bg-[#fff1e9]"}`}>
+                            {copiedReferralCode ? <><Check size={15} /> Скопировано</> : <><Copy size={15} /> Копировать код</>}
+                          </button>
+                        </div>
                       </div>
                       <p className="text-xs text-[#aaa] mt-3">Заказов по вашей ссылке: {loyalty.referralOrders}</p>
                     </div>
@@ -576,7 +590,7 @@ export default function AccountPage() {
                         {[
                           { icon: "🛒", title: "1% с каждого заказа", desc: "Автоматически после подтверждения заказа" },
                           { icon: "👭", title: "50 бонусов за реферала", desc: "Когда друг делает первый оплаченный заказ по вашей ссылке" },
-                          { icon: "⭐", title: "20 бонусов за отзыв на БАД", desc: "Фото можно добавить по желанию" },
+                          { icon: "⭐", title: "20 бонусов за отзыв", desc: "Фото можно добавить по желанию" },
                         ].map((item, i) => (
                           <div key={i} className="flex items-start gap-4">
                             <span className="text-2xl">{item.icon}</span>

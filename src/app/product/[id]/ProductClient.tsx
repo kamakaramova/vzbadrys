@@ -3,7 +3,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { Product } from "@/lib/products";
 import { productImagePaths } from "@/lib/productImages";
-import { ShoppingCart, Heart, FileText, ChevronLeft, ChevronRight, Check, Shield, AlertCircle } from "lucide-react";
+import { ShoppingCart, Heart, FileText, ChevronLeft, ChevronRight, Check, Shield, AlertCircle, Copy, Share2 } from "lucide-react";
 import { useCartStore } from "@/store/cartStore";
 import { useAuthStore } from "@/store/authStore";
 import ProductReviews from "./ProductReviews";
@@ -28,6 +28,7 @@ export default function ProductClient({
   const shownIndex = Math.min(imageIndex, Math.max(0, loadedImages.length - 1));
   const [qty, setQty] = useState(1);
   const [added, setAdded] = useState(false);
+  const [linkCopied, setLinkCopied] = useState(false);
   const addItem = useCartStore((s) => s.addItem);
   const toggleFavorite = useAuthStore((s) => s.toggleFavorite);
   const isFavorite = useAuthStore((s) => s.isFavorite(product.id));
@@ -56,6 +57,24 @@ export default function ProductClient({
     }
     setAdded(true);
     setTimeout(() => setAdded(false), 2000);
+  };
+
+  const shareUrl = () => `https://взбадрись.рф/product/${encodeURIComponent(product.id)}`;
+  const copyLink = async () => {
+    await navigator.clipboard.writeText(shareUrl());
+    setLinkCopied(true);
+    window.setTimeout(() => setLinkCopied(false), 2000);
+  };
+  const handleShare = async () => {
+    if (navigator.share) {
+      try {
+        await navigator.share({ title: product.name, text: `Посмотрите ${product.name} на «взБАДрись»`, url: shareUrl() });
+        return;
+      } catch (error) {
+        if ((error as DOMException).name === "AbortError") return;
+      }
+    }
+    await copyLink();
   };
 
   const tabs: { key: Tab; label: string }[] = [
@@ -239,6 +258,15 @@ export default function ProductClient({
               Итого: {(activePrice * qty).toLocaleString("ru-RU")} ₽
               {isSeed && selectedVariant && <span className="text-[#aaa] font-normal"> · {selectedVariant.label}</span>}
             </p>
+
+            <div className="flex flex-wrap justify-center gap-2 mb-5">
+              <button onClick={() => void handleShare()} className="inline-flex items-center gap-2 px-4 py-2.5 rounded-full text-sm font-semibold border border-[#f0e8e0] text-[#6b6b6b] hover:border-[#E8845A] hover:text-[#E8845A] hover:bg-[#fff8f5] transition-colors">
+                <Share2 size={16} /> Поделиться
+              </button>
+              <button onClick={() => void copyLink()} className={`inline-flex items-center gap-2 px-4 py-2.5 rounded-full text-sm font-semibold border transition-colors ${linkCopied ? "border-green-500 bg-green-50 text-green-700" : "border-[#f0e8e0] text-[#6b6b6b] hover:border-[#E8845A] hover:text-[#E8845A] hover:bg-[#fff8f5]"}`}>
+                {linkCopied ? <Check size={16} /> : <Copy size={16} />} {linkCopied ? "Ссылка скопирована" : "Скопировать ссылку"}
+              </button>
+            </div>
 
             {/* Качество */}
             <div className="border border-[#f0e8e0] rounded-2xl p-4">

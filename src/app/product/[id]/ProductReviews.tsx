@@ -47,7 +47,7 @@ export default function ProductReviews({ productId }: { productId: string }) {
       <div className="flex gap-1 mb-2">{[1,2,3,4,5].map((star) => <Star key={star} size={22} className={star <= Math.round(average) ? "fill-[#E8845A] text-[#E8845A]" : "text-[#e4ddd8]"} />)}</div>
       <p className="text-sm text-[#6b6b6b]">{reviews.length ? `${reviews.length} ${reviews.length === 1 ? "отзыв" : "отзывов"}` : "Отзывов пока нет"}</p>
       <Link href="/account" className="mt-6 w-full inline-flex justify-center rounded-2xl border border-[#E8845A] text-[#E8845A] font-semibold text-sm px-4 py-3 hover:bg-[#fff1e9]">Написать отзыв</Link>
-      <p className="mt-3 text-xs text-[#8b6b5d] leading-relaxed">Отзывы могут оставить только покупатели из личного кабинета. За отзыв на БАД — 20 бонусов.</p>
+      <p className="mt-3 text-xs text-[#8b6b5d] leading-relaxed">Отзывы могут оставить только покупатели из личного кабинета. За отзыв — 20 бонусов.</p>
     </aside>
     <div>
       <div className="flex rounded-2xl bg-[#f5f2ef] p-1 mb-5 w-fit">
