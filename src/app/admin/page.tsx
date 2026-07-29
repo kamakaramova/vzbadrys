@@ -1130,7 +1130,7 @@ export default function AdminPage() {
               <p className="text-sm text-[#6b6b6b] mt-3 leading-relaxed">Подключите созданное частное приложение Ozon. После подтверждения сайт сможет получать реальные пункты выдачи и создавать отправления только после оплаты заказа.</p>
               <div className="mt-6 rounded-2xl bg-[#fdf8f5] border border-[#f0e8e0] p-4 text-sm text-[#6b6b6b]">
                 <p className="font-semibold text-[#1a1a1a] mb-1">Перед подключением</p>
-                <p>OAuth client_id и client_secret должны быть добавлены в защищённые переменные Vercel. Они не хранятся в коде сайта.</p>
+                <p>Защищённый сервер доставки должен быть настроен и иметь постоянный IP-адрес. Данные Ozon не хранятся в коде сайта.</p>
               </div>
               {ozonConnectError && <p className="mt-4 text-sm text-red-500">{ozonConnectError}</p>}
               <button
