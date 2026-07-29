@@ -82,6 +82,7 @@ create index if not exists email_logs_created_idx
 create table if not exists public.promo_codes (
   id uuid primary key default gen_random_uuid(),
   code text not null unique,
+  owner_name text,
   discount_percent integer not null check (discount_percent between 1 and 90),
   active boolean not null default true,
   max_uses integer check (max_uses is null or max_uses > 0),
@@ -90,6 +91,8 @@ create table if not exists public.promo_codes (
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
+-- Для уже созданной таблицы (PostgreSQL безопасно пропустит повторное добавление).
+alter table public.promo_codes add column if not exists owner_name text;
 alter table public.promo_codes enable row level security;
 create index if not exists promo_codes_active_idx on public.promo_codes (active, expires_at);
 

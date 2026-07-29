@@ -58,23 +58,31 @@ export async function GET(request: NextRequest) {
 
   const user = authData.user;
   const email = authData.user.email!.toLowerCase();
-  const [byUser, byEmail] = await Promise.all([
+  const [byUser, byEmail, unlinked] = await Promise.all([
     db.from("payment_orders").select("*").eq("user_id", user.id),
     db.from("payment_orders").select("*").eq("customer->>email", email),
+    // Старые заказы могли быть сделаны до входа в аккаунт и храниться без user_id.
+    // Сверяем их только с подтверждённой почтой текущего пользователя на сервере.
+    db.from("payment_orders").select("*").is("user_id", null),
   ]);
-  if (byUser.error || byEmail.error) {
+  if (byUser.error || byEmail.error || unlinked.error) {
     return NextResponse.json(
-      { error: byUser.error?.message || byEmail.error?.message },
+      { error: byUser.error?.message || byEmail.error?.message || unlinked.error?.message },
       { status: 500 }
     );
   }
 
+  const matchingUnlinked = (unlinked.data ?? []).filter((row) => {
+    const customer = (row.customer ?? {}) as Record<string, unknown>;
+    return String(customer.email ?? "").trim().toLowerCase() === email;
+  });
+
   const rows = new Map<string, Record<string, unknown>>();
-  for (const row of [...(byUser.data ?? []), ...(byEmail.data ?? [])]) {
+  for (const row of [...(byUser.data ?? []), ...(byEmail.data ?? []), ...matchingUnlinked]) {
     rows.set(String(row.id), row as Record<string, unknown>);
   }
 
-  const emailOrderIds = (byEmail.data ?? [])
+  const emailOrderIds = [...(byEmail.data ?? []), ...matchingUnlinked]
     .filter((row) => !row.user_id)
     .map((row) => row.id);
   if (emailOrderIds.length) {

@@ -33,7 +33,7 @@ function mapOrder(row: Record<string, unknown>) {
   const paymentStatus = String(row.status ?? "");
   const status = ORDER_STATUSES.has(rawOrderStatus)
     ? rawOrderStatus
-    : paymentStatus === "payment_failed" || paymentStatus === "creation_failed"
+    : ["payment_failed", "creation_failed", "payment_processing_error"].includes(paymentStatus)
       ? "cancelled"
       : "processing";
 

@@ -31,7 +31,11 @@ type MarketingContact = {
   consentAt: string;
   source: "registration" | "order" | "registration_and_order";
 };
-type AdminPromo = { id: string; code: string; discount: number; active: boolean; createdAt: string; usageCount: number; expiresAt?: string };
+type AdminPromo = { id: string; code: string; ownerName?: string; discount: number; active: boolean; createdAt: string; usageCount: number; expiresAt?: string };
+type LoyaltyStats = {
+  promos: Array<{ code: string; ownerName: string | null; discountPercent: number; active: boolean; paidOrders: number; revenue: number; recordedUses: number }>;
+  referrals: Array<{ ownerId: string; ownerName: string; ownerEmail: string; code: string; discountPercent: number; paidOrders: number; revenue: number }>;
+};
 
 const STATUS_COLORS: Record<Order["status"], string> = {
   processing: "bg-yellow-100 text-yellow-700",
@@ -131,12 +135,17 @@ export default function AdminPage() {
   const [marketingError, setMarketingError] = useState("");
 
   const [newPromoCode, setNewPromoCode] = useState("");
+  const [newPromoOwner, setNewPromoOwner] = useState("");
   const [newPromoDiscount, setNewPromoDiscount] = useState("");
   const [promoHasExpiry, setPromoHasExpiry] = useState(false);
   const [newPromoExpiry, setNewPromoExpiry] = useState("");
   const [promoFormError, setPromoFormError] = useState("");
   const [promoAdded, setPromoAdded] = useState(false);
   const [dbPromos, setDbPromos] = useState<AdminPromo[]>([]);
+  const [promoLoading, setPromoLoading] = useState(false);
+  const [promoLoadError, setPromoLoadError] = useState("");
+  const [loyaltyStats, setLoyaltyStats] = useState<LoyaltyStats | null>(null);
+  const [loyaltyStatsError, setLoyaltyStatsError] = useState("");
 
   // Состояние редактора товаров
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
@@ -204,13 +213,34 @@ export default function AdminPage() {
 
   const loadPromos = async (password = pw) => {
     if (!password) return;
-    const response = await fetch("/api/admin/promos", { headers: { "x-admin-password": password }, cache: "no-store" });
-    const data = await response.json().catch(() => ({}));
-    if (response.ok && Array.isArray(data.promos)) {
+    setPromoLoading(true);
+    setPromoLoadError("");
+    try {
+      const response = await fetch("/api/admin/promos", { headers: { "x-admin-password": password }, cache: "no-store" });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok || !Array.isArray(data.promos)) throw new Error(data.error || "Не удалось загрузить промокоды");
       setDbPromos(data.promos.map((promo: Record<string, unknown>) => ({
-        id: String(promo.id), code: String(promo.code), discount: Number(promo.discount_percent), active: Boolean(promo.active),
-        createdAt: String(promo.created_at), usageCount: Number(promo.usage_count), expiresAt: promo.expires_at ? String(promo.expires_at) : undefined,
+        id: String(promo.id), code: String(promo.code), ownerName: promo.owner_name ? String(promo.owner_name) : undefined,
+        discount: Number(promo.discount_percent), active: Boolean(promo.active), createdAt: String(promo.created_at),
+        usageCount: Number(promo.usage_count), expiresAt: promo.expires_at ? String(promo.expires_at) : undefined,
       })));
+    } catch (error) {
+      setPromoLoadError(error instanceof Error ? error.message : "Не удалось загрузить промокоды");
+    } finally {
+      setPromoLoading(false);
+    }
+  };
+
+  const loadLoyaltyStats = async (password = pw) => {
+    if (!password) return;
+    setLoyaltyStatsError("");
+    try {
+      const response = await fetch("/api/admin/loyalty-stats", { headers: { "x-admin-password": password }, cache: "no-store" });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok || !Array.isArray(data.promos) || !Array.isArray(data.referrals)) throw new Error(data.error || "Не удалось загрузить статистику");
+      setLoyaltyStats(data as LoyaltyStats);
+    } catch (error) {
+      setLoyaltyStatsError(error instanceof Error ? error.message : "Не удалось загрузить статистику");
     }
   };
 
@@ -267,7 +297,12 @@ export default function AdminPage() {
     }
   }, [authed, tab]);
 
-  useEffect(() => { if (authed && tab === "promos") void loadPromos(); }, [authed, tab]);
+  useEffect(() => {
+    if (authed && tab === "promos") {
+      void loadPromos();
+      void loadLoyaltyStats();
+    }
+  }, [authed, tab]);
 
   // Вход в админку — пароль проверяется на СЕРВЕРЕ, в коде сайта его нет.
   const doLogin = async () => {
@@ -285,6 +320,7 @@ export default function AdminPage() {
         setAdminPassword(pw);
         await loadAdminOrders(pw);
         await loadPromos(pw);
+        await loadLoyaltyStats(pw);
       } else {
         setPwError(true);
       }
@@ -872,7 +908,7 @@ export default function AdminPage() {
             {/* Форма добавления */}
             <div className="bg-white rounded-3xl border border-[#f0e8e0] p-6">
               <h2 className="font-bold mb-5 flex items-center gap-2"><Tag size={16} className="text-[#E8845A]" /> Создать промокод</h2>
-              <div className="flex flex-col sm:flex-row gap-3">
+              <div className="grid sm:grid-cols-2 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_10rem_auto] gap-3">
                 <div className="flex-1">
                   <label className="block text-xs font-semibold text-[#6b6b6b] uppercase tracking-wide mb-1.5">Промокод</label>
                   <input
@@ -880,6 +916,15 @@ export default function AdminPage() {
                     onChange={(e) => { setNewPromoCode(e.target.value.toUpperCase()); setPromoFormError(""); }}
                     placeholder="например: ЛЕТО20"
                     className="w-full px-4 py-3 rounded-2xl border border-[#f0e8e0] text-sm outline-none focus:border-[#E8845A] font-mono uppercase"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-[#6b6b6b] uppercase tracking-wide mb-1.5">Владелец кода</label>
+                  <input
+                    value={newPromoOwner}
+                    onChange={(e) => setNewPromoOwner(e.target.value)}
+                    placeholder="например: Марина / блогер"
+                    className="w-full px-4 py-3 rounded-2xl border border-[#f0e8e0] text-sm outline-none focus:border-[#E8845A]"
                   />
                 </div>
                 <div className="w-full sm:w-40">
@@ -901,10 +946,11 @@ export default function AdminPage() {
                         setPromoFormError("Укажите дату окончания");
                         return;
                       }
-                      const response = await fetch("/api/admin/promos", { method: "POST", headers: { "content-type": "application/json", "x-admin-password": pw }, body: JSON.stringify({ code: newPromoCode, discountPercent: Number(newPromoDiscount), expiresAt: promoHasExpiry ? newPromoExpiry : undefined }) });
+                      const response = await fetch("/api/admin/promos", { method: "POST", headers: { "content-type": "application/json", "x-admin-password": pw }, body: JSON.stringify({ code: newPromoCode, ownerName: newPromoOwner, discountPercent: Number(newPromoDiscount), expiresAt: promoHasExpiry ? newPromoExpiry : undefined }) });
                       const data = await response.json().catch(() => ({}));
                       if (response.ok) {
                         setNewPromoCode("");
+                        setNewPromoOwner("");
                         setNewPromoDiscount("");
                         setNewPromoExpiry("");
                         setPromoHasExpiry(false);
@@ -912,6 +958,7 @@ export default function AdminPage() {
                         setPromoAdded(true);
                         setTimeout(() => setPromoAdded(false), 2000);
                         await loadPromos();
+                        await loadLoyaltyStats();
                       } else {
                         setPromoFormError(data.error ?? "Ошибка");
                       }
@@ -950,15 +997,20 @@ export default function AdminPage() {
                 )}
               </div>
               {promoFormError && <p className="text-xs text-red-400 mt-2">{promoFormError}</p>}
-              <p className="text-xs text-[#aaa] mt-3">Промокод автоматически становится активным и сразу начинает работать в корзине.</p>
+              <p className="text-xs text-[#aaa] mt-3">Промокод автоматически становится активным и сразу начинает работать в корзине. Владелец необязателен, но поможет видеть результат блогера или партнёра.</p>
             </div>
 
             {/* Список промокодов */}
             <div className="bg-white rounded-3xl border border-[#f0e8e0] overflow-hidden">
               <div className="px-6 py-4 border-b border-[#f0e8e0] flex items-center justify-between">
                 <h2 className="font-bold">Все промокоды</h2>
-                <span className="text-xs text-[#aaa]">{promos.length} шт.</span>
+                <div className="flex items-center gap-3">
+                  {promoLoading && <span className="text-xs text-[#aaa]">Обновляем…</span>}
+                  <button onClick={() => { void loadPromos(); void loadLoyaltyStats(); }} className="text-xs font-semibold text-[#E8845A] hover:underline">Обновить</button>
+                  <span className="text-xs text-[#aaa]">{promos.length} шт.</span>
+                </div>
               </div>
+              {promoLoadError && <div className="mx-6 mt-4 rounded-2xl bg-red-50 border border-red-100 px-4 py-3 text-sm text-red-600">Не удалось загрузить промокоды: {promoLoadError}</div>}
               {promos.length === 0 ? (
                 <div className="py-12 text-center text-[#aaa] text-sm">Промокодов нет — создайте первый</div>
               ) : (
@@ -999,6 +1051,7 @@ export default function AdminPage() {
                           )}
                           {!p.expiresAt && <span className="ml-2 text-[#aaa]">· Бессрочный</span>}
                         </p>
+                        {p.ownerName && <p className="text-xs text-[#E8845A] mt-1">Владелец: {p.ownerName}</p>}
                       </div>
                       {/* Скидка */}
                       <div className="text-center flex-shrink-0 w-16">
@@ -1016,6 +1069,42 @@ export default function AdminPage() {
                   ))}
                 </div>
               )}
+            </div>
+
+            <div className="grid xl:grid-cols-2 gap-6">
+              <div className="bg-white rounded-3xl border border-[#f0e8e0] overflow-hidden">
+                <div className="px-6 py-4 border-b border-[#f0e8e0]">
+                  <h2 className="font-bold">Результаты промокодов</h2>
+                  <p className="text-xs text-[#aaa] mt-1">Только оплаченные заказы</p>
+                </div>
+                {loyaltyStatsError ? <p className="p-6 text-sm text-red-500">{loyaltyStatsError}</p> : !loyaltyStats ? <p className="p-6 text-sm text-[#aaa]">Загружаем статистику…</p> : loyaltyStats.promos.length === 0 ? <p className="p-6 text-sm text-[#aaa]">Пока нет созданных промокодов</p> : (
+                  <div className="divide-y divide-[#f5eee8]">
+                    {loyaltyStats.promos.map((promo) => (
+                      <div key={promo.code} className="px-6 py-4 flex items-center gap-4">
+                        <div className="min-w-0 flex-1"><p className="font-mono font-bold">{promo.code}</p><p className="text-xs text-[#6b6b6b] mt-1">{promo.ownerName ? `Владелец: ${promo.ownerName}` : "Без указанного владельца"} · скидка {promo.discountPercent}%</p></div>
+                        <div className="text-right shrink-0"><p className="font-bold">{promo.paidOrders} заказ{promo.paidOrders === 1 ? "" : promo.paidOrders < 5 ? "а" : "ов"}</p><p className="text-xs text-[#aaa]">{Math.round(promo.revenue).toLocaleString("ru-RU")} ₽</p></div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              <div className="bg-white rounded-3xl border border-[#f0e8e0] overflow-hidden">
+                <div className="px-6 py-4 border-b border-[#f0e8e0]">
+                  <h2 className="font-bold">Реферальные коды покупателей</h2>
+                  <p className="text-xs text-[#aaa] mt-1">Кого можно поощрить за приведённых покупателей</p>
+                </div>
+                {loyaltyStatsError ? <p className="p-6 text-sm text-red-500">{loyaltyStatsError}</p> : !loyaltyStats ? <p className="p-6 text-sm text-[#aaa]">Загружаем статистику…</p> : loyaltyStats.referrals.length === 0 ? <p className="p-6 text-sm text-[#aaa]">Оплаченных реферальных заказов пока нет</p> : (
+                  <div className="divide-y divide-[#f5eee8]">
+                    {loyaltyStats.referrals.map((referral) => (
+                      <div key={referral.ownerId} className="px-6 py-4 flex items-center gap-4">
+                        <div className="min-w-0 flex-1"><p className="font-semibold truncate">{referral.ownerName}</p><p className="text-xs text-[#6b6b6b] mt-1 font-mono">{referral.code} · скидка {referral.discountPercent}%</p><p className="text-xs text-[#aaa] truncate">{referral.ownerEmail}</p></div>
+                        <div className="text-right shrink-0"><p className="font-bold">{referral.paidOrders} заказ{referral.paidOrders === 1 ? "" : referral.paidOrders < 5 ? "а" : "ов"}</p><p className="text-xs text-[#aaa]">{Math.round(referral.revenue).toLocaleString("ru-RU")} ₽</p></div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
 
             {/* Подсказка */}
