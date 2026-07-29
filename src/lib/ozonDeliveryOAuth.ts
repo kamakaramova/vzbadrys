@@ -29,6 +29,8 @@ type TokenResponse = {
   refresh_token?: string;
   expires_in?: number;
   scope?: string;
+  error?: string;
+  error_description?: string;
 };
 
 export async function exchangeOzonDeliveryCode(code: string) {
@@ -47,7 +49,13 @@ export async function exchangeOzonDeliveryCode(code: string) {
     cache: "no-store",
   });
   const payload = await response.json().catch(() => ({})) as TokenResponse;
-  if (!response.ok || !payload.access_token) throw new Error("Ozon не подтвердил подключение приложения");
+  if (!response.ok || !payload.access_token) {
+    const reason = [payload.error, payload.error_description]
+      .filter((item): item is string => typeof item === "string" && item.length > 0)
+      .join(": ")
+      .slice(0, 240);
+    throw new Error(reason ? `Ozon OAuth (${response.status}): ${reason}` : `Ozon OAuth вернул ошибку ${response.status}`);
+  }
   return {
     accessToken: payload.access_token,
     refreshToken: payload.refresh_token || null,
