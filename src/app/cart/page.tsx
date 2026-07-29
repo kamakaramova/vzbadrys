@@ -8,6 +8,7 @@ import { useAuthStore } from "@/store/authStore";
 import { Trash2, Tag, ShoppingBag, Check, X, Gift, Percent } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
+import { productImagePaths } from "@/lib/productImages";
 
 export default function CartPage() {
   const router = useRouter();
@@ -34,6 +35,8 @@ export default function CartPage() {
   const freeDeliveryThreshold = 3000;
   const amountToFreeDelivery = Math.max(0, freeDeliveryThreshold - subtotal);
   const freeDeliveryProgress = Math.min(100, (subtotal / freeDeliveryThreshold) * 100);
+  const promoDiscountAmount = Math.round((subtotal * promoDiscount) / 100);
+  const referralDiscountAmount = Math.round((subtotal * referralDiscount) / 100);
 
   const validateCode = async (kind: "promo" | "referral", rawCode: string) => {
     if (!rawCode.trim()) return;
@@ -130,8 +133,9 @@ export default function CartPage() {
               {items.map((item) => (
                 <div key={item.id} className="bg-white rounded-3xl border border-[#f0e8e0] p-5 flex items-center gap-5">
                   {/* Изображение */}
-                  <Link href={`/product/${item.id}`} className="w-20 h-20 bg-[#fdf8f5] rounded-2xl flex items-center justify-center text-4xl flex-shrink-0 hover:scale-105 transition-transform">
-                    {item.category === "seeds" ? "🌱" : "💊"}
+                  <Link href={`/product/${item.id.replace(/-(\d+)g$/, "")}`} className="relative w-20 h-20 bg-[#fdf8f5] rounded-2xl flex items-center justify-center text-4xl flex-shrink-0 overflow-hidden hover:scale-105 transition-transform">
+                    <span aria-hidden="true">{item.category === "seeds" ? "🌱" : "💊"}</span>
+                    <img src={item.image || productImagePaths(item.id.replace(/-(\d+)g$/, ""), 1)[0]} alt={item.name} className="absolute inset-0 h-full w-full object-cover" onError={(event) => { event.currentTarget.remove(); }} />
                   </Link>
 
                   {/* Инфо */}
@@ -289,10 +293,16 @@ export default function CartPage() {
                     <span className="text-[#6b6b6b]">Товары ({items.reduce((s, i) => s + i.quantity, 0)} шт.)</span>
                     <span>{subtotal.toLocaleString("ru-RU")} ₽</span>
                   </div>
-                  {discountAmt > 0 && (
+                  {promoCode && promoDiscountAmount > 0 && (
                     <div className="flex justify-between text-sm">
-                      <span className="text-green-600">Промокод {promoCode}</span>
-                      <span className="text-green-600 font-semibold">−{discountAmt.toLocaleString("ru-RU")} ₽</span>
+                      <span className="text-green-600">Промокод {promoCode} ({promoDiscount}%)</span>
+                      <span className="text-green-600 font-semibold">−{promoDiscountAmount.toLocaleString("ru-RU")} ₽</span>
+                    </div>
+                  )}
+                  {referralCode && referralDiscountAmount > 0 && (
+                    <div className="flex justify-between text-sm">
+                      <span className="text-[#E8845A]">Реферальный код {referralCode} ({referralDiscount}%)</span>
+                      <span className="text-[#E8845A] font-semibold">−{referralDiscountAmount.toLocaleString("ru-RU")} ₽</span>
                     </div>
                   )}
                   <div className="flex justify-between text-sm">

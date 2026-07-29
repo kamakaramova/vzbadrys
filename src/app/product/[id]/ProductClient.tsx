@@ -51,6 +51,7 @@ export default function ProductClient({
         id: selectedVariant ? `${product.id}-${selectedVariant.grams}g` : product.id,
         name: selectedVariant ? `${product.name} ${selectedVariant.label}` : product.name,
         price: activePrice,
+        image: loadedImages[0] || productImagePaths(product.id, 1)[0],
         category: product.category,
         unit: selectedVariant ? selectedVariant.label : product.weight,
       });
@@ -172,11 +173,19 @@ export default function ProductClient({
           {/* Инфо */}
           <div>
             <h1 className="text-2xl md:text-3xl font-bold text-[#1a1a1a] mb-2">{product.name}</h1>
-            <p className="text-sm text-[#aaa] mb-5">
-              {isSeed
-                ? `Фасовки: ${product.weightVariants!.map((v) => v.label).join(" · ")}`
-                : `${product.weight} · ${product.servings} порций`}
-            </p>
+            <div className="flex flex-wrap items-center justify-between gap-3 mb-5">
+              <p className="text-sm text-[#aaa]">
+                {isSeed ? `Фасовки: ${product.weightVariants!.map((v) => v.label).join(" · ")}` : product.weight}
+              </p>
+              <div className="flex flex-wrap gap-2">
+                <button onClick={() => void handleShare()} className="inline-flex items-center gap-2 px-3.5 py-2 rounded-full text-sm font-semibold border border-[#f0e8e0] text-[#6b6b6b] hover:border-[#E8845A] hover:text-[#E8845A] hover:bg-[#fff8f5] transition-colors">
+                  <Share2 size={15} /> Поделиться
+                </button>
+                <button onClick={() => void copyLink()} className={`inline-flex items-center gap-2 px-3.5 py-2 rounded-full text-sm font-semibold border transition-colors ${linkCopied ? "border-green-500 bg-green-50 text-green-700" : "border-[#f0e8e0] text-[#6b6b6b] hover:border-[#E8845A] hover:text-[#E8845A] hover:bg-[#fff8f5]"}`}>
+                  {linkCopied ? <Check size={15} /> : <Copy size={15} />} {linkCopied ? "Скопировано" : "Копировать ссылку"}
+                </button>
+              </div>
+            </div>
 
             {/* Кому подойдёт */}
             <div className="bg-[#fdf8f5] border border-[#f0e8e0] rounded-2xl p-5 mb-5">
@@ -258,15 +267,6 @@ export default function ProductClient({
               Итого: {(activePrice * qty).toLocaleString("ru-RU")} ₽
               {isSeed && selectedVariant && <span className="text-[#aaa] font-normal"> · {selectedVariant.label}</span>}
             </p>
-
-            <div className="flex flex-wrap justify-center gap-2 mb-5">
-              <button onClick={() => void handleShare()} className="inline-flex items-center gap-2 px-4 py-2.5 rounded-full text-sm font-semibold border border-[#f0e8e0] text-[#6b6b6b] hover:border-[#E8845A] hover:text-[#E8845A] hover:bg-[#fff8f5] transition-colors">
-                <Share2 size={16} /> Поделиться
-              </button>
-              <button onClick={() => void copyLink()} className={`inline-flex items-center gap-2 px-4 py-2.5 rounded-full text-sm font-semibold border transition-colors ${linkCopied ? "border-green-500 bg-green-50 text-green-700" : "border-[#f0e8e0] text-[#6b6b6b] hover:border-[#E8845A] hover:text-[#E8845A] hover:bg-[#fff8f5]"}`}>
-                {linkCopied ? <Check size={16} /> : <Copy size={16} />} {linkCopied ? "Ссылка скопирована" : "Скопировать ссылку"}
-              </button>
-            </div>
 
             {/* Качество */}
             <div className="border border-[#f0e8e0] rounded-2xl p-4">

@@ -80,7 +80,12 @@ export const useCartStore = create<CartStore>()(
 
       totalItems: () => get().items.reduce((s, i) => s + i.quantity, 0),
       subtotal: () => get().items.reduce((s, i) => s + i.price * i.quantity, 0),
-      discount: () => Math.round((get().subtotal() * (get().promoDiscount + get().referralDiscount)) / 100),
+      // Округляем каждую скидку отдельно, чтобы итог совпадал с её отображением.
+      discount: () => {
+        const subtotal = get().subtotal();
+        return Math.round((subtotal * get().promoDiscount) / 100)
+          + Math.round((subtotal * get().referralDiscount) / 100);
+      },
       total: () => get().subtotal() - get().discount(),
     }),
     { name: "vzbadrys-cart" }

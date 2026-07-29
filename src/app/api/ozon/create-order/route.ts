@@ -190,7 +190,10 @@ export async function POST(request: NextRequest) {
       return badRequest(error instanceof Error ? error.message : "Не удалось проверить реферальный код");
     }
   }
-  const percentageDiscount = Math.round((subtotal * (promoPercent + referralPercent)) / 100);
+  // Считаем и округляем скидки по отдельности — так сумма на оплате совпадает
+  // с двумя строками в корзине покупателя.
+  const percentageDiscount = Math.round((subtotal * promoPercent) / 100)
+    + Math.round((subtotal * referralPercent) / 100);
   const requestedBonusPoints = Math.max(0, Math.floor(Number(body.bonusPointsToSpend || 0)));
   let bonusSpent = 0;
   if (requestedBonusPoints) {

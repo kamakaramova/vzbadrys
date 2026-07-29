@@ -73,6 +73,8 @@ export default function CheckoutPage() {
 
   const selectedDelivery = deliveryOptions.find((d) => d.id === delivery)!;
   const maxBonusPayment = Math.floor(subtotal * 0.3);
+  const promoDiscountAmount = Math.round((subtotal * promoDiscount) / 100);
+  const referralDiscountAmount = Math.round((subtotal * referralDiscount) / 100);
   const allowedBonusPayment = Math.min(bonusPointsToSpend, maxBonusPayment, user?.bonusPoints || 0);
   const finalTotal = Math.max(0, total - allowedBonusPayment) + selectedDelivery.price;
 
@@ -357,10 +359,16 @@ export default function CheckoutPage() {
                     <span className="text-[#6b6b6b]">Товары</span>
                     <span>{subtotal.toLocaleString("ru-RU")} ₽</span>
                   </div>
-                  {discountAmt > 0 && (
+                  {promoCode && promoDiscountAmount > 0 && (
                     <div className="flex justify-between text-sm">
-                      <span className="text-green-600">Скидка {promoCode && `${promoCode} (${promoDiscount}%)`}{promoCode && referralCode && " + "}{referralCode && `${referralCode} (${referralDiscount}%)`}</span>
-                      <span className="text-green-600 font-semibold">−{discountAmt.toLocaleString("ru-RU")} ₽</span>
+                      <span className="text-green-600">Промокод {promoCode} ({promoDiscount}%)</span>
+                      <span className="text-green-600 font-semibold">−{promoDiscountAmount.toLocaleString("ru-RU")} ₽</span>
+                    </div>
+                  )}
+                  {referralCode && referralDiscountAmount > 0 && (
+                    <div className="flex justify-between text-sm">
+                      <span className="text-[#E8845A]">Реферальный код {referralCode} ({referralDiscount}%)</span>
+                      <span className="text-[#E8845A] font-semibold">−{referralDiscountAmount.toLocaleString("ru-RU")} ₽</span>
                     </div>
                   )}
                   {allowedBonusPayment > 0 && (
