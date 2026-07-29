@@ -5,12 +5,12 @@ import {
   BarChart2, Users, ShoppingBag, TrendingUp,
   Search, Download, ChevronUp, ChevronDown,
   X, Check, Package, Eye, Tag, Trash2, ToggleLeft, ToggleRight,
-  Plus, Edit2, ImageIcon, Mail, Send, UserPlus, RefreshCw,
+  Plus, Edit2, ImageIcon, Mail, Send, UserPlus, RefreshCw, Link2,
 } from "lucide-react";
 import { useProductStore } from "@/store/productStore";
 import { Product, WeightVariant } from "@/lib/products";
 
-type Tab = "dashboard" | "orders" | "customers" | "promos" | "products" | "emails";
+type Tab = "dashboard" | "orders" | "customers" | "promos" | "products" | "emails" | "integrations";
 type SortField = "name" | "email" | "totalSpent" | "ordersCount" | "avgCheck" | "lastOrder" | "createdAt";
 type SortDir = "asc" | "desc";
 type OrderSortField = "date" | "total" | "status" | "userName";
@@ -133,6 +133,8 @@ export default function AdminPage() {
   const [marketingContacts, setMarketingContacts] = useState<MarketingContact[]>([]);
   const [marketingLoading, setMarketingLoading] = useState(false);
   const [marketingError, setMarketingError] = useState("");
+  const [ozonConnecting, setOzonConnecting] = useState(false);
+  const [ozonConnectError, setOzonConnectError] = useState("");
 
   const [newPromoCode, setNewPromoCode] = useState("");
   const [newPromoOwner, setNewPromoOwner] = useState("");
@@ -554,8 +556,8 @@ export default function AdminPage() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Табы */}
         <div className="flex gap-2 mb-8 bg-[#f5f0ec] p-1.5 rounded-2xl w-fit">
-          {(["dashboard", "orders", "customers", "promos", "products", "emails"] as const).map((id) => {
-            const labels: Record<typeof id, string> = { dashboard: "Дашборд", orders: "Заказы", customers: "Покупатели", promos: "Промокоды", products: "Товары", emails: "Письма" };
+          {(["dashboard", "orders", "customers", "promos", "products", "emails", "integrations"] as const).map((id) => {
+            const labels: Record<typeof id, string> = { dashboard: "Дашборд", orders: "Заказы", customers: "Покупатели", promos: "Промокоды", products: "Товары", emails: "Письма", integrations: "Интеграции" };
             const icons: Record<typeof id, React.ReactNode> = {
               dashboard: <BarChart2 size={15} />,
               orders: <ShoppingBag size={15} />,
@@ -563,6 +565,7 @@ export default function AdminPage() {
               promos: <Tag size={15} />,
               products: <Package size={15} />,
               emails: <Mail size={15} />,
+              integrations: <Link2 size={15} />,
             };
             return (
               <button
@@ -1114,6 +1117,40 @@ export default function AdminPage() {
               <p>· Отключённый промокод перестаёт работать мгновенно, код никуда не исчезает</p>
               <p>· Реферальные коды покупателей (из личного кабинета) дают фиксированную скидку 5%</p>
               <p>· Один промокод можно совмещать с одним реферальным кодом — скидки суммируются</p>
+            </div>
+          </div>
+        )}
+
+        {/* ИНТЕГРАЦИИ */}
+        {tab === "integrations" && (
+          <div className="max-w-2xl">
+            <div className="bg-white rounded-3xl border border-[#f0e8e0] p-6 sm:p-8">
+              <div className="w-11 h-11 rounded-2xl bg-[#eef5ff] text-[#2767d8] flex items-center justify-center mb-5"><Link2 size={21} /></div>
+              <h2 className="text-xl font-bold">Ozon Доставка</h2>
+              <p className="text-sm text-[#6b6b6b] mt-3 leading-relaxed">Подключите созданное частное приложение Ozon. После подтверждения сайт сможет получать реальные пункты выдачи и создавать отправления только после оплаты заказа.</p>
+              <div className="mt-6 rounded-2xl bg-[#fdf8f5] border border-[#f0e8e0] p-4 text-sm text-[#6b6b6b]">
+                <p className="font-semibold text-[#1a1a1a] mb-1">Перед подключением</p>
+                <p>OAuth client_id и client_secret должны быть добавлены в защищённые переменные Vercel. Они не хранятся в коде сайта.</p>
+              </div>
+              {ozonConnectError && <p className="mt-4 text-sm text-red-500">{ozonConnectError}</p>}
+              <button
+                disabled={ozonConnecting}
+                onClick={async () => {
+                  setOzonConnecting(true); setOzonConnectError("");
+                  try {
+                    const response = await fetch("/api/admin/ozon-delivery/oauth/start", { method: "POST", headers: { "x-admin-password": pw }, cache: "no-store" });
+                    const payload = await response.json().catch(() => ({}));
+                    if (!response.ok || typeof payload.authorizeUrl !== "string") throw new Error(payload.error || "Не удалось начать подключение");
+                    window.location.assign(payload.authorizeUrl);
+                  } catch (error) {
+                    setOzonConnectError(error instanceof Error ? error.message : "Не удалось начать подключение");
+                    setOzonConnecting(false);
+                  }
+                }}
+                className="mt-6 inline-flex items-center gap-2 bg-[#2767d8] hover:bg-[#1e56b9] disabled:opacity-60 text-white font-semibold px-6 py-3 rounded-2xl transition-colors"
+              >
+                <Link2 size={16} /> {ozonConnecting ? "Открываем Ozon…" : "Подключить Ozon Доставку"}
+              </button>
             </div>
           </div>
         )}

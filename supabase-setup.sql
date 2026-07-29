@@ -74,6 +74,18 @@ create unique index if not exists email_logs_sent_dedupe_idx
 create index if not exists email_logs_created_idx
   on public.email_logs (created_at desc);
 
+-- OAuth-токены Ozon Доставки. Чтение и запись — только сервером;
+-- из браузера доступ к ним невозможен.
+create table if not exists public.oauth_connections (
+  provider text primary key,
+  access_token text not null,
+  refresh_token text,
+  expires_at timestamptz,
+  scope text,
+  updated_at timestamptz not null default now()
+);
+alter table public.oauth_connections enable row level security;
+
 -- ============================================================
 -- Программа лояльности: промокоды, рефералы, бонусы, отзывы
 -- ============================================================
