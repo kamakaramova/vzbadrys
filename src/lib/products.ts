@@ -42,7 +42,15 @@ export const products: Product[] = [
     category: "bads",
     price: 1490,
     oldPrice: 1890,
-    images: ["/products/magniy-1.jpg", "/products/magniy-2.jpg"],
+    images: [
+      "/products/magniy-bisglitinat/1.png",
+      "/products/magniy-bisglitinat/2.png",
+      "/products/magniy-bisglitinat/3.png",
+      "/products/magniy-bisglitinat/4.png",
+      "/products/magniy-bisglitinat/5.png",
+      "/products/magniy-bisglitinat/6.png",
+      "/products/magniy-bisglitinat/7.png",
+    ],
     badge: "Хит",
     description:
       "Магний участвует в более чем 300 биохимических процессах — и при этом это один из самых распространённых дефицитов. Не потому что мы едим плохо, а потому что его буквально вымывает: стресс, кофе, интенсивные тренировки, нарушенный сон. Организм расходует магний первым — и восполняет его последним.",

@@ -70,7 +70,13 @@ async function exchangeCode(code) {
     body,
   });
   const payload = await response.json().catch(() => ({}));
-  if (!response.ok || typeof payload.access_token !== "string") throw new Error(`Ozon token exchange failed: ${response.status}`);
+  if (!response.ok || typeof payload.access_token !== "string") {
+    const detail = [payload.error, payload.error_description, payload.message, payload.incidentId]
+      .filter((item) => typeof item === "string" && item.length > 0)
+      .join(" | ")
+      .slice(0, 500);
+    throw new Error(`Ozon token exchange failed: ${response.status}${detail ? `: ${detail}` : ""}`);
+  }
   return {
     accessToken: payload.access_token,
     refreshToken: typeof payload.refresh_token === "string" ? payload.refresh_token : null,
