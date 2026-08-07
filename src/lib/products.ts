@@ -202,7 +202,7 @@ export const products: Product[] = [
     category: "bads",
     price: 990,
     oldPrice: 1290,
-    images: ["/products/selen-tsink-1.jpg"],
+    images: ["/products/selen-tsink/1.png"],
     badge: "Скидка",
     description:
       "Цинк и селен — два микроэлемента, которые организм не синтезирует сам и не накапливает впрок. Их нужно получать регулярно. И именно их дефицит чаще всего стоит за хроническими симптомами, которые сложно связать с питанием.",
