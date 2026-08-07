@@ -9,6 +9,8 @@ export interface WeightVariant {
 
 export interface Product {
   id: string;
+  // Постоянный артикул продавца: связывает карточку сайта, склад и Ozon.
+  sku?: string;
   name: string;
   shortName: string;
   category: "bads" | "seeds";
@@ -37,6 +39,7 @@ export interface Product {
 export const products: Product[] = [
   {
     id: "magniy-bisglitinat",
+    sku: "VZB-MGB-60",
     name: "Магний Бисглицинат",
     shortName: "Магний Бисглицинат",
     category: "bads",
@@ -121,6 +124,7 @@ export const products: Product[] = [
   },
   {
     id: "magniy-citrat-b6",
+    sku: "VZB-MGC-B6-60",
     name: "Магний Цитрат + B6",
     shortName: "Магний Цитрат + B6",
     category: "bads",
@@ -192,6 +196,7 @@ export const products: Product[] = [
   },
   {
     id: "selen-tsink",
+    sku: "VZB-ZNSE-90",
     name: "Цинк + Селен",
     shortName: "Цинк + Селен",
     category: "bads",

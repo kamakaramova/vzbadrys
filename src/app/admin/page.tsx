@@ -1767,6 +1767,16 @@ export default function AdminPage() {
                   className="w-full px-4 py-3 rounded-2xl border border-[#f0e8e0] text-sm outline-none focus:border-[#E8845A]"
                 />
               </div>
+              <div>
+                <label className="block text-xs font-semibold text-[#6b6b6b] uppercase tracking-wide mb-1.5">Артикул</label>
+                <input
+                  value={editingProduct.sku || ""}
+                  onChange={(e) => setEditingProduct({ ...editingProduct, sku: e.target.value.trim().toUpperCase() || undefined })}
+                  placeholder="Например, VZB-MGB-60"
+                  className="w-full px-4 py-3 rounded-2xl border border-[#f0e8e0] text-sm outline-none focus:border-[#E8845A]"
+                />
+                <p className="mt-1.5 text-xs text-[#aaa]">Должен совпадать с артикулом в Ozon и не меняться для этого товара.</p>
+              </div>
               {editingProduct.category === "bads" && (() => {
                 const regular = editingProduct.oldPrice ?? editingProduct.price;
                 const discount = editingProduct.discountPercent ?? 0;

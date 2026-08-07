@@ -55,7 +55,18 @@ export const useProductStore = create<ProductStore>((set, get) => ({
     if (isSupabaseConfigured && supabase) {
       const { data, error } = await supabase.from("products").select("data");
       if (!error && data && data.length > 0) {
-        set({ products: data.map((r) => r.data as Product), initialized: true, loading: false });
+        set({
+          products: data.map((r) => {
+            const savedProduct = r.data as Product;
+            const catalogueProduct = defaultProducts.find((product) => product.id === savedProduct.id);
+
+            // Старые записи в Supabase были созданы до появления артикулов.
+            // Берём новый артикул из каталога, не затирая остальные изменения администратора.
+            return { ...savedProduct, sku: savedProduct.sku || catalogueProduct?.sku };
+          }),
+          initialized: true,
+          loading: false,
+        });
         return;
       }
     }
