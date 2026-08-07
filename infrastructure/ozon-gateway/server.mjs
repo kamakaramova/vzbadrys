@@ -67,22 +67,44 @@ async function exchangeCode(code) {
   });
   const response = await fetch(TOKEN_URL, {
     method: "POST",
-    headers: { "content-type": "application/x-www-form-urlencoded" },
+    headers: {
+      "content-type": "application/x-www-form-urlencoded",
+      accept: "application/json",
+    },
     body,
   });
-  const payload = await response.json().catch(() => ({}));
-  if (!response.ok || typeof payload.access_token !== "string") {
+  const rawPayload = await response.text();
+  let payload = {};
+  try {
+    payload = JSON.parse(rawPayload);
+  } catch {
+    // Ни содержимое, ни токены в журнал не записываем: достаточно статуса и типа ответа.
+  }
+
+  // Ozon использует OAuth-поля в snake_case. Запасные варианты оставлены для
+  // совместимости с переходным форматом API, не меняя данные в самом токене.
+  const tokenPayload = payload && typeof payload === "object" ? payload : {};
+  const nestedPayload = tokenPayload.data && typeof tokenPayload.data === "object" ? tokenPayload.data : {};
+  const accessToken = tokenPayload.access_token || tokenPayload.accessToken || nestedPayload.access_token || nestedPayload.accessToken;
+  const refreshToken = tokenPayload.refresh_token || tokenPayload.refreshToken || nestedPayload.refresh_token || nestedPayload.refreshToken;
+  const expiresIn = tokenPayload.expires_in || tokenPayload.expiresIn || nestedPayload.expires_in || nestedPayload.expiresIn;
+  const scope = tokenPayload.scope || nestedPayload.scope;
+
+  if (!response.ok || typeof accessToken !== "string") {
     const detail = [payload.error, payload.error_description, payload.message, payload.incidentId]
       .filter((item) => typeof item === "string" && item.length > 0)
       .join(" | ")
       .slice(0, 500);
-    throw new Error(`Ozon token exchange failed: ${response.status}${detail ? `: ${detail}` : ""}`);
+    const payloadKeys = Object.keys(tokenPayload).sort().join(",") || "no-json-fields";
+    const nestedKeys = Object.keys(nestedPayload).sort().join(",");
+    const responseType = response.headers.get("content-type") || "unknown";
+    throw new Error(`Ozon token exchange failed: ${response.status}${detail ? `: ${detail}` : ""}; content-type=${responseType}; fields=${payloadKeys}${nestedKeys ? `; data-fields=${nestedKeys}` : ""}; body-length=${rawPayload.length}`);
   }
   return {
-    accessToken: payload.access_token,
-    refreshToken: typeof payload.refresh_token === "string" ? payload.refresh_token : null,
-    expiresAt: typeof payload.expires_in === "number" ? new Date(Date.now() + payload.expires_in * 1000).toISOString() : null,
-    scope: typeof payload.scope === "string" ? payload.scope : null,
+    accessToken,
+    refreshToken: typeof refreshToken === "string" ? refreshToken : null,
+    expiresAt: typeof expiresIn === "number" ? new Date(Date.now() + expiresIn * 1000).toISOString() : null,
+    scope: typeof scope === "string" ? scope : null,
     updatedAt: new Date().toISOString(),
   };
 }
