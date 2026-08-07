@@ -1,7 +1,8 @@
 import "server-only";
 
 const AUTHORIZATION_URL = "https://seller.ozon.ru/app/appstore/oauth/authorize";
-const TOKEN_URL = "https://api-seller.ozon.ru/oauth/token";
+// OAuth-токены для частных приложений выдаёт отдельный API Ozon.
+const TOKEN_URL = "https://xapi.ozon.ru/oauth/token";
 const CALLBACK_PATH = "/api/ozon/delivery/oauth/callback";
 
 export function getOzonDeliveryOAuthConfig() {
