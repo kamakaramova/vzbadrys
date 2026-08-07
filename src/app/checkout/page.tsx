@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
@@ -12,6 +12,15 @@ import { productImagePaths } from "@/lib/productImages";
 import { Check, MapPin, Package, CreditCard, MessageSquare } from "lucide-react";
 
 type DeliveryMethod = "pickup" | "sdek_pvz" | "yandex_pvz" | "ozon_pvz" | "pochta";
+type PublicDeliverySettings = {
+  enabled: Record<DeliveryMethod, boolean>;
+  pochtaWidgetId: number;
+};
+
+const DEFAULT_DELIVERY_SETTINGS: PublicDeliverySettings = {
+  enabled: { pickup: true, sdek_pvz: true, yandex_pvz: true, ozon_pvz: true, pochta: true },
+  pochtaWidgetId: 62722,
+};
 
 // Приводит ввод к российскому формату: 8… или 9… автоматически становятся +7…
 function formatPhone(input: string): string {
@@ -63,16 +72,34 @@ export default function CheckoutPage() {
   const [marketingAccepted, setMarketingAccepted] = useState(false);
   const [showPochtaMap, setShowPochtaMap] = useState(false);
   const [pochtaPoint, setPochtaPoint] = useState<PochtaPoint | null>(null);
+  const [deliverySettings, setDeliverySettings] = useState<PublicDeliverySettings>(DEFAULT_DELIVERY_SETTINGS);
 
-  const deliveryOptions: { id: DeliveryMethod; label: string; desc: string; price: number; days: string; isPvz: boolean }[] = [
+  useEffect(() => {
+    fetch("/api/delivery-settings", { cache: "no-store" })
+      .then((response) => response.ok ? response.json() : null)
+      .then((data) => {
+        if (data?.enabled && typeof data.pochtaWidgetId === "number") setDeliverySettings(data as PublicDeliverySettings);
+      })
+      .catch(() => undefined);
+  }, []);
+
+  const allDeliveryOptions: { id: DeliveryMethod; label: string; desc: string; price: number; days: string; isPvz: boolean }[] = [
     { id: "pickup", label: "Самовывоз — Казань", desc: "г. Казань, ул. Айдарова, 15", price: 0, days: "после готовности заказа", isPvz: false },
     { id: "sdek_pvz", label: "СДЭК — Пункт выдачи", desc: "Укажите адрес удобного ПВЗ СДЭК", price: subtotal >= 3000 ? 0 : 300, days: "2–5 дней", isPvz: true },
     { id: "yandex_pvz", label: "Яндекс — Пункт выдачи", desc: "Укажите адрес удобного ПВЗ Яндекс", price: subtotal >= 3000 ? 0 : 300, days: "3–6 дней", isPvz: true },
     { id: "ozon_pvz", label: "Ozon — Пункт выдачи", desc: "Укажите адрес удобного ПВЗ Ozon", price: subtotal >= 3000 ? 0 : 250, days: "3–7 дней", isPvz: true },
     { id: "pochta", label: "Почта России", desc: "В любой населённый пункт России", price: subtotal >= 3000 ? 0 : 250, days: "5–14 дней", isPvz: false },
   ];
+  const deliveryOptions = allDeliveryOptions.filter((option) => deliverySettings.enabled[option.id]);
 
-  const selectedDelivery = deliveryOptions.find((d) => d.id === delivery)!;
+  useEffect(() => {
+    if (!deliveryOptions.some((option) => option.id === delivery)) {
+      setDelivery(deliveryOptions[0]?.id ?? "pickup");
+      setPochtaPoint(null);
+    }
+  }, [delivery, deliveryOptions]);
+
+  const selectedDelivery = deliveryOptions.find((d) => d.id === delivery) ?? allDeliveryOptions[0];
   const deliveryPriceKopecks = delivery === "pochta"
     ? (subtotal >= 3000 ? 0 : pochtaPoint?.deliveryPriceKopecks)
     : selectedDelivery.price * 100;
@@ -491,7 +518,8 @@ export default function CheckoutPage() {
       <Footer />
 
       {showPochtaMap && (
-        <PochtaWidget
+                      <PochtaWidget
+                        widgetId={deliverySettings.pochtaWidgetId}
           onSelect={(p) => {
             setPochtaPoint(p);
             setForm((f) => ({ ...f, city: p.city || f.city, address: p.address, zip: p.index || f.zip }));

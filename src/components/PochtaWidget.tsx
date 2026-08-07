@@ -22,7 +22,6 @@ declare global {
   }
 }
 
-const WIDGET_ID = 62722;
 const WIDGET_SRC = "https://widget.pochta.ru/map/widget/widget.js";
 
 function getDeliveryDescription(value: unknown) {
@@ -37,15 +36,17 @@ function getDeliveryDescription(value: unknown) {
 export default function PochtaWidget({
   onSelect,
   onClose,
+  widgetId,
 }: {
   onSelect: (p: PochtaPoint) => void;
   onClose: () => void;
+  widgetId: number;
 }) {
   useEffect(() => {
     const start = () => {
       if (!window.ecomStartWidget) return;
       window.ecomStartWidget({
-        id: WIDGET_ID,
+        id: widgetId,
         containerId: "ecom-widget",
         callbackFunction: (data) => {
           const d = data as Record<string, unknown>;
@@ -92,7 +93,7 @@ export default function PochtaWidget({
     s.async = true;
     s.onload = start;
     document.body.appendChild(s);
-  }, [onSelect]);
+  }, [onSelect, widgetId]);
 
   return (
     <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4" onClick={onClose}>

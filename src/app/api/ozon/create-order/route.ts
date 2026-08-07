@@ -10,6 +10,7 @@ import {
 } from "@/lib/ozonAcquiring";
 import { findReferralOwner, getAuthenticatedUser, getBonusBalance, normalizeCode, REFERRAL_DISCOUNT_PERCENT } from "@/lib/loyalty";
 import { getServerSupabase } from "@/lib/supabaseServer";
+import { getDeliverySettings } from "@/lib/deliverySettings";
 
 export const runtime = "nodejs";
 
@@ -103,6 +104,8 @@ export async function POST(request: NextRequest) {
   if ((customer.phone || "").replace(/\D/g, "").length !== 11) return badRequest("Проверьте номер телефона");
   if (!emailPattern.test(customer.email?.trim() || "")) return badRequest("Проверьте email");
   if (!delivery?.method || !(delivery.method in DELIVERY_PRICES)) return badRequest("Выберите способ доставки");
+  const deliverySettings = await getDeliverySettings();
+  if (!deliverySettings.enabled[delivery.method]) return badRequest("Этот способ доставки временно недоступен");
   if (!delivery.city?.trim() || !delivery.address?.trim()) return badRequest("Укажите адрес доставки или ПВЗ");
 
   const customerName = customer.name.trim();

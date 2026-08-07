@@ -122,10 +122,14 @@ export async function PATCH(request: NextRequest) {
 
   let emailResult: "sent" | "skipped" | "failed" = "skipped";
   const previousOrderStatus = String(delivery.orderStatus ?? "processing");
+  const previousTrackNumber = String(delivery.trackNumber ?? "").trim();
+  const nextTrackNumber = body.trackNumber?.trim() || "";
   const emailStatuses = new Set(["confirmed", "shipped", "delivered", "cancelled"]);
+  const shouldNotify = body.status !== previousOrderStatus
+    || (body.status === "shipped" && Boolean(nextTrackNumber) && nextTrackNumber !== previousTrackNumber);
   if (
     current.status === "paid" &&
-    body.status !== previousOrderStatus &&
+    shouldNotify &&
     emailStatuses.has(body.status)
   ) {
     const updatedOrder = {
@@ -148,7 +152,11 @@ export async function PATCH(request: NextRequest) {
           html: message.html,
           kind: `order_${emailStatus}` as EmailKind,
           orderId: body.orderId,
-          dedupeKey: `${body.orderId}:order_${emailStatus}`,
+          // Новый трек-номер — это новое полезное уведомление, его не нужно
+          // блокировать прежней записью о статусе «отправлен».
+          dedupeKey: body.status === "shipped" && nextTrackNumber
+            ? `${body.orderId}:order_shipped:${nextTrackNumber}`
+            : `${body.orderId}:order_${emailStatus}`,
         });
         emailResult = "sent";
       } catch {

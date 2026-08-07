@@ -21,11 +21,14 @@ export async function GET(request: NextRequest) {
   const db = getServerSupabase();
   if (!db) return NextResponse.json({ error: "not_configured" }, { status: 503 });
 
-  const { data, error } = await db
+  const orderId = request.nextUrl.searchParams.get("orderId")?.trim();
+  let query = db
     .from("email_logs")
     .select("id,recipient,subject,kind,order_id,status,error,created_at")
     .order("created_at", { ascending: false })
     .limit(100);
+  if (orderId) query = query.eq("order_id", orderId);
+  const { data, error } = await query;
   if (error) {
     const missing = error.message.toLowerCase().includes("email_logs");
     return NextResponse.json(

@@ -36,6 +36,14 @@ type LoyaltyStats = {
   promos: Array<{ code: string; ownerName: string | null; discountPercent: number; active: boolean; paidOrders: number; revenue: number; recordedUses: number }>;
   referrals: Array<{ ownerId: string; ownerName: string; ownerEmail: string; code: string; discountPercent: number; paidOrders: number; revenue: number }>;
 };
+type DeliverySettings = {
+  enabled: { pickup: boolean; sdek_pvz: boolean; yandex_pvz: boolean; ozon_pvz: boolean; pochta: boolean };
+  pochtaWidgetId: number;
+};
+const DEFAULT_DELIVERY_SETTINGS: DeliverySettings = {
+  enabled: { pickup: true, sdek_pvz: true, yandex_pvz: true, ozon_pvz: true, pochta: true },
+  pochtaWidgetId: 62722,
+};
 
 const STATUS_COLORS: Record<Order["status"], string> = {
   processing: "bg-yellow-100 text-yellow-700",
@@ -136,6 +144,11 @@ export default function AdminPage() {
   const [marketingError, setMarketingError] = useState("");
   const [ozonConnecting, setOzonConnecting] = useState(false);
   const [ozonConnectError, setOzonConnectError] = useState("");
+  const [deliverySettings, setDeliverySettings] = useState<DeliverySettings>(DEFAULT_DELIVERY_SETTINGS);
+  const [deliverySettingsLoading, setDeliverySettingsLoading] = useState(false);
+  const [deliverySettingsMessage, setDeliverySettingsMessage] = useState("");
+  const [orderEmailLogs, setOrderEmailLogs] = useState<EmailLog[]>([]);
+  const [orderEmailLogsLoading, setOrderEmailLogsLoading] = useState(false);
 
   const [newPromoCode, setNewPromoCode] = useState("");
   const [newPromoOwner, setNewPromoOwner] = useState("");
@@ -317,6 +330,55 @@ export default function AdminPage() {
     }
   };
 
+  const loadDeliverySettings = async () => {
+    if (!pw) return;
+    setDeliverySettingsLoading(true);
+    setDeliverySettingsMessage("");
+    try {
+      const response = await fetch("/api/admin/delivery-settings", { headers: { "x-admin-password": pw }, cache: "no-store" });
+      const data = await response.json().catch(() => null);
+      if (!response.ok) throw new Error(data?.error === "delivery_settings_not_created" ? "Нужно один раз добавить таблицу настроек доставки в Supabase." : data?.error || "Не удалось загрузить настройки");
+      setDeliverySettings(data as DeliverySettings);
+    } catch (error) {
+      setDeliverySettingsMessage(error instanceof Error ? error.message : "Не удалось загрузить настройки");
+    } finally {
+      setDeliverySettingsLoading(false);
+    }
+  };
+
+  const saveDeliverySettings = async () => {
+    if (!pw) return;
+    setDeliverySettingsLoading(true);
+    setDeliverySettingsMessage("");
+    try {
+      const response = await fetch("/api/admin/delivery-settings", {
+        method: "PATCH",
+        headers: { "content-type": "application/json", "x-admin-password": pw },
+        body: JSON.stringify(deliverySettings),
+      });
+      const data = await response.json().catch(() => null);
+      if (!response.ok) throw new Error(data?.error === "delivery_settings_not_created" ? "Нужно один раз добавить таблицу настроек доставки в Supabase." : data?.error || "Не удалось сохранить настройки");
+      setDeliverySettings(data as DeliverySettings);
+      setDeliverySettingsMessage("Настройки доставки сохранены. Покупатели увидят изменения сразу.");
+    } catch (error) {
+      setDeliverySettingsMessage(error instanceof Error ? error.message : "Не удалось сохранить настройки");
+    } finally {
+      setDeliverySettingsLoading(false);
+    }
+  };
+
+  const loadOrderEmailLogs = async (orderId: string) => {
+    if (!pw) return;
+    setOrderEmailLogsLoading(true);
+    try {
+      const response = await fetch(`/api/admin/emails?orderId=${encodeURIComponent(orderId)}`, { headers: { "x-admin-password": pw }, cache: "no-store" });
+      const data = await response.json().catch(() => ({}));
+      setOrderEmailLogs(response.ok && Array.isArray(data.logs) ? data.logs as EmailLog[] : []);
+    } finally {
+      setOrderEmailLogsLoading(false);
+    }
+  };
+
   useEffect(() => {
     if (authed && tab === "emails") {
       const timer = window.setTimeout(() => {
@@ -332,6 +394,10 @@ export default function AdminPage() {
       void loadPromos();
       void loadLoyaltyStats();
     }
+  }, [authed, tab]);
+
+  useEffect(() => {
+    if (authed && tab === "integrations") void loadDeliverySettings();
   }, [authed, tab]);
 
   // Вход в админку — пароль проверяется на СЕРВЕРЕ, в коде сайта его нет.
@@ -836,7 +902,7 @@ export default function AdminPage() {
                         <td className="px-5 py-3 font-bold whitespace-nowrap">{o.total.toLocaleString("ru-RU")} ₽</td>
                         <td className="px-5 py-3">
                           <button
-                            onClick={() => { setSelectedOrder(o); setEditStatus(o.status); setEditTrack(o.trackNumber ?? ""); setStatusSaved(false); }}
+                            onClick={() => { setSelectedOrder(o); setEditStatus(o.status); setEditTrack(o.trackNumber ?? ""); setStatusSaved(false); setOrderEmailLogs([]); void loadOrderEmailLogs(o.id); }}
                             className="flex items-center gap-1 text-xs text-[#E8845A] hover:underline font-semibold"
                           >
                             <Eye size={13} /> Открыть
@@ -1156,7 +1222,39 @@ export default function AdminPage() {
 
         {/* ИНТЕГРАЦИИ */}
         {tab === "integrations" && (
-          <div className="max-w-2xl">
+          <div className="max-w-2xl space-y-6">
+            <div className="bg-white rounded-3xl border border-[#f0e8e0] p-6 sm:p-8">
+              <div className="w-11 h-11 rounded-2xl bg-[#fff3ec] text-[#E8845A] flex items-center justify-center mb-5"><Package size={21} /></div>
+              <h2 className="text-xl font-bold">Способы доставки</h2>
+              <p className="text-sm text-[#6b6b6b] mt-2 leading-relaxed">Включайте только доступные покупателям способы. Выключенный способ сразу исчезнет при оформлении заказа, но сохранится в старых заказах.</p>
+              <div className="mt-6 space-y-3">
+                {[
+                  ["pickup", "Самовывоз — Казань", "Бесплатно"],
+                  ["sdek_pvz", "СДЭК — пункт выдачи", "Фиксированная цена"],
+                  ["yandex_pvz", "Яндекс — пункт выдачи", "Фиксированная цена"],
+                  ["ozon_pvz", "Ozon — пункт выдачи", "Фиксированная цена"],
+                  ["pochta", "Почта России", "По тарифу выбранного отделения"],
+                ].map(([id, name, note]) => {
+                  const method = id as keyof DeliverySettings["enabled"];
+                  return (
+                    <label key={id} className="flex items-center justify-between gap-4 rounded-2xl border border-[#f0e8e0] px-4 py-3 cursor-pointer">
+                      <span><span className="block font-semibold text-sm">{name}</span><span className="block text-xs text-[#aaa] mt-0.5">{note}</span></span>
+                      <input type="checkbox" checked={deliverySettings.enabled[method]} onChange={(event) => setDeliverySettings((current) => ({ ...current, enabled: { ...current.enabled, [method]: event.target.checked } }))} className="h-5 w-5 accent-[#E8845A]" />
+                    </label>
+                  );
+                })}
+              </div>
+              <div className="mt-6 pt-6 border-t border-[#f0e8e0]">
+                <label className="block text-sm font-semibold mb-1.5">ID виджета Почты России</label>
+                <p className="text-xs text-[#6b6b6b] mb-3">Только число из кабинета EKOM. Скрипт или ключи сюда вводить не нужно.</p>
+                <input type="number" min="1" value={deliverySettings.pochtaWidgetId} onChange={(event) => setDeliverySettings((current) => ({ ...current, pochtaWidgetId: Number(event.target.value) }))} className="w-full max-w-xs px-4 py-3 rounded-2xl border border-[#f0e8e0] text-sm outline-none focus:border-[#E8845A]" />
+              </div>
+              {deliverySettingsMessage && <p className={`mt-4 text-sm ${deliverySettingsMessage.includes("сохранены") ? "text-green-700" : "text-red-500"}`}>{deliverySettingsMessage}</p>}
+              <button disabled={deliverySettingsLoading} onClick={() => void saveDeliverySettings()} className="mt-5 inline-flex items-center gap-2 bg-[#E8845A] hover:bg-[#d4703f] disabled:opacity-60 text-white font-semibold px-6 py-3 rounded-2xl transition-colors">
+                <Check size={16} /> {deliverySettingsLoading ? "Сохраняем…" : "Сохранить настройки"}
+              </button>
+              <p className="mt-4 text-xs text-[#aaa]">Для новой службы доставки не вставляйте произвольный код виджета: пришлите нам её документацию — безопасно подключим и добавим отдельный переключатель.</p>
+            </div>
             <div className="bg-white rounded-3xl border border-[#f0e8e0] p-6 sm:p-8">
               <div className="w-11 h-11 rounded-2xl bg-[#eef5ff] text-[#2767d8] flex items-center justify-center mb-5"><Link2 size={21} /></div>
               <h2 className="text-xl font-bold">Ozon Доставка</h2>
@@ -1907,6 +2005,25 @@ export default function AdminPage() {
                   )}
                 </div>
               </div>
+              <div className="rounded-2xl border border-[#f0e8e0] bg-white p-5">
+                <div className="flex items-center justify-between gap-3 mb-3">
+                  <div>
+                    <p className="text-xs font-semibold text-[#aaa] uppercase tracking-wide">Письма покупателю</p>
+                    <p className="text-xs text-[#6b6b6b] mt-1">Последнее письмо и история уведомлений по этому заказу.</p>
+                  </div>
+                  <button onClick={() => void loadOrderEmailLogs(selectedOrder.id)} className="p-2 rounded-xl border border-[#f0e8e0] text-[#6b6b6b] hover:text-[#E8845A]" title="Обновить письма"><RefreshCw size={15} className={orderEmailLogsLoading ? "animate-spin" : ""} /></button>
+                </div>
+                {orderEmailLogsLoading ? <p className="text-sm text-[#aaa]">Проверяем журнал…</p> : orderEmailLogs.length === 0 ? <p className="text-sm text-[#aaa]">Писем по заказу пока не было.</p> : (
+                  <div className="space-y-2">
+                    {orderEmailLogs.slice(0, 3).map((log) => (
+                      <div key={log.id} className="rounded-xl bg-[#fdf8f5] px-3 py-2.5 text-sm">
+                        <p className="font-medium">{log.subject}</p>
+                        <p className="text-xs text-[#6b6b6b] mt-1">{new Date(log.created_at).toLocaleString("ru-RU")} · {log.status === "sent" ? "отправлено" : "ошибка"}</p>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
               <div className="bg-[#fdf8f5] rounded-2xl p-5">
                 <p className="text-xs font-semibold text-[#aaa] uppercase tracking-wide mb-3">Статус заказа</p>
                 <div className="flex flex-wrap gap-2 mb-3">
@@ -1953,6 +2070,7 @@ export default function AdminPage() {
                           ? { ...order, status: editStatus, trackNumber: editTrack || undefined }
                           : order
                       ));
+                      void loadOrderEmailLogs(selectedOrder.id);
                       setStatusSaved(true);
                       setTimeout(() => setStatusSaved(false), 2000);
                     } catch (error) {

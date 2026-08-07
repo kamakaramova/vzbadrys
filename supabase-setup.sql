@@ -74,6 +74,19 @@ create unique index if not exists email_logs_sent_dedupe_idx
 create index if not exists email_logs_created_idx
   on public.email_logs (created_at desc);
 
+-- Настройки способов доставки. Одна строка управляет тем, что видит покупатель.
+-- Секреты служб доставки здесь не хранятся.
+create table if not exists public.delivery_settings (
+  id text primary key check (id = 'main'),
+  enabled jsonb not null default '{"pickup": true, "sdek_pvz": true, "yandex_pvz": true, "ozon_pvz": true, "pochta": true}'::jsonb,
+  pochta_widget_id integer not null default 62722 check (pochta_widget_id > 0),
+  updated_at timestamptz not null default now()
+);
+alter table public.delivery_settings enable row level security;
+insert into public.delivery_settings (id)
+values ('main')
+on conflict (id) do nothing;
+
 -- OAuth-токены Ozon Доставки. Чтение и запись — только сервером;
 -- из браузера доступ к ним невозможен.
 create table if not exists public.oauth_connections (
