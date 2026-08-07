@@ -230,9 +230,9 @@ export default function CheckoutPage() {
                       <div className="flex-1">
                         <div className="flex items-center justify-between">
                           <p className="font-semibold text-sm">{opt.label}</p>
-                          <span className={`text-sm font-bold ${opt.id === "pochta" ? (deliveryPriceKopecks === 0 ? "text-green-600" : "text-[#1a1a1a]") : (opt.price === 0 ? "text-green-600" : "text-[#1a1a1a]")}`}>
+                          <span className={`text-sm font-bold ${opt.id === "pochta" ? (delivery === "pochta" && deliveryPriceKopecks === 0 ? "text-green-600" : "text-[#1a1a1a]") : (opt.price === 0 ? "text-green-600" : "text-[#1a1a1a]")}`}>
                             {opt.id === "pochta"
-                              ? (deliveryPriceKopecks === undefined ? "По тарифу Почты" : deliveryPriceKopecks === 0 ? "Бесплатно" : `${formatPrice(deliveryPrice)} ₽`)
+                              ? (delivery !== "pochta" || !pochtaPoint ? "По тарифу Почты России" : deliveryPriceKopecks === 0 ? "Бесплатно" : `${formatPrice(deliveryPrice)} ₽`)
                               : (opt.price === 0 ? "Бесплатно" : `${opt.price} ₽`)}
                           </span>
                         </div>
