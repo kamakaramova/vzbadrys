@@ -125,7 +125,7 @@ export const products: Product[] = [
     shortName: "Магний Цитрат + B6",
     category: "bads",
     price: 1290,
-    images: ["/products/magniy-citrat-1.jpg"],
+    images: ["/products/magniy-citrat-b6/1.jpg"],
     badge: "Новинка",
     description:
       "Магний — это минерал, который организм расходует первым, когда стресс становится фоновым состоянием. Не раз в неделю, а каждый день. И пока его уровень падает, нервная система работает буквально на износ.",

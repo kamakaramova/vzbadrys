@@ -293,12 +293,11 @@ export default function AccountPage() {
                                 <span>{order.items.reduce((s, i) => s + i.quantity, 0)} товара</span>
                                 <span className="flex items-center gap-1"><MapPin size={11} /> {order.deliveryMethod}</span>
                               </div>
-                              <div className="flex -space-x-2 mt-3" aria-label="Товары в заказе">
-                                {order.items.slice(0, 4).map((item, index) => {
+                              <div className="flex flex-wrap gap-2 mt-3" aria-label="Товары в заказе">
+                                {order.items.slice(0, 5).map((item, index) => {
                                   const productId = item.id.replace(/-(\d+)g$/, "");
-                                  return <div key={`${item.id}-${index}`} className="w-9 h-9 rounded-lg border-2 border-white bg-[#fdf8f5] overflow-hidden flex items-center justify-center text-sm">
-                                    <img src={productImagePaths(productId, 1)[0]} alt={item.name} className="w-full h-full object-cover" onError={(event) => { event.currentTarget.style.display = "none"; }} />
-                                    <span className="absolute sr-only">{item.name}</span>
+                                  return <div key={`${item.id}-${index}`} className="relative w-14 h-14 rounded-xl border border-[#f0e8e0] bg-[#fdf8f5] overflow-hidden flex items-center justify-center">
+                                    <img src={productImagePaths(productId, 1)[0]} alt={item.name} className="w-full h-full object-contain p-1" onError={(event) => { event.currentTarget.style.display = "none"; }} />
                                   </div>;
                                 })}
                               </div>
@@ -386,8 +385,8 @@ export default function AccountPage() {
                     <div className="grid sm:grid-cols-2 gap-4">
                       {favoriteProducts.map((product) => (
                         <div key={product.id} className="bg-white rounded-3xl border border-[#f0e8e0] overflow-hidden flex">
-                          <Link href={`/product/${product.id}`} className="w-24 h-24 bg-[#fdf8f5] flex items-center justify-center text-4xl flex-shrink-0 hover:scale-105 transition-transform m-3 rounded-2xl">
-                            {product.category === "seeds" ? "🌱" : "💊"}
+                          <Link href={`/product/${product.id}`} className="relative w-24 h-24 bg-[#fdf8f5] flex items-center justify-center flex-shrink-0 hover:scale-105 transition-transform m-3 rounded-2xl overflow-hidden">
+                            <img src={productImagePaths(product.id, 1)[0]} alt={product.name} className="w-full h-full object-contain p-2" onError={(event) => { event.currentTarget.style.display = "none"; }} />
                           </Link>
                           <div className="flex-1 p-4 flex flex-col justify-between min-w-0">
                             <div>

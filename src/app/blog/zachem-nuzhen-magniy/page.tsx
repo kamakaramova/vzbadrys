@@ -242,25 +242,20 @@ export default function MagniyArticle() {
                   <Link
                     key={i}
                     href={item.href}
-                    className="group flex flex-col bg-white border border-[#f0e8e0] rounded-3xl overflow-hidden hover:shadow-xl hover:-translate-y-1 transition-all duration-300"
+                    className="group flex flex-col sm:flex-row bg-white border border-[#f0e8e0] rounded-3xl overflow-hidden hover:shadow-xl hover:-translate-y-1 transition-all duration-300"
                   >
                     {/* Фото */}
-                    <div className="relative h-52 bg-gradient-to-br from-[#fdf8f5] to-[#FDDCCA]/40 flex items-center justify-center overflow-hidden">
+                    <div className="relative h-56 w-full sm:w-44 flex-shrink-0 bg-white overflow-hidden">
                       {/* eslint-disable-next-line @next/next/no-img-element */}
                       <img
                         src={item.img}
                         alt={item.name}
-                        className="h-full w-full object-contain p-4"
-                        onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }}
+                        className="h-full w-full object-cover"
                       />
-                      {/* Плейсхолдер пока нет фото */}
-                      <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                        <span className="text-6xl opacity-30">💊</span>
-                      </div>
                       <span className="absolute top-3 left-3 text-xs font-semibold bg-[#1a1a1a] text-white px-2.5 py-1 rounded-full z-10">{item.badge}</span>
                     </div>
                     {/* Инфо */}
-                    <div className="p-5 flex flex-col gap-2 flex-1">
+                    <div className="p-5 flex flex-col gap-2 flex-1 min-w-0">
                       <span className="text-xs font-medium text-[#E8845A] bg-[#ffeee6] px-2.5 py-1 rounded-full self-start">{item.tag}</span>
                       <p className="font-bold text-base group-hover:text-[#E8845A] transition-colors">{item.name}</p>
                       <p className="text-xs text-[#aaa]">{item.sub}</p>
