@@ -226,7 +226,7 @@ export default function MagniyArticle() {
                     oldPrice: "1 890 ₽",
                     badge: "Хит",
                     tag: "Лучший для сна и тревожности",
-                    img: "/images/magniy-bisglitinat.jpg",
+                    img: "/products/magniy-bisglitinat/1.png",
                   },
                   {
                     href: "/product/magniy-citrat-b6",
@@ -236,7 +236,7 @@ export default function MagniyArticle() {
                     oldPrice: null,
                     badge: "Новинка",
                     tag: "С витамином B6 для нервной системы",
-                    img: "/images/magniy-citrat-b6.jpg",
+                    img: "/products/magniy-citrat-b6/1.jpg",
                   },
                 ].map((item, i) => (
                   <Link
