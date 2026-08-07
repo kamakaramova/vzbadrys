@@ -16,9 +16,20 @@ export async function GET(request: NextRequest) {
     });
     const data = await response.json().catch(() => ({}));
     if (!response.ok || !data.connected) {
+      // Ответ Ozon (в том числе 403 по отдельному логистическому методу)
+      // означает, что OAuth-токен уже был передан Ozon. Не показываем это как
+      // «подключение не выполнено»: подключение и права конкретного метода —
+      // разные состояния.
+      if (typeof data.ozonStatus === "number") {
+        return NextResponse.json({
+          connected: true,
+          logisticsVerified: false,
+          ozonStatus: data.ozonStatus,
+        }, { headers: { "cache-control": "no-store" } });
+      }
       return NextResponse.json({ error: "Ozon пока не подтвердил доступ к логистике", ozonStatus: data.ozonStatus }, { status: 502 });
     }
-    return NextResponse.json({ connected: true, ozonStatus: data.ozonStatus }, { headers: { "cache-control": "no-store" } });
+    return NextResponse.json({ connected: true, logisticsVerified: true, ozonStatus: data.ozonStatus }, { headers: { "cache-control": "no-store" } });
   } catch {
     return NextResponse.json({ error: "Защищённый сервер доставки недоступен" }, { status: 503 });
   }

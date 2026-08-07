@@ -1270,7 +1270,7 @@ export default function AdminPage() {
                 <p>Защищённый сервер доставки должен быть настроен и иметь постоянный IP-адрес. Данные Ozon не хранятся в коде сайта.</p>
               </div>
               {ozonConnectError && <p className="mt-4 text-sm text-red-500">{ozonConnectError}</p>}
-              {ozonStatusMessage && <p className={`mt-4 text-sm ${ozonStatusMessage.includes("подтверждён") ? "text-green-700" : "text-red-500"}`}>{ozonStatusMessage}</p>}
+              {ozonStatusMessage && <p className={`mt-4 text-sm ${ozonStatusMessage.includes("подтверждён") ? "text-green-700" : ozonStatusMessage.includes("подключён") ? "text-amber-700" : "text-red-500"}`}>{ozonStatusMessage}</p>}
               <button
                 disabled={ozonConnecting}
                 onClick={async () => {
@@ -1297,7 +1297,11 @@ export default function AdminPage() {
                     const response = await fetch("/api/admin/ozon-delivery/status", { headers: { "x-admin-password": pw }, cache: "no-store" });
                     const payload = await response.json().catch(() => ({}));
                     if (!response.ok || !payload.connected) throw new Error(payload.error || "Ozon пока не подтвердил доступ к логистике");
-                    setOzonStatusMessage("Доступ к Ozon Logistics подтверждён. Можно переходить к выводу ПВЗ.");
+                    if (payload.logisticsVerified) {
+                      setOzonStatusMessage("Доступ к Ozon Logistics подтверждён. Можно переходить к выводу ПВЗ.");
+                    } else {
+                      setOzonStatusMessage(`OAuth-доступ к Ozon подключён. Отдельный метод логистики вернул HTTP ${payload.ozonStatus}; это не отменяет подключение, но его учтём при настройке ПВЗ.`);
+                    }
                   } catch (error) {
                     setOzonStatusMessage(error instanceof Error ? error.message : "Не удалось проверить доступ к Ozon");
                   } finally {
