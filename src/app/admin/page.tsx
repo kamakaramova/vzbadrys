@@ -148,6 +148,8 @@ export default function AdminPage() {
   const [marketingError, setMarketingError] = useState("");
   const [ozonConnecting, setOzonConnecting] = useState(false);
   const [ozonConnectError, setOzonConnectError] = useState("");
+  const [ozonStatusLoading, setOzonStatusLoading] = useState(false);
+  const [ozonStatusMessage, setOzonStatusMessage] = useState("");
   const [deliverySettings, setDeliverySettings] = useState<DeliverySettings>(DEFAULT_DELIVERY_SETTINGS);
   const [deliverySettingsLoading, setDeliverySettingsLoading] = useState(false);
   const [deliverySettingsMessage, setDeliverySettingsMessage] = useState("");
@@ -1268,6 +1270,7 @@ export default function AdminPage() {
                 <p>Защищённый сервер доставки должен быть настроен и иметь постоянный IP-адрес. Данные Ozon не хранятся в коде сайта.</p>
               </div>
               {ozonConnectError && <p className="mt-4 text-sm text-red-500">{ozonConnectError}</p>}
+              {ozonStatusMessage && <p className={`mt-4 text-sm ${ozonStatusMessage.includes("подтверждён") ? "text-green-700" : "text-red-500"}`}>{ozonStatusMessage}</p>}
               <button
                 disabled={ozonConnecting}
                 onClick={async () => {
@@ -1285,6 +1288,25 @@ export default function AdminPage() {
                 className="mt-6 inline-flex items-center gap-2 bg-[#2767d8] hover:bg-[#1e56b9] disabled:opacity-60 text-white font-semibold px-6 py-3 rounded-2xl transition-colors"
               >
                 <Link2 size={16} /> {ozonConnecting ? "Открываем Ozon…" : "Подключить Ozon Доставку"}
+              </button>
+              <button
+                disabled={ozonStatusLoading}
+                onClick={async () => {
+                  setOzonStatusLoading(true); setOzonStatusMessage("");
+                  try {
+                    const response = await fetch("/api/admin/ozon-delivery/status", { headers: { "x-admin-password": pw }, cache: "no-store" });
+                    const payload = await response.json().catch(() => ({}));
+                    if (!response.ok || !payload.connected) throw new Error(payload.error || "Ozon пока не подтвердил доступ к логистике");
+                    setOzonStatusMessage("Доступ к Ozon Logistics подтверждён. Можно переходить к выводу ПВЗ.");
+                  } catch (error) {
+                    setOzonStatusMessage(error instanceof Error ? error.message : "Не удалось проверить доступ к Ozon");
+                  } finally {
+                    setOzonStatusLoading(false);
+                  }
+                }}
+                className="mt-3 ml-0 sm:ml-3 inline-flex items-center gap-2 border border-[#2767d8] text-[#2767d8] hover:bg-[#eef5ff] disabled:opacity-60 font-semibold px-6 py-3 rounded-2xl transition-colors"
+              >
+                <RefreshCw size={16} className={ozonStatusLoading ? "animate-spin" : ""} /> {ozonStatusLoading ? "Проверяем…" : "Проверить доступ"}
               </button>
             </div>
           </div>

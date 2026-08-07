@@ -1,5 +1,5 @@
 import { createHmac, randomUUID, timingSafeEqual } from "node:crypto";
-import { mkdir, rename, writeFile } from "node:fs/promises";
+import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
 import http from "node:http";
 
 const AUTHORIZATION_URL = "https://seller.ozon.ru/app/appstore/oauth/authorize";
@@ -9,6 +9,7 @@ const GATEWAY_URL = "https://api.xn--80abckmj9cj3h.xn--p1ai";
 const CALLBACK_URL = `${GATEWAY_URL}/oauth/callback`;
 const TOKEN_DIRECTORY = "/var/lib/vzbadrys-gateway";
 const TOKEN_FILE = `${TOKEN_DIRECTORY}/ozon-delivery-tokens.json`;
+const OZON_LOGISTICS_INFO_URL = "https://api-seller.ozon.ru/v1/seller/ozon-logistics/info";
 const states = new Map();
 
 function required(name) {
@@ -29,7 +30,7 @@ function cleanupStates() {
   }
 }
 
-function verifyTicket(ticket) {
+function verifyTicket(ticket, purpose = null) {
   const [payload, signature, extra] = (ticket || "").split(".");
   if (!payload || !signature || extra) return false;
   const expected = createHmac("sha256", required("GATEWAY_SHARED_SECRET")).update(payload).digest("base64url");
@@ -38,7 +39,8 @@ function verifyTicket(ticket) {
   if (signatureBuffer.length !== expectedBuffer.length || !timingSafeEqual(signatureBuffer, expectedBuffer)) return false;
   try {
     const data = JSON.parse(Buffer.from(payload, "base64url").toString("utf8"));
-    return typeof data.expiresAt === "number" && data.expiresAt > Date.now() && data.expiresAt - Date.now() <= 11 * 60 * 1000;
+    const isFresh = typeof data.expiresAt === "number" && data.expiresAt > Date.now() && data.expiresAt - Date.now() <= 11 * 60 * 1000;
+    return isFresh && (purpose === null || data.purpose === purpose);
   } catch {
     return false;
   }
@@ -116,12 +118,50 @@ async function persistTokens(tokens) {
   await rename(temporaryFile, TOKEN_FILE);
 }
 
+function sendJson(response, status, body) {
+  response.writeHead(status, { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" });
+  response.end(JSON.stringify(body));
+}
+
+async function getOzonLogisticsStatus() {
+  let tokens;
+  try {
+    tokens = JSON.parse(await readFile(TOKEN_FILE, "utf8"));
+  } catch {
+    return { connected: false, reason: "token_missing" };
+  }
+  if (!tokens || typeof tokens.accessToken !== "string" || !tokens.accessToken) {
+    return { connected: false, reason: "token_missing" };
+  }
+
+  // Это официальный лёгкий метод Ozon Logistics. В ответ наружу не передаём
+  // ни access token, ни содержимое профиля — только результат проверки связи.
+  const result = await fetch(OZON_LOGISTICS_INFO_URL, {
+    method: "POST",
+    headers: {
+      authorization: `Bearer ${tokens.accessToken}`,
+      "content-type": "application/json",
+      accept: "application/json",
+    },
+    body: "{}",
+  });
+  return { connected: result.ok, ozonStatus: result.status };
+}
+
 const server = http.createServer(async (request, response) => {
   const url = new URL(request.url || "/", GATEWAY_URL);
   try {
     if (request.method === "GET" && url.pathname === "/gateway-health") {
-      response.writeHead(200, { "content-type": "application/json" });
-      response.end(JSON.stringify({ status: "ok" }));
+      sendJson(response, 200, { status: "ok" });
+      return;
+    }
+    if (request.method === "GET" && url.pathname === "/ozon/status") {
+      if (!verifyTicket(url.searchParams.get("ticket"), "status")) {
+        sendJson(response, 403, { error: "forbidden" });
+        return;
+      }
+      const status = await getOzonLogisticsStatus();
+      sendJson(response, status.connected ? 200 : 502, status);
       return;
     }
     if (request.method === "GET" && url.pathname === "/oauth/start") {
@@ -152,8 +192,7 @@ const server = http.createServer(async (request, response) => {
       sendHtml(response, 200, "Ozon Доставка подключена", "Доступ получен и сохранён на защищённом сервере. Можно закрыть эту страницу.", true);
       return;
     }
-    response.writeHead(404, { "content-type": "application/json" });
-    response.end(JSON.stringify({ error: "Not found" }));
+    sendJson(response, 404, { error: "Not found" });
   } catch (error) {
     console.error(error instanceof Error ? error.message : "Gateway error");
     sendHtml(response, 503, "Подключение не завершено", "Сервис временно недоступен. Вернитесь в админку и попробуйте ещё раз.");
