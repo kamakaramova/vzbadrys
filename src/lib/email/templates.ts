@@ -148,6 +148,19 @@ export function testEmail(recipient: string) {
   };
 }
 
+export function manualEmail(subject: string, message: string) {
+  const paragraphs = message
+    .trim()
+    .split(/\n{2,}/)
+    .map((paragraph) => `<p style="font-size:16px;line-height:1.65;margin:0 0 16px;color:#5f5752">${escapeHtml(paragraph).replaceAll("\n", "<br>")}</p>`)
+    .join("");
+
+  return {
+    subject: subject.trim(),
+    html: layout(subject.trim(), "Сообщение от команды «взБАДрись»", paragraphs),
+  };
+}
+
 function actionButton(label: string, url: string) {
   return `<p style="margin:26px 0">
     <a href="${escapeHtml(url)}" style="display:inline-block;background:#e8845a;color:#fff;text-decoration:none;font-weight:700;padding:14px 22px;border-radius:8px">

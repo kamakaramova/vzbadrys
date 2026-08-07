@@ -136,6 +136,10 @@ export default function AdminPage() {
   const [ordersSyncMessage, setOrdersSyncMessage] = useState("");
   const [emailLogs, setEmailLogs] = useState<EmailLog[]>([]);
   const [testRecipient, setTestRecipient] = useState("vzbadris@yandex.ru");
+  const [manualRecipient, setManualRecipient] = useState("");
+  const [manualSubject, setManualSubject] = useState("");
+  const [manualText, setManualText] = useState("");
+  const [manualEmailLoading, setManualEmailLoading] = useState(false);
   const [emailLoading, setEmailLoading] = useState(false);
   const [emailMessage, setEmailMessage] = useState("");
   const [testCredentials, setTestCredentials] = useState<{ email: string; password: string } | null>(null);
@@ -1368,6 +1372,74 @@ export default function AdminPage() {
                     <p className="text-xs text-[#8b6b5d] mt-3">Сохраните пароль сейчас: повторно он не показывается.</p>
                   </div>
                 )}
+              </div>
+            </div>
+
+            <div className="bg-white rounded-3xl border border-[#f0e8e0] p-6">
+              <h2 className="font-bold flex items-center gap-2 mb-2">
+                <Mail size={17} className="text-[#E8845A]" /> Новое письмо покупателю
+              </h2>
+              <p className="text-sm text-[#6b6b6b] mb-5">
+                Отправляет одно фирменное письмо выбранному человеку и сохраняет результат в журнале. Для рекламных рассылок используйте только список контактов с отдельным согласием ниже.
+              </p>
+              <div className="grid md:grid-cols-2 gap-3">
+                <input
+                  type="email"
+                  value={manualRecipient}
+                  onChange={(event) => setManualRecipient(event.target.value)}
+                  className="w-full px-4 py-3 rounded-2xl border border-[#f0e8e0] text-sm outline-none focus:border-[#E8845A]"
+                  placeholder="email получателя"
+                />
+                <input
+                  value={manualSubject}
+                  onChange={(event) => setManualSubject(event.target.value)}
+                  maxLength={160}
+                  className="w-full px-4 py-3 rounded-2xl border border-[#f0e8e0] text-sm outline-none focus:border-[#E8845A]"
+                  placeholder="Тема письма"
+                />
+              </div>
+              <textarea
+                value={manualText}
+                onChange={(event) => setManualText(event.target.value)}
+                maxLength={6000}
+                rows={7}
+                className="mt-3 w-full resize-y px-4 py-3 rounded-2xl border border-[#f0e8e0] text-sm outline-none focus:border-[#E8845A]"
+                placeholder="Текст письма. Абзацы и переносы строк сохранятся в фирменном шаблоне."
+              />
+              <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
+                <p className="text-xs text-[#8A817C]">{manualText.length}/6000 символов</p>
+                <button
+                  disabled={manualEmailLoading || !manualRecipient.trim() || !manualSubject.trim() || !manualText.trim()}
+                  onClick={async () => {
+                    setManualEmailLoading(true);
+                    setEmailMessage("");
+                    try {
+                      const response = await fetch("/api/admin/emails", {
+                        method: "POST",
+                        headers: { "content-type": "application/json", "x-admin-password": pw },
+                        body: JSON.stringify({
+                          type: "manual",
+                          email: manualRecipient,
+                          subject: manualSubject,
+                          message: manualText,
+                        }),
+                      });
+                      const data = await response.json().catch(() => ({}));
+                      if (!response.ok) throw new Error(data.error || "Не удалось отправить письмо");
+                      setEmailMessage("Письмо отправлено и добавлено в журнал.");
+                      setManualSubject("");
+                      setManualText("");
+                      await loadEmailLogs();
+                    } catch (error) {
+                      setEmailMessage(error instanceof Error ? error.message : "Не удалось отправить письмо");
+                    } finally {
+                      setManualEmailLoading(false);
+                    }
+                  }}
+                  className="inline-flex items-center gap-2 bg-[#E8845A] text-white font-semibold px-5 py-3 rounded-2xl hover:bg-[#d4703f] disabled:opacity-50"
+                >
+                  <Send size={15} /> {manualEmailLoading ? "Отправляем..." : "Отправить письмо"}
+                </button>
               </div>
             </div>
 

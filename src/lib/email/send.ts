@@ -9,6 +9,7 @@ export type EmailKind =
   | "order_cancelled"
   | "auth_confirmation"
   | "auth_recovery"
+  | "manual"
   | "test";
 
 interface SendEmailInput {
