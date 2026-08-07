@@ -59,14 +59,7 @@ function authorizationUrl() {
   return url.toString();
 }
 
-async function exchangeCode(code) {
-  const body = new URLSearchParams({
-    grant_type: "authorization_code",
-    client_id: required("OZON_DELIVERY_OAUTH_CLIENT_ID"),
-    client_secret: required("OZON_DELIVERY_OAUTH_CLIENT_SECRET"),
-    code,
-    redirect_uri: CALLBACK_URL,
-  });
+async function requestOAuthToken(body) {
   const response = await fetch(TOKEN_URL, {
     method: "POST",
     headers: {
@@ -111,6 +104,36 @@ async function exchangeCode(code) {
   };
 }
 
+async function exchangeCode(code) {
+  return requestOAuthToken(new URLSearchParams({
+    grant_type: "authorization_code",
+    client_id: required("OZON_DELIVERY_OAUTH_CLIENT_ID"),
+    client_secret: required("OZON_DELIVERY_OAUTH_CLIENT_SECRET"),
+    code,
+    redirect_uri: CALLBACK_URL,
+  }));
+}
+
+async function refreshAccessToken(tokens) {
+  if (typeof tokens.refreshToken !== "string" || !tokens.refreshToken) {
+    return null;
+  }
+
+  const refreshed = await requestOAuthToken(new URLSearchParams({
+    grant_type: "refresh_token",
+    client_id: required("OZON_DELIVERY_OAUTH_CLIENT_ID"),
+    client_secret: required("OZON_DELIVERY_OAUTH_CLIENT_SECRET"),
+    refresh_token: tokens.refreshToken,
+  }));
+
+  // Некоторые OAuth-серверы возвращают новый refresh token, некоторые — нет.
+  // В последнем случае продолжаем использовать предыдущий, не теряя соединение.
+  return {
+    ...refreshed,
+    refreshToken: refreshed.refreshToken || tokens.refreshToken,
+  };
+}
+
 async function persistTokens(tokens) {
   await mkdir(TOKEN_DIRECTORY, { recursive: true, mode: 0o700 });
   const temporaryFile = `${TOKEN_FILE}.${process.pid}.tmp`;
@@ -134,18 +157,33 @@ async function getOzonLogisticsStatus() {
     return { connected: false, reason: "token_missing" };
   }
 
-  // Это официальный лёгкий метод Ozon Logistics. В ответ наружу не передаём
-  // ни access token, ни содержимое профиля — только результат проверки связи.
-  const result = await fetch(OZON_LOGISTICS_INFO_URL, {
+  const requestLogisticsInfo = (accessToken) => fetch(OZON_LOGISTICS_INFO_URL, {
     method: "POST",
     headers: {
-      authorization: `Bearer ${tokens.accessToken}`,
+      authorization: `Bearer ${accessToken}`,
       "content-type": "application/json",
       accept: "application/json",
     },
     body: "{}",
   });
-  return { connected: result.ok, ozonStatus: result.status };
+
+  // Access token у Ozon ограничен по времени. При 401 один раз обновляем его
+  // по refresh token и повторяем безопасную проверку, без участия администратора.
+  let result = await requestLogisticsInfo(tokens.accessToken);
+  let tokenRefreshed = false;
+  if (result.status === 401) {
+    try {
+      const refreshedTokens = await refreshAccessToken(tokens);
+      if (!refreshedTokens) return { connected: false, reason: "refresh_token_missing", ozonStatus: 401 };
+      await persistTokens(refreshedTokens);
+      result = await requestLogisticsInfo(refreshedTokens.accessToken);
+      tokenRefreshed = true;
+    } catch (error) {
+      console.error(error instanceof Error ? error.message : "Ozon token refresh failed");
+      return { connected: false, reason: "token_refresh_failed", ozonStatus: 401 };
+    }
+  }
+  return { connected: result.ok, ozonStatus: result.status, tokenRefreshed };
 }
 
 const server = http.createServer(async (request, response) => {
