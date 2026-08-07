@@ -39,7 +39,7 @@ export interface Product {
 export const products: Product[] = [
   {
     id: "magniy-bisglitinat",
-    sku: "VZB-MGB-60",
+    sku: "VZB-MGB-120",
     name: "Магний Бисглицинат",
     shortName: "Магний Бисглицинат",
     category: "bads",
@@ -124,7 +124,7 @@ export const products: Product[] = [
   },
   {
     id: "magniy-citrat-b6",
-    sku: "VZB-MGC-B6-60",
+    sku: "VZB-MGC-B6-120",
     name: "Магний Цитрат + B6",
     shortName: "Магний Цитрат + B6",
     category: "bads",

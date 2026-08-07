@@ -1772,7 +1772,7 @@ export default function AdminPage() {
                 <input
                   value={editingProduct.sku || ""}
                   onChange={(e) => setEditingProduct({ ...editingProduct, sku: e.target.value.trim().toUpperCase() || undefined })}
-                  placeholder="Например, VZB-MGB-60"
+                  placeholder="Например, VZB-MGB-120"
                   className="w-full px-4 py-3 rounded-2xl border border-[#f0e8e0] text-sm outline-none focus:border-[#E8845A]"
                 />
                 <p className="mt-1.5 text-xs text-[#aaa]">Должен совпадать с артикулом в Ozon и не меняться для этого товара.</p>
