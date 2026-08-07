@@ -4,6 +4,7 @@ import Link from "next/link";
 import { ShoppingCart, Search, User, Menu, X, Trash2 } from "lucide-react";
 import { useCartStore } from "@/store/cartStore";
 import { useAuthStore } from "@/store/authStore";
+import { products } from "@/lib/products";
 
 export default function Header() {
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -89,10 +90,14 @@ export default function Header() {
                     ) : (
                       <>
                         <div className="max-h-72 overflow-y-auto">
-                          {items.map((item) => (
+                          {items.map((item) => {
+                            const image = item.image || products.find((product) => product.id === item.id)?.images[0];
+                            return (
                             <div key={item.id} className="flex items-center gap-3 px-5 py-3 border-b border-[#f0e8e0] last:border-0">
-                              <div className="w-12 h-12 rounded-xl bg-[#fdf8f5] flex items-center justify-center text-2xl flex-shrink-0">
-                                {item.category === "seeds" ? "🌱" : "💊"}
+                              <div className="w-12 h-12 rounded-xl bg-[#fdf8f5] overflow-hidden flex items-center justify-center text-2xl flex-shrink-0">
+                                {image ? (
+                                  <img src={image} alt="" className="w-full h-full object-cover" />
+                                ) : item.category === "seeds" ? "🌱" : "💊"}
                               </div>
                               <div className="flex-1 min-w-0">
                                 <p className="text-xs font-semibold line-clamp-2 leading-snug">{item.name}</p>
@@ -109,7 +114,8 @@ export default function Header() {
                                 </button>
                               </div>
                             </div>
-                          ))}
+                          );
+                          })}
                         </div>
                         <div className="p-5 bg-[#fdf8f5]">
                           <div className="flex justify-between text-sm mb-4">
