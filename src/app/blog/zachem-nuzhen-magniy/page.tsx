@@ -216,7 +216,7 @@ export default function MagniyArticle() {
             {/* CTA — карточки товаров */}
             <div className="pt-4">
               <p className="text-center text-[#6b6b6b] mb-6 text-lg font-medium">Попробуйте магний от взБАДрись</p>
-              <div className="grid sm:grid-cols-2 gap-5">
+              <div className="grid sm:grid-cols-2 gap-5 justify-items-center">
                 {[
                   {
                     href: "/product/magniy-bisglitinat",
@@ -242,10 +242,10 @@ export default function MagniyArticle() {
                   <Link
                     key={i}
                     href={item.href}
-                    className="group flex flex-col sm:flex-row bg-white border border-[#f0e8e0] rounded-3xl overflow-hidden hover:shadow-xl hover:-translate-y-1 transition-all duration-300"
+                    className="group w-full max-w-[320px] bg-white border border-[#f0e8e0] rounded-3xl overflow-hidden hover:shadow-xl hover:-translate-y-1 transition-all duration-300"
                   >
                     {/* Фото */}
-                    <div className="relative h-56 w-full sm:w-44 flex-shrink-0 bg-white overflow-hidden">
+                    <div className="relative aspect-[4/5] w-full bg-white overflow-hidden">
                       {/* eslint-disable-next-line @next/next/no-img-element */}
                       <img
                         src={item.img}

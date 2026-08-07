@@ -297,7 +297,7 @@ export default function AccountPage() {
                                 {order.items.slice(0, 5).map((item, index) => {
                                   const productId = item.id.replace(/-(\d+)g$/, "");
                                   return <div key={`${item.id}-${index}`} className="relative w-14 h-14 rounded-xl border border-[#f0e8e0] bg-[#fdf8f5] overflow-hidden flex items-center justify-center">
-                                    <img src={productImagePaths(productId, 1)[0]} alt={item.name} className="w-full h-full object-contain p-1" onError={(event) => { event.currentTarget.style.display = "none"; }} />
+                                    <img src={productImagePaths(productId, 1)[0]} alt={item.name} className="w-full h-full object-cover" onError={(event) => { event.currentTarget.style.display = "none"; }} />
                                   </div>;
                                 })}
                               </div>
@@ -386,7 +386,7 @@ export default function AccountPage() {
                       {favoriteProducts.map((product) => (
                         <div key={product.id} className="bg-white rounded-3xl border border-[#f0e8e0] overflow-hidden flex">
                           <Link href={`/product/${product.id}`} className="relative w-24 h-24 bg-[#fdf8f5] flex items-center justify-center flex-shrink-0 hover:scale-105 transition-transform m-3 rounded-2xl overflow-hidden">
-                            <img src={productImagePaths(product.id, 1)[0]} alt={product.name} className="w-full h-full object-contain p-2" onError={(event) => { event.currentTarget.style.display = "none"; }} />
+                            <img src={productImagePaths(product.id, 1)[0]} alt={product.name} className="w-full h-full object-cover" onError={(event) => { event.currentTarget.style.display = "none"; }} />
                           </Link>
                           <div className="flex-1 p-4 flex flex-col justify-between min-w-0">
                             <div>
