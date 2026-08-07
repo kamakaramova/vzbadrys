@@ -73,6 +73,14 @@ export function createOrderSignature(params: {
   );
 }
 
+export function createOrderStatusSignature(params: {
+  accessKey: string;
+  orderId: string;
+  secretKey: string;
+}) {
+  return sha256(params.accessKey + params.orderId + params.secretKey);
+}
+
 export function verifyNotificationSignature(params: {
   received: string;
   accessKey: string;
@@ -110,4 +118,30 @@ export async function postToOzon<T>(path: string, body: unknown): Promise<T> {
   } finally {
     clearTimeout(timeout);
   }
+}
+
+type OzonStatusResponse = {
+  status?: string;
+  order?: { status?: string; paymentMethod?: string; isTestMode?: boolean };
+};
+
+/** Получает текущий статус платежа у Ozon — используется только на сервере. */
+export async function getOzonOrderStatus(orderId: string) {
+  const config = getOzonConfig();
+  const response = await postToOzon<OzonStatusResponse>("/v1/getOrderStatus", {
+    accessKey: config.accessKey,
+    orderId,
+    requestSign: createOrderStatusSignature({
+      accessKey: config.accessKey,
+      orderId,
+      secretKey: config.secretKey,
+    }),
+  });
+  const status = response.order?.status || response.status;
+  if (!status) throw new Error("Ozon не вернул статус платежа");
+  return {
+    status,
+    paymentMethod: response.order?.paymentMethod,
+    isTest: response.order?.isTestMode,
+  };
 }

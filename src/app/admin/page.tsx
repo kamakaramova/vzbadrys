@@ -125,6 +125,7 @@ export default function AdminPage() {
   const [dbOrders, setDbOrders] = useState<Order[]>([]);
   const [ordersLoading, setOrdersLoading] = useState(false);
   const [ordersError, setOrdersError] = useState("");
+  const [ordersSyncMessage, setOrdersSyncMessage] = useState("");
   const [emailLogs, setEmailLogs] = useState<EmailLog[]>([]);
   const [testRecipient, setTestRecipient] = useState("vzbadris@yandex.ru");
   const [emailLoading, setEmailLoading] = useState(false);
@@ -208,6 +209,33 @@ export default function AdminPage() {
       setDbOrders(data.orders as Order[]);
     } catch (error) {
       setOrdersError(error instanceof Error ? error.message : "Не удалось загрузить заказы");
+    } finally {
+      setOrdersLoading(false);
+    }
+  };
+
+  const syncPaymentStatuses = async () => {
+    if (!pw) return;
+    setOrdersLoading(true);
+    setOrdersError("");
+    setOrdersSyncMessage("");
+    try {
+      const response = await fetch("/api/admin/orders/sync-payment-statuses", {
+        method: "POST",
+        headers: { "x-admin-password": pw },
+        cache: "no-store",
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(data.error || "Не удалось запросить статусы у Ozon");
+      await loadAdminOrders(pw);
+      const problems = Array.isArray(data.problems) ? data.problems.length : 0;
+      setOrdersSyncMessage(
+        problems
+          ? `Сверка завершена: обновлено ${Number(data.changed ?? 0)} из ${Number(data.checked ?? 0)}. По ${problems} заказам Ozon пока не дал статус.`
+          : `Сверка с Ozon завершена: проверено ${Number(data.checked ?? 0)}, обновлено ${Number(data.changed ?? 0)}.`
+      );
+    } catch (error) {
+      setOrdersError(error instanceof Error ? error.message : "Не удалось запросить статусы у Ozon");
     } finally {
       setOrdersLoading(false);
     }
@@ -731,7 +759,7 @@ export default function AdminPage() {
               </div>
               <div className="flex gap-2">
                 <button
-                  onClick={() => loadAdminOrders()}
+                  onClick={() => void syncPaymentStatuses()}
                   disabled={ordersLoading}
                   className="text-sm font-semibold px-4 py-2.5 rounded-full border border-[#f0e8e0] bg-white hover:border-[#E8845A] disabled:opacity-50"
                 >
@@ -748,6 +776,11 @@ export default function AdminPage() {
             {ordersError && (
               <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600">
                 Не удалось загрузить заказы: {ordersError}
+              </div>
+            )}
+            {ordersSyncMessage && (
+              <div className="rounded-2xl border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700">
+                {ordersSyncMessage}
               </div>
             )}
 
