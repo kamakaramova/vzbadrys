@@ -3,7 +3,8 @@ import { mkdir, rename, writeFile } from "node:fs/promises";
 import http from "node:http";
 
 const AUTHORIZATION_URL = "https://seller.ozon.ru/app/appstore/oauth/authorize";
-const TOKEN_URL = "https://api-seller.ozon.ru/oauth/token";
+// Частные приложения получают OAuth-токены через отдельный API Ozon.
+const TOKEN_URL = "https://xapi.ozon.ru/oauth/token";
 const GATEWAY_URL = "https://api.xn--80abckmj9cj3h.xn--p1ai";
 const CALLBACK_URL = `${GATEWAY_URL}/oauth/callback`;
 const TOKEN_DIRECTORY = "/var/lib/vzbadrys-gateway";
