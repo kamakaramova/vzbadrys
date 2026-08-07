@@ -8,6 +8,7 @@ import { useAuthStore } from "@/store/authStore";
 import { supabase } from "@/lib/supabase";
 import PochtaWidget, { PochtaPoint } from "@/components/PochtaWidget";
 import PaymentLogos from "@/components/PaymentLogos";
+import { productImagePaths } from "@/lib/productImages";
 import { Check, MapPin, Package, CreditCard, MessageSquare } from "lucide-react";
 
 type DeliveryMethod = "pickup" | "sdek_pvz" | "yandex_pvz" | "ozon_pvz" | "pochta";
@@ -352,8 +353,13 @@ export default function CheckoutPage() {
                 <div className="space-y-3 mb-5">
                   {items.map((item) => (
                     <div key={item.id} className="flex items-center gap-3">
-                      <div className="w-10 h-10 bg-[#fdf8f5] rounded-xl flex items-center justify-center text-xl flex-shrink-0">
-                        {item.category === "seeds" ? "🌱" : "💊"}
+                      <div className="w-16 h-10 bg-[#fdf8f5] rounded-xl overflow-hidden flex-shrink-0">
+                        <img
+                          src={item.image || productImagePaths(item.id.replace(/-(\d+)g$/, ""), 1)[0]}
+                          alt={item.name}
+                          className="w-full h-full object-cover"
+                          onError={(event) => { event.currentTarget.style.display = "none"; }}
+                        />
                       </div>
                       <div className="flex-1 min-w-0">
                         <p className="text-xs font-medium line-clamp-2 leading-snug">{item.name}</p>
