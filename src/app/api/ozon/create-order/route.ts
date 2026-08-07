@@ -18,7 +18,15 @@ type DeliveryMethod = "pickup" | "sdek_pvz" | "yandex_pvz" | "ozon_pvz" | "pocht
 interface CreateOrderBody {
   items?: { id?: string; quantity?: number }[];
   customer?: { name?: string; surname?: string; phone?: string; email?: string };
-  delivery?: { method?: DeliveryMethod; city?: string; address?: string; zip?: string };
+  delivery?: {
+    method?: DeliveryMethod;
+    city?: string;
+    address?: string;
+    zip?: string;
+    priceKopecks?: number;
+    pointId?: string;
+    deliveryDescription?: string;
+  };
   promoCode?: string;
   referralCode?: string;
   bonusPointsToSpend?: number;
@@ -205,9 +213,22 @@ export async function POST(request: NextRequest) {
     bonusSpent = requestedBonusPoints;
   }
   const discount = percentageDiscount + bonusSpent;
-  const deliveryPrice = subtotal >= 3000 ? 0 : DELIVERY_PRICES[deliveryMethod];
+  const requestedPochtaPriceKopecks = Number(delivery.priceKopecks);
+  if (deliveryMethod === "pochta" && subtotal < 3000 && (
+    !Number.isInteger(requestedPochtaPriceKopecks)
+    || requestedPochtaPriceKopecks < 0
+    || requestedPochtaPriceKopecks > 100000
+  )) {
+    return badRequest("Выберите отделение Почты России, чтобы рассчитать доставку");
+  }
+  const deliveryPriceKopecks = subtotal >= 3000
+    ? 0
+    : deliveryMethod === "pochta"
+      ? requestedPochtaPriceKopecks
+      : DELIVERY_PRICES[deliveryMethod] * 100;
+  const deliveryPrice = deliveryPriceKopecks / 100;
   const productsTotalKopecks = (subtotal - discount) * 100;
-  const totalKopecks = productsTotalKopecks + deliveryPrice * 100;
+  const totalKopecks = productsTotalKopecks + deliveryPriceKopecks;
 
   const extId = `VZB-${new Date().toISOString().slice(0, 10).replaceAll("-", "")}-${randomUUID().slice(0, 8)}`.toUpperCase();
   const expiresAt = new Date(Date.now() + 60 * 60 * 1000).toISOString();
@@ -252,12 +273,12 @@ export async function POST(request: NextRequest) {
     type: "TYPE_PRODUCT",
     vat: config.vat,
   }));
-  if (deliveryPrice > 0) {
+  if (deliveryPriceKopecks > 0) {
     ozonItems.push({
       extId: `delivery-${deliveryMethod}`,
       name: "Доставка заказа",
       needMark: false,
-      price: { currencyCode: CURRENCY_CODE, value: String(deliveryPrice * 100) },
+      price: { currencyCode: CURRENCY_CODE, value: String(deliveryPriceKopecks) },
       quantity: 1,
       type: "TYPE_SERVICE",
       vat: config.vat,
@@ -285,6 +306,8 @@ export async function POST(request: NextRequest) {
       address: deliveryAddress,
       zip: delivery.zip?.trim() || "",
       price: deliveryPrice,
+      pointId: deliveryMethod === "pochta" ? delivery.pointId?.trim() || "" : "",
+      deliveryDescription: deliveryMethod === "pochta" ? delivery.deliveryDescription?.trim() || "" : "",
       promoPercent,
       referralPercent,
       discountAmount: discount,

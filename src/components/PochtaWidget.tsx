@@ -3,10 +3,13 @@ import { useEffect } from "react";
 import { X } from "lucide-react";
 
 export interface PochtaPoint {
+  id: string;
   address: string;
   index: string;
   name: string;
-  raw?: string;
+  city: string;
+  deliveryPriceKopecks?: number;
+  deliveryDescription?: string;
 }
 
 declare global {
@@ -21,6 +24,15 @@ declare global {
 
 const WIDGET_ID = 62722;
 const WIDGET_SRC = "https://widget.pochta.ru/map/widget/widget.js";
+
+function getDeliveryDescription(value: unknown) {
+  if (typeof value === "string") return value;
+  if (value && typeof value === "object" && "description" in value) {
+    const description = (value as { description?: unknown }).description;
+    return typeof description === "string" ? description : undefined;
+  }
+  return undefined;
+}
 
 export default function PochtaWidget({
   onSelect,
@@ -38,11 +50,6 @@ export default function PochtaWidget({
         callbackFunction: (data) => {
           const d = data as Record<string, unknown>;
           // Выводим полный JSON ответа виджета — для отладки и для Почты России.
-          const rawJson = JSON.stringify(d, null, 2);
-          console.log("POCHTA_CALLBACK_JSON:", rawJson);
-          try {
-            (window as unknown as { __pochtaLastCallback?: string }).__pochtaLastCallback = rawJson;
-          } catch {}
           // Реальные поля ответа виджета Почты России (по документации):
           // addressTo, cityTo, regionTo, indexTo, areaTo, id, mailType, cashOfDelivery
           const street = (d.addressTo as string) || (d.address as string) || "";
@@ -50,10 +57,23 @@ export default function PochtaWidget({
           const region = (d.regionTo as string) || "";
           const area = (d.areaTo as string) || "";
           const index = String((d.indexTo as string) || (d.index as string) || "");
+          // Виджет возвращает стоимость доставки в копейках в поле cashOfDelivery.
+          const rawDeliveryPrice = Number(d.cashOfDelivery);
+          const deliveryPriceKopecks = Number.isInteger(rawDeliveryPrice) && rawDeliveryPrice >= 0
+            ? rawDeliveryPrice
+            : undefined;
           const fullAddress =
             [region, area, city, street].filter(Boolean).join(", ") || street || "Пункт Почты России";
           const name = String((d.id as string | number) ? `Отделение ${d.id}` : "Пункт Почты России");
-          onSelect({ address: fullAddress, index, name, raw: rawJson });
+          onSelect({
+            id: String(d.id ?? ""),
+            address: fullAddress,
+            index,
+            name,
+            city,
+            deliveryPriceKopecks,
+            deliveryDescription: getDeliveryDescription(d.deliveryDescription),
+          });
         },
       });
     };

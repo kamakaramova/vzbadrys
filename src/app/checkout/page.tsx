@@ -72,11 +72,19 @@ export default function CheckoutPage() {
   ];
 
   const selectedDelivery = deliveryOptions.find((d) => d.id === delivery)!;
+  const deliveryPriceKopecks = delivery === "pochta"
+    ? (subtotal >= 3000 ? 0 : pochtaPoint?.deliveryPriceKopecks)
+    : selectedDelivery.price * 100;
+  const deliveryPrice = (deliveryPriceKopecks ?? 0) / 100;
+  const formatPrice = (price: number) => price.toLocaleString("ru-RU", {
+    minimumFractionDigits: Number.isInteger(price) ? 0 : 2,
+    maximumFractionDigits: 2,
+  });
   const maxBonusPayment = Math.floor(subtotal * 0.3);
   const promoDiscountAmount = Math.round((subtotal * promoDiscount) / 100);
   const referralDiscountAmount = Math.round((subtotal * referralDiscount) / 100);
   const allowedBonusPayment = Math.min(bonusPointsToSpend, maxBonusPayment, user?.bonusPoints || 0);
-  const finalTotal = Math.max(0, total - allowedBonusPayment) + selectedDelivery.price;
+  const finalTotal = Math.max(0, total - allowedBonusPayment) + deliveryPrice;
 
   const validate = () => {
     const e: Partial<typeof form> = {};
@@ -114,6 +122,11 @@ export default function CheckoutPage() {
             city: delivery === "pickup" ? "Казань" : form.city,
             address: delivery === "pickup" ? "ул. Айдарова, 15" : form.address,
             zip: delivery === "pickup" ? "" : form.zip,
+            ...(delivery === "pochta" && pochtaPoint ? {
+              priceKopecks: deliveryPriceKopecks,
+              pointId: pochtaPoint.id,
+              deliveryDescription: pochtaPoint.deliveryDescription,
+            } : {}),
           },
           promoCode,
           referralCode,
@@ -216,8 +229,10 @@ export default function CheckoutPage() {
                       <div className="flex-1">
                         <div className="flex items-center justify-between">
                           <p className="font-semibold text-sm">{opt.label}</p>
-                          <span className={`text-sm font-bold ${opt.price === 0 ? "text-green-600" : "text-[#1a1a1a]"}`}>
-                            {opt.price === 0 ? "Бесплатно" : (opt.id === "pochta" ? `от ${opt.price} ₽` : `${opt.price} ₽`)}
+                          <span className={`text-sm font-bold ${opt.id === "pochta" ? (deliveryPriceKopecks === 0 ? "text-green-600" : "text-[#1a1a1a]") : (opt.price === 0 ? "text-green-600" : "text-[#1a1a1a]")}`}>
+                            {opt.id === "pochta"
+                              ? (deliveryPriceKopecks === undefined ? "По тарифу Почты" : deliveryPriceKopecks === 0 ? "Бесплатно" : `${formatPrice(deliveryPrice)} ₽`)
+                              : (opt.price === 0 ? "Бесплатно" : `${opt.price} ₽`)}
                           </span>
                         </div>
                         <p className="text-xs text-[#aaa] mt-0.5">{opt.desc} · {opt.days}</p>
@@ -238,6 +253,40 @@ export default function CheckoutPage() {
                     <p className="mt-1 text-sm text-[#1a1a1a]">г. Казань, ул. Айдарова, 15</p>
                     <p className="mt-2 text-xs text-[#6b6b6b]">Когда заказ будет готов, мы сообщим, что его можно забрать.</p>
                   </div>
+                ) : delivery === "pochta" ? (
+                  <div>
+                    <label className="block text-sm font-medium text-[#1a1a1a] mb-1.5">Отделение Почты России</label>
+                    {pochtaPoint ? (
+                      <div className="flex items-start justify-between gap-3 bg-[#f0f8f4] border border-[#c8e6d4] rounded-2xl px-4 py-3">
+                        <div className="text-sm">
+                          <p className="font-semibold text-[#1a7a4a]">📍 {pochtaPoint.index && `${pochtaPoint.index}, `}{pochtaPoint.address}</p>
+                          <p className="text-xs text-[#6b6b6b] mt-0.5">
+                            {pochtaPoint.name} · {deliveryPriceKopecks === undefined ? "Стоимость уточняется" : deliveryPriceKopecks === 0 ? "Бесплатно" : `Доставка: ${formatPrice(deliveryPrice)} ₽`}
+                            {pochtaPoint.deliveryDescription ? ` · ${pochtaPoint.deliveryDescription}` : ""}
+                          </p>
+                        </div>
+                        <button type="button" onClick={() => setShowPochtaMap(true)} className="text-xs text-[#E8845A] font-semibold hover:underline whitespace-nowrap">
+                          Изменить
+                        </button>
+                      </div>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => setShowPochtaMap(true)}
+                        className={`w-full flex items-center justify-center gap-2 py-3 rounded-2xl border-2 border-dashed font-semibold text-sm transition-all ${
+                          errors.address ? "border-red-300 text-red-400 bg-red-50" : "border-[#E8845A] text-[#E8845A] hover:bg-[#fff8f5]"
+                        }`}
+                      >
+                        <MapPin size={16} /> Выбрать отделение на карте
+                      </button>
+                    )}
+                    {errors.address && !pochtaPoint && <p className="text-xs text-red-400 mt-1">{errors.address}</p>}
+                    <p className="text-xs text-[#aaa] mt-2">
+                      {subtotal >= 3000
+                        ? "Доставка бесплатна при заказе от 3 000 ₽."
+                        : "Стоимость доставки будет рассчитана Почтой России при выборе отделения."}
+                    </p>
+                  </div>
                 ) : (
                 <div className="grid sm:grid-cols-2 gap-4">
                   {renderField({ label: "Город", name: "city", placeholder: "Казань" })}
@@ -249,45 +298,6 @@ export default function CheckoutPage() {
                     </div>
                   )}
 
-                  {/* Почта России — выбор отделения на карте */}
-                  {delivery === "pochta" && (
-                    <div className="sm:col-span-2">
-                      <label className="block text-sm font-medium text-[#1a1a1a] mb-1.5">Отделение Почты России</label>
-                      {pochtaPoint ? (
-                        <div className="flex items-start justify-between gap-3 bg-[#f0f8f4] border border-[#c8e6d4] rounded-2xl px-4 py-3">
-                          <div className="text-sm">
-                            <p className="font-semibold text-[#1a7a4a]">📍 {pochtaPoint.index && `${pochtaPoint.index}, `}{pochtaPoint.address}</p>
-                            {pochtaPoint.name && <p className="text-xs text-[#6b6b6b] mt-0.5">{pochtaPoint.name}</p>}
-                          </div>
-                          <button type="button" onClick={() => setShowPochtaMap(true)} className="text-xs text-[#E8845A] font-semibold hover:underline whitespace-nowrap">
-                            Изменить
-                          </button>
-                        </div>
-                      ) : (
-                        <button
-                          type="button"
-                          onClick={() => setShowPochtaMap(true)}
-                          className={`w-full flex items-center justify-center gap-2 py-3 rounded-2xl border-2 border-dashed font-semibold text-sm transition-all ${
-                            errors.address ? "border-red-300 text-red-400 bg-red-50" : "border-[#E8845A] text-[#E8845A] hover:bg-[#fff8f5]"
-                          }`}
-                        >
-                          <MapPin size={16} /> Выбрать отделение на карте
-                        </button>
-                      )}
-                      {pochtaPoint?.raw && (
-                        <details className="mt-2">
-                          <summary className="text-xs text-[#aaa] cursor-pointer">Тех. данные для Почты России (JSON)</summary>
-                          <pre className="mt-1 text-[10px] bg-[#f7f2ee] rounded-xl p-3 overflow-auto max-h-40 whitespace-pre-wrap break-all select-all">{pochtaPoint.raw}</pre>
-                        </details>
-                      )}
-                      {errors.address && !pochtaPoint && <p className="text-xs text-red-400 mt-1">{errors.address}</p>}
-                      <p className="text-xs text-[#aaa] mt-2">
-                        {subtotal >= 3000
-                          ? "Доставка Почтой России бесплатна при заказе от 3 000 ₽."
-                          : "Стоимость доставки Почтой России зависит от адреса — точную сумму сообщим после оформления. Ориентировочно от 250 ₽."}
-                      </p>
-                    </div>
-                  )}
                 </div>
                 )}
               </div>
@@ -376,8 +386,10 @@ export default function CheckoutPage() {
                   )}
                   <div className="flex justify-between text-sm">
                     <span className="text-[#6b6b6b]">Доставка</span>
-                    <span className={selectedDelivery.price === 0 ? "text-green-600 font-semibold" : ""}>
-                      {selectedDelivery.price === 0 ? "Бесплатно" : (delivery === "pochta" ? `от ${selectedDelivery.price} ₽` : `${selectedDelivery.price} ₽`)}
+                    <span className={deliveryPriceKopecks === 0 ? "text-green-600 font-semibold" : ""}>
+                      {delivery === "pochta" && deliveryPriceKopecks === undefined
+                        ? "Выберите отделение"
+                        : deliveryPriceKopecks === 0 ? "Бесплатно" : `${formatPrice(deliveryPrice)} ₽`}
                     </span>
                   </div>
                 </div>
@@ -433,9 +445,9 @@ export default function CheckoutPage() {
 
                 <button
                   onClick={handleSubmit}
-                  disabled={submitting || !agreeTerms}
+                  disabled={submitting || !agreeTerms || (delivery === "pochta" && !pochtaPoint)}
                   className={`w-full font-bold py-4 rounded-full text-white text-base transition-all flex items-center justify-center gap-2 ${
-                    submitting || !agreeTerms
+                    submitting || !agreeTerms || (delivery === "pochta" && !pochtaPoint)
                       ? "bg-[#f5c9b0] cursor-not-allowed"
                       : "bg-[#E8845A] hover:bg-[#d4703f] hover:-translate-y-0.5 hover:shadow-lg"
                   }`}
@@ -443,7 +455,7 @@ export default function CheckoutPage() {
                   {submitting ? (
                     <span className="animate-pulse">Оформляем...</span>
                   ) : (
-                    <>Оплатить заказ {finalTotal.toLocaleString("ru-RU")} ₽</>
+                    <>Оплатить заказ {formatPrice(finalTotal)} ₽</>
                   )}
                 </button>
 
@@ -476,7 +488,7 @@ export default function CheckoutPage() {
         <PochtaWidget
           onSelect={(p) => {
             setPochtaPoint(p);
-            setForm((f) => ({ ...f, address: p.address, zip: p.index || f.zip }));
+            setForm((f) => ({ ...f, city: p.city || f.city, address: p.address, zip: p.index || f.zip }));
             setErrors((e) => ({ ...e, address: undefined }));
             setShowPochtaMap(false);
           }}
