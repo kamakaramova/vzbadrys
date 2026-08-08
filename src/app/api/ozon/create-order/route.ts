@@ -106,8 +106,7 @@ export async function POST(request: NextRequest) {
   if (!delivery?.method || !(delivery.method in DELIVERY_PRICES)) return badRequest("Выберите способ доставки");
   const deliverySettings = await getDeliverySettings();
   if (!deliverySettings.enabled[delivery.method]) return badRequest("Этот способ доставки временно недоступен");
-  const ozonDeliveryPointWillBeSelectedInPay = delivery.method === "ozon_pvz";
-  if (!ozonDeliveryPointWillBeSelectedInPay && (!delivery.city?.trim() || !delivery.address?.trim())) {
+  if (!delivery.city?.trim() || !delivery.address?.trim()) {
     return badRequest("Укажите адрес доставки или ПВЗ");
   }
 
@@ -116,14 +115,8 @@ export async function POST(request: NextRequest) {
   const customerPhone = customer.phone!;
   const customerEmail = customer.email!.trim().toLowerCase();
   const deliveryMethod = delivery.method;
-  // Для Ozon Доставки покупатель выбирает ПВЗ в защищённом сценарии Ozon Pay.
-  // До оплаты адрес точки ещё неизвестен, поэтому сохраняем понятную пометку.
-  const deliveryCity = ozonDeliveryPointWillBeSelectedInPay
-    ? "Будет выбран в Ozon Pay"
-    : delivery.city!.trim();
-  const deliveryAddress = ozonDeliveryPointWillBeSelectedInPay
-    ? "Пункт выдачи выбирается покупателем в Ozon Pay"
-    : delivery.address!.trim();
+  const deliveryCity = delivery.city.trim();
+  const deliveryAddress = delivery.address.trim();
 
   const requestedItems = (body.items ?? []).filter(
     (item): item is { id: string; quantity: number } =>
@@ -363,9 +356,8 @@ export async function POST(request: NextRequest) {
     const ozonResponse = await postToOzon<OzonCreateOrderResponse>("/v1/createOrder", {
       accessKey: config.accessKey,
       amount: { currencyCode: CURRENCY_CODE, value: amountValue },
-      // Включает нативный шаг Ozon Доставки в платёжной форме: карту и выбор ПВЗ.
-      // Стоимость для покупателя остаётся отдельной услугой в составе нашего заказа.
-      deliverySettings: { isEnabled: deliveryMethod === "ozon_pvz" },
+      // Доставка оформляется отдельно: без неописанного шага выбора ПВЗ в Acquiring.
+      deliverySettings: { isEnabled: false },
       enableFiscalization: true,
       expiresAt,
       extId,
