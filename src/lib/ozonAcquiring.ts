@@ -112,12 +112,39 @@ export async function postToOzon<T>(path: string, body: unknown): Promise<T> {
     });
     const data = (await response.json().catch(() => null)) as T | null;
     if (!response.ok || !data) {
-      throw new Error(`Ozon Acquiring вернул ошибку ${response.status}`);
+      const details = getOzonErrorDetails(data);
+      throw new Error(`Ozon Acquiring вернул ошибку ${response.status}${details ? `: ${details}` : ""}`);
     }
     return data;
   } finally {
     clearTimeout(timeout);
   }
+}
+
+/**
+ * В ответ на ошибку Ozon может вернуть название обязательного поля.
+ * Берём только безопасные текстовые поля и ограничиваем длину: ключи и подпись
+ * запроса ни при каких условиях не попадают в ответ покупателю.
+ */
+function getOzonErrorDetails(data: unknown) {
+  if (!data || typeof data !== "object") return "";
+  const payload = data as Record<string, unknown>;
+  const candidates = [payload.message, payload.error, payload.errorDescription, payload.description]
+    .filter((value): value is string => typeof value === "string" && value.trim().length > 0);
+  if (candidates.length) return candidates[0].trim().slice(0, 300);
+
+  if (Array.isArray(payload.errors)) {
+    const first = payload.errors[0];
+    if (first && typeof first === "object") {
+      const item = first as Record<string, unknown>;
+      const field = typeof item.field === "string" ? item.field : "";
+      const message = [item.message, item.description, item.error]
+        .find((value): value is string => typeof value === "string" && value.trim().length > 0);
+      if (message) return `${field ? `${field}: ` : ""}${message.trim().slice(0, 260)}`;
+    }
+  }
+
+  return "";
 }
 
 type OzonStatusResponse = {
