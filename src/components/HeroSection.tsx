@@ -405,80 +405,13 @@ export default function HeroSection() {
                   boxShadow: "inset 0 1px 1px rgba(255,255,255,0.9)",
                 }}
               >
-                {/* Декоративный круг позади */}
-                <div
-                  className="absolute"
-                  style={{
-                    width: "340px", height: "340px",
-                    background: "radial-gradient(circle, rgba(232,132,90,0.12) 0%, transparent 70%)",
-                    top: "50%", left: "50%",
-                    transform: "translate(-50%, -50%)",
-                    borderRadius: "50%",
-                  }}
+                <img
+                  src="/hero-products.png"
+                  alt="Добавки взБАДрись"
+                  className="absolute inset-0 h-full w-full object-cover"
                 />
 
-                {/* Слоты для изображений товаров */}
-                {/* Центральный товар */}
-                <div
-                  className="absolute"
-                  style={{
-                    width: "180px", height: "180px",
-                    top: "50%", left: "50%",
-                    transform: "translate(-50%, -60%)",
-                    background: "rgba(255,255,255,0.7)",
-                    borderRadius: "1.5rem",
-                    border: "1px solid rgba(232,132,90,0.2)",
-                    display: "flex", alignItems: "center", justifyContent: "center",
-                    flexDirection: "column", gap: "8px",
-                    backdropFilter: "blur(8px)",
-                    boxShadow: "0 20px 60px rgba(232,132,90,0.15)",
-                  }}
-                >
-                  <span style={{ fontSize: "64px" }}>💊</span>
-                  <span style={{ fontSize: "11px", color: "#aaa", textAlign: "center", padding: "0 12px" }}>
-                    Место для фото товара
-                  </span>
-                </div>
-
-                {/* Левый нижний — семена */}
-                <div
-                  className="absolute"
-                  style={{
-                    width: "130px", height: "130px",
-                    bottom: "60px", left: "30px",
-                    background: "rgba(255,255,255,0.75)",
-                    borderRadius: "1.25rem",
-                    border: "1px solid rgba(200,230,200,0.5)",
-                    display: "flex", alignItems: "center", justifyContent: "center",
-                    flexDirection: "column", gap: "6px",
-                    backdropFilter: "blur(8px)",
-                    boxShadow: "0 12px 40px rgba(0,0,0,0.07)",
-                    transform: "rotate(-4deg)",
-                  }}
-                >
-                  <span style={{ fontSize: "44px" }}>🌱</span>
-                  <span style={{ fontSize: "10px", color: "#aaa" }}>Семена</span>
-                </div>
-
-                {/* Правый нижний — второй БАД */}
-                <div
-                  className="absolute"
-                  style={{
-                    width: "130px", height: "130px",
-                    bottom: "60px", right: "30px",
-                    background: "rgba(255,255,255,0.75)",
-                    borderRadius: "1.25rem",
-                    border: "1px solid rgba(232,132,90,0.2)",
-                    display: "flex", alignItems: "center", justifyContent: "center",
-                    flexDirection: "column", gap: "6px",
-                    backdropFilter: "blur(8px)",
-                    boxShadow: "0 12px 40px rgba(0,0,0,0.07)",
-                    transform: "rotate(3deg)",
-                  }}
-                >
-                  <span style={{ fontSize: "44px" }}>💊</span>
-                  <span style={{ fontSize: "10px", color: "#aaa" }}>БАДы</span>
-                </div>
+                <div className="absolute inset-0 bg-gradient-to-t from-black/10 via-transparent to-white/5" />
 
                 {/* Флоатинг-теги */}
                 <div
