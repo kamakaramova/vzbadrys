@@ -127,7 +127,7 @@ export default function MagniyArticle() {
               <h2 className="text-2xl font-bold mb-4">Какая форма магния лучше</h2>
               <p className="text-[#555] mb-5">Не все формы магния одинаково усваиваются. Вот сравнение основных:</p>
               <div className="overflow-x-auto rounded-2xl border border-[#f0e8e0]">
-                <table className="w-full text-sm">
+                <table className="min-w-[620px] w-full text-sm">
                   <thead>
                     <tr className="bg-[#fdf8f5]">
                       <th className="text-left px-4 py-3 font-semibold text-[#1a1a1a]">Форма</th>

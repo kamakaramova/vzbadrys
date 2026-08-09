@@ -63,7 +63,7 @@ export default function ProductCard({ product }: { product: Product }) {
           <button
             onClick={(e) => { e.preventDefault(); if (user) toggleFavorite(product.id); }}
             title={user ? (isFavorite ? "Убрать из избранного" : "В избранное") : "Войдите, чтобы добавить в избранное"}
-            className="absolute bottom-3 right-3 p-2 rounded-full bg-white shadow-sm opacity-0 group-hover:opacity-100 transition-opacity hover:bg-[#fdf8f5]"
+            className="absolute bottom-3 right-3 p-2 rounded-full bg-white shadow-sm opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity hover:bg-[#fdf8f5]"
           >
             <Heart size={16} className={isFavorite ? "fill-[#E8845A] text-[#E8845A]" : "text-[#E8845A]"} />
           </button>

@@ -640,7 +640,7 @@ export default function AdminPage() {
   return (
     <div className="min-h-screen bg-[#fdfcfb]">
       {/* Шапка */}
-      <div className="bg-white border-b border-[#f0e8e0] px-6 py-4 flex items-center justify-between sticky top-0 z-40">
+      <div className="bg-white border-b border-[#f0e8e0] px-4 sm:px-6 py-3 sm:py-4 flex items-center justify-between sticky top-0 z-40">
         <div className="flex items-center gap-3">
           <div className="w-9 h-9 rounded-full bg-[#E8845A] flex items-center justify-center">
             <span className="text-white font-black text-sm">В</span>
@@ -655,7 +655,7 @@ export default function AdminPage() {
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Табы */}
-        <div className="flex gap-2 mb-8 bg-[#f5f0ec] p-1.5 rounded-2xl w-fit">
+        <div className="flex gap-1.5 sm:gap-2 mb-6 sm:mb-8 bg-[#f5f0ec] p-1.5 rounded-2xl w-full overflow-x-auto">
           {(["dashboard", "orders", "customers", "promos", "products", "emails", "integrations"] as const).map((id) => {
             const labels: Record<typeof id, string> = { dashboard: "Дашборд", orders: "Заказы", customers: "Покупатели", promos: "Промокоды", products: "Товары", emails: "Письма", integrations: "Интеграции" };
             const icons: Record<typeof id, React.ReactNode> = {
@@ -671,7 +671,7 @@ export default function AdminPage() {
               <button
                 key={id}
                 onClick={() => setTab(id)}
-                className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold transition-all ${
+                className={`shrink-0 flex items-center gap-2 px-4 sm:px-5 py-2.5 rounded-xl text-sm font-semibold transition-all ${
                   tab === id ? "bg-white shadow text-[#1a1a1a]" : "text-[#6b6b6b] hover:text-[#1a1a1a]"
                 }`}
               >

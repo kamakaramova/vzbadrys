@@ -131,15 +131,15 @@ export default function CartPage() {
             {/* Левая часть — товары */}
             <div className="lg:col-span-2 space-y-4">
               {items.map((item) => (
-                <div key={item.id} className="bg-white rounded-3xl border border-[#f0e8e0] p-5 flex items-center gap-5">
+                <div key={item.id} className="bg-white rounded-3xl border border-[#f0e8e0] p-4 sm:p-5 flex flex-wrap sm:flex-nowrap items-center gap-3 sm:gap-5">
                   {/* Изображение */}
-                  <Link href={`/product/${item.id.replace(/-(\d+)g$/, "")}`} className="relative w-20 h-20 bg-[#fdf8f5] rounded-2xl flex items-center justify-center text-4xl flex-shrink-0 overflow-hidden hover:scale-105 transition-transform">
+                  <Link href={`/product/${item.id.replace(/-(\d+)g$/, "")}`} className="relative w-16 h-16 sm:w-20 sm:h-20 bg-[#fdf8f5] rounded-2xl flex items-center justify-center text-4xl flex-shrink-0 overflow-hidden hover:scale-105 transition-transform">
                     <span aria-hidden="true">{item.category === "seeds" ? "🌱" : "💊"}</span>
-                    <img src={item.image || productImagePaths(item.id.replace(/-(\d+)g$/, ""), 1)[0]} alt={item.name} className="absolute inset-0 h-full w-full object-cover" onError={(event) => { event.currentTarget.remove(); }} />
+                    <img src={productImagePaths(item.id.replace(/-(\d+)g$/, ""), 1)[0] || item.image} alt={item.name} className="absolute inset-0 h-full w-full object-cover" onError={(event) => { event.currentTarget.remove(); }} />
                   </Link>
 
                   {/* Инфо */}
-                  <div className="flex-1 min-w-0">
+                  <div className="flex-1 min-w-[calc(100%-5rem)] sm:min-w-0">
                     <Link href={`/product/${item.id}`} className="font-semibold text-sm hover:text-[#E8845A] transition-colors line-clamp-2 leading-snug">
                       {item.name}
                     </Link>
@@ -148,7 +148,7 @@ export default function CartPage() {
                   </div>
 
                   {/* Количество */}
-                  <div className="flex items-center gap-2 flex-shrink-0">
+                  <div className="order-3 sm:order-none flex items-center gap-2 flex-shrink-0">
                     <button
                       onClick={() => updateQty(item.id, item.quantity - 1)}
                       className="w-8 h-8 rounded-full border border-[#f0e8e0] flex items-center justify-center text-lg hover:bg-[#fdf8f5] hover:border-[#E8845A] transition-colors"
@@ -161,7 +161,7 @@ export default function CartPage() {
                   </div>
 
                   {/* Итог + удалить */}
-                  <div className="text-right flex-shrink-0 ml-2">
+                  <div className="ml-auto sm:ml-2 text-right flex-shrink-0">
                     <p className="font-bold text-base">{(item.price * item.quantity).toLocaleString("ru-RU")} ₽</p>
                     <button onClick={() => removeItem(item.id)} className="mt-2 flex items-center gap-1 text-xs text-[#aaa] hover:text-red-400 transition-colors ml-auto">
                       <Trash2 size={13} /> Удалить
@@ -191,7 +191,7 @@ export default function CartPage() {
                     </button>
                   </div>
                 ) : (
-                  <div className="flex gap-3">
+                  <div className="flex flex-col sm:flex-row gap-3">
                     <input
                       type="text"
                       value={promoInput}
@@ -219,7 +219,7 @@ export default function CartPage() {
                         <button onClick={removeReferral} className="text-[#aaa] hover:text-red-400 ml-2"><X size={16} /></button>
                       </div>
                     ) : (
-                      <div className="flex gap-3">
+                      <div className="flex flex-col sm:flex-row gap-3">
                         <input type="text" value={referralInput} onChange={(e) => { setReferralInput(e.target.value.toUpperCase()); setReferralError(""); }} onKeyDown={(e) => e.key === "Enter" && void validateCode("referral", referralInput)} placeholder="Код от подруги или блогера" className="flex-1 px-4 py-2.5 border border-[#f0e8e0] rounded-2xl text-sm outline-none focus:border-[#E8845A] transition-colors font-mono tracking-wide uppercase" />
                         <button onClick={() => void validateCode("referral", referralInput)} className="px-5 py-2.5 bg-[#E8845A] hover:bg-[#d4703f] text-white font-semibold text-sm rounded-2xl transition-colors">Применить</button>
                       </div>

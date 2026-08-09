@@ -233,12 +233,12 @@ export default function AccountPage() {
           <div className="grid lg:grid-cols-4 gap-6">
             {/* Боковая навигация */}
             <div className="lg:col-span-1">
-              <div className="bg-white rounded-3xl border border-[#f0e8e0] p-3 space-y-1">
+              <div className="bg-white rounded-3xl border border-[#f0e8e0] p-2 sm:p-3 flex lg:block gap-1 overflow-x-auto">
                 {tabs.map((t) => (
                   <button
                     key={t.key}
                     onClick={() => setTab(t.key)}
-                    className={`w-full flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-medium transition-all text-left ${
+                    className={`shrink-0 lg:w-full flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-medium transition-all text-left ${
                       tab === t.key ? "bg-[#E8845A] text-white" : "text-[#6b6b6b] hover:bg-[#fdf8f5] hover:text-[#1a1a1a]"
                     }`}
                   >
@@ -288,7 +288,7 @@ export default function AccountPage() {
                                   <span className="text-xs text-[#aaa] flex items-center gap-1"><Truck size={11} /> {order.trackNumber}</span>
                                 )}
                               </div>
-                              <div className="flex items-center gap-4 text-xs text-[#aaa]">
+                              <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-[#aaa]">
                                 <span className="flex items-center gap-1"><Clock size={11} /> {formatDate(order.date)}</span>
                                 <span>{order.items.reduce((s, i) => s + i.quantity, 0)} товара</span>
                                 <span className="flex items-center gap-1"><MapPin size={11} /> {order.deliveryMethod}</span>
@@ -296,7 +296,7 @@ export default function AccountPage() {
                               <div className="flex flex-wrap gap-2 mt-3" aria-label="Товары в заказе">
                                 {order.items.slice(0, 5).map((item, index) => {
                                   const productId = item.id.replace(/-(\d+)g$/, "");
-                                  return <div key={`${item.id}-${index}`} className="relative w-14 h-14 rounded-xl border border-[#f0e8e0] bg-[#fdf8f5] overflow-hidden flex items-center justify-center">
+                                  return <div key={`${item.id}-${index}`} className="relative w-16 h-12 sm:w-20 sm:h-14 rounded-xl border border-[#f0e8e0] bg-[#fdf8f5] overflow-hidden flex items-center justify-center">
                                     <img src={productImagePaths(productId, 1)[0]} alt={item.name} className="w-full h-full object-cover" onError={(event) => { event.currentTarget.style.display = "none"; }} />
                                   </div>;
                                 })}

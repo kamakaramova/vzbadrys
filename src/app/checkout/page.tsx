@@ -382,7 +382,7 @@ export default function CheckoutPage() {
                     <div key={item.id} className="flex items-center gap-3">
                       <div className="w-16 h-10 bg-[#fdf8f5] rounded-xl overflow-hidden flex-shrink-0">
                         <img
-                          src={item.image || productImagePaths(item.id.replace(/-(\d+)g$/, ""), 1)[0]}
+                          src={productImagePaths(item.id.replace(/-(\d+)g$/, ""), 1)[0] || item.image}
                           alt={item.name}
                           className="w-full h-full object-cover"
                           onError={(event) => { event.currentTarget.style.display = "none"; }}

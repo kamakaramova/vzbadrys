@@ -44,6 +44,8 @@ export default function ProductClient({
 
   const activePrice = selectedVariant ? selectedVariant.price : product.price;
   const activeOldPrice = selectedVariant ? selectedVariant.oldPrice : product.oldPrice;
+  // Счётчик вкладки и список ниже используют один и тот же набор файлов.
+  const documents = product.documents.filter((document) => document.name.trim() && document.url.trim());
 
   const handleAddToCart = () => {
     for (let i = 0; i < qty; i++) {
@@ -82,7 +84,7 @@ export default function ProductClient({
     { key: "description", label: "Описание" },
     { key: "composition", label: "Состав" },
     { key: "howto", label: "Как принимать" },
-    { key: "docs", label: `Документы (${product.documents.length})` },
+    { key: "docs", label: `Документы (${documents.length})` },
     { key: "reviews", label: "Отзывы" },
   ];
 
@@ -105,7 +107,7 @@ export default function ProductClient({
 
       {/* Основной блок */}
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-10">
-        <div className="grid md:grid-cols-2 gap-12">
+        <div className="grid md:grid-cols-2 gap-6 sm:gap-12">
           {/* Галерея */}
           <div>
             {/* Невидимая предзагрузка — определяем, какие фото реально существуют */}
@@ -121,15 +123,15 @@ export default function ProductClient({
               ))}
             </div>
 
-            <div className="flex gap-3">
+            <div className="flex flex-col-reverse sm:flex-row gap-3">
               {/* Лента миниатюр слева (как на маркетплейсах) */}
               {loadedImages.length > 1 && (
-                <div className="flex flex-col gap-2 w-14 sm:w-16 flex-shrink-0 max-h-[460px] overflow-y-auto">
+                <div className="flex flex-row sm:flex-col gap-2 w-full sm:w-16 flex-shrink-0 sm:max-h-[460px] overflow-x-auto sm:overflow-y-auto">
                   {loadedImages.map((src, i) => (
                     <button
                       key={src}
                       onClick={() => setImageIndex(i)}
-                      className={`aspect-[4/5] w-full rounded-xl overflow-hidden bg-[#fdf8f5] border-2 flex-shrink-0 transition-colors ${i === shownIndex ? "border-[#E8845A]" : "border-[#f0e8e0] hover:border-[#f5c9b0]"}`}
+                      className={`aspect-[4/5] w-14 sm:w-full rounded-xl overflow-hidden bg-[#fdf8f5] border-2 flex-shrink-0 transition-colors ${i === shownIndex ? "border-[#E8845A]" : "border-[#f0e8e0] hover:border-[#f5c9b0]"}`}
                     >
                       <img src={src} alt="" className="w-full h-full object-cover" />
                     </button>
@@ -172,7 +174,7 @@ export default function ProductClient({
 
           {/* Инфо */}
           <div>
-            <h1 className="text-2xl md:text-3xl font-bold text-[#1a1a1a] mb-2">{product.name}</h1>
+            <h1 className="text-2xl sm:text-3xl font-bold text-[#1a1a1a] mb-2">{product.name}</h1>
             <div className="flex flex-wrap items-center justify-between gap-3 mb-5">
               <p className="text-sm text-[#aaa]">
                 {isSeed ? `Фасовки: ${product.weightVariants!.map((v) => v.label).join(" · ")}` : product.weight}
@@ -243,7 +245,7 @@ export default function ProductClient({
             </div>
 
             {/* Количество + корзина */}
-            <div className="flex items-center gap-4 mb-4">
+            <div className="flex flex-wrap sm:flex-nowrap items-center gap-3 sm:gap-4 mb-4">
               <div className="flex items-center border border-[#f0e8e0] rounded-full">
                 <button onClick={() => setQty((q) => Math.max(1, q - 1))} className="w-10 h-10 flex items-center justify-center text-[#6b6b6b] hover:bg-[#fdf8f5] rounded-full text-lg">−</button>
                 <span className="w-10 text-center font-semibold text-sm">{qty}</span>
@@ -251,7 +253,7 @@ export default function ProductClient({
               </div>
               <button
                 onClick={handleAddToCart}
-                className={`flex-1 flex items-center justify-center gap-2 font-semibold py-3 rounded-full transition-all ${added ? "bg-green-500 text-white" : "bg-[#E8845A] hover:bg-[#d4703f] text-white hover:-translate-y-0.5 hover:shadow-lg"}`}
+                className={`min-w-[190px] flex-1 flex items-center justify-center gap-2 font-semibold py-3 rounded-full transition-all ${added ? "bg-green-500 text-white" : "bg-[#E8845A] hover:bg-[#d4703f] text-white hover:-translate-y-0.5 hover:shadow-lg"}`}
               >
                 {added ? <><Check size={18} /> Добавлено!</> : <><ShoppingCart size={18} /> В корзину</>}
               </button>
@@ -289,12 +291,12 @@ export default function ProductClient({
 
       {/* Вкладки */}
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-16">
-        <div className="flex gap-1 border-b border-[#f0e8e0] mb-8 overflow-x-auto">
+        <div className="-mx-4 px-4 sm:mx-0 sm:px-0 flex gap-1 border-b border-[#f0e8e0] mb-6 sm:mb-8 overflow-x-auto">
           {tabs.map((tab) => (
             <button
               key={tab.key}
               onClick={() => setActiveTab(tab.key)}
-              className={`px-5 py-3 text-sm font-medium whitespace-nowrap border-b-2 transition-colors ${activeTab === tab.key ? "border-[#E8845A] text-[#E8845A]" : "border-transparent text-[#6b6b6b] hover:text-[#1a1a1a]"}`}
+              className={`shrink-0 px-4 sm:px-5 py-3 text-sm font-medium whitespace-nowrap border-b-2 transition-colors ${activeTab === tab.key ? "border-[#E8845A] text-[#E8845A]" : "border-transparent text-[#6b6b6b] hover:text-[#1a1a1a]"}`}
             >
               {tab.label}
             </button>
@@ -370,12 +372,20 @@ export default function ProductClient({
 
         {activeTab === "docs" && (
           <div className="max-w-xl flex flex-col gap-3">
-            {product.documents.map((doc, i) => (
+            {documents.map((doc, i) => (
               <a key={i} href={doc.url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-3 p-4 bg-[#fdf8f5] rounded-2xl hover:bg-[#FDDCCA]/30 transition-colors group">
                 <FileText size={20} className="text-[#E8845A] flex-shrink-0" />
                 <span className="text-sm font-medium group-hover:text-[#E8845A] transition-colors">{doc.name}</span>
               </a>
             ))}
+            <details className="mt-2 rounded-2xl border border-[#f0e8e0] bg-[#fdf8f5] px-4 py-3 text-sm text-[#6b6b6b]">
+              <summary className="cursor-pointer font-semibold text-[#1a1a1a]">Что подтверждают эти документы?</summary>
+              <div className="mt-3 space-y-2 leading-relaxed">
+                <p><b>СГР.</b> Подтверждает государственную регистрацию продукта как БАД.</p>
+                <p><b>ISO и другие сертификаты.</b> Содержит документы о системе качества производства.</p>
+                <p><b>Анализы лаборатории.</b> Показывают результаты испытаний образца по приложенному протоколу.</p>
+              </div>
+            </details>
           </div>
         )}
 

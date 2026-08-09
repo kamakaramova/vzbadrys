@@ -208,8 +208,8 @@ export default function HeroSection() {
         }}
       />
 
-      <div className="relative max-w-7xl mx-auto px-6 lg:px-10 py-28 w-full" style={{ zIndex: 3 }}>
-        <div className="grid lg:grid-cols-2 gap-16 items-center">
+      <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-10 py-12 sm:py-20 lg:py-28 w-full" style={{ zIndex: 3 }}>
+        <div className="grid lg:grid-cols-2 gap-8 sm:gap-12 lg:gap-16 items-center">
 
           {/* ЛЕВАЯ КОЛОНКА */}
           <div className="flex flex-col gap-7">

@@ -5,6 +5,7 @@ import { ShoppingCart, Search, User, Menu, X, Trash2 } from "lucide-react";
 import { useCartStore } from "@/store/cartStore";
 import { useAuthStore } from "@/store/authStore";
 import { products } from "@/lib/products";
+import { productImagePaths } from "@/lib/productImages";
 
 export default function Header() {
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -21,7 +22,7 @@ export default function Header() {
   return (
     <header className="sticky top-0 z-50 bg-white border-b border-[#f0e8e0]">
       {/* Верхняя полоска */}
-      <div className="bg-[#FDDCCA] py-2 px-4 text-center text-xs font-medium text-[#8b4513]">
+      <div className="bg-[#FDDCCA] py-2 px-4 text-center text-[11px] leading-4 sm:text-xs font-medium text-[#8b4513]">
         Скидка 10% на первый заказ по промокоду ВЗБАДРИСЬ10&nbsp;&nbsp;🌿&nbsp;&nbsp;Бесплатная доставка от 3 000 ₽
       </div>
 
@@ -29,7 +30,7 @@ export default function Header() {
         <div className="flex items-center justify-between h-16">
           {/* Логотип */}
           <Link href="/" className="flex items-center">
-            <img src="/logo.png" alt="взБАДрись — БАДы и суперфуды" className="h-12 w-auto" />
+            <img src="/logo.png" alt="взБАДрись — БАДы и суперфуды" className="h-10 sm:h-12 w-auto" />
           </Link>
 
           {/* Навигация десктоп */}
@@ -47,7 +48,7 @@ export default function Header() {
             <button onClick={() => setSearchOpen(!searchOpen)} className="p-2 rounded-full hover:bg-[#fdf8f5] transition-colors text-[#6b6b6b] hover:text-[#E8845A]">
               <Search size={20} />
             </button>
-            <Link href={user ? "/account" : "/auth"} className="hidden md:flex items-center gap-2 p-2 rounded-full hover:bg-[#fdf8f5] transition-colors text-[#6b6b6b] hover:text-[#E8845A]">
+            <Link href={user ? "/account" : "/auth"} className="flex items-center gap-2 p-2 rounded-full hover:bg-[#fdf8f5] transition-colors text-[#6b6b6b] hover:text-[#E8845A]">
               {user ? (
                 <div className="w-7 h-7 rounded-full bg-[#E8845A] text-white text-xs font-bold flex items-center justify-center">
                   {user.name.slice(0, 1).toUpperCase()}
@@ -75,7 +76,7 @@ export default function Header() {
               {cartOpen && (
                 <>
                   <div className="fixed inset-0 z-40" onClick={() => setCartOpen(false)} />
-                  <div className="absolute right-0 top-full mt-2 w-80 bg-white rounded-3xl shadow-2xl border border-[#f0e8e0] z-50 overflow-hidden">
+                  <div className="fixed inset-x-3 top-[5.25rem] max-h-[calc(100dvh-6rem)] overflow-y-auto bg-white rounded-3xl shadow-2xl border border-[#f0e8e0] z-50 sm:absolute sm:inset-x-auto sm:top-full sm:mt-2 sm:w-80 sm:max-h-none sm:overflow-hidden">
                     <div className="px-5 py-4 border-b border-[#f0e8e0] flex items-center justify-between">
                       <p className="font-bold text-base">Корзина</p>
                       <button onClick={() => setCartOpen(false)}><X size={18} className="text-[#aaa] hover:text-[#1a1a1a]" /></button>
@@ -91,7 +92,8 @@ export default function Header() {
                       <>
                         <div className="max-h-72 overflow-y-auto">
                           {items.map((item) => {
-                            const image = item.image || products.find((product) => product.id === item.id)?.images[0];
+                            const productId = item.id.replace(/-(\d+)g$/, "");
+                            const image = productImagePaths(productId, 1)[0] || products.find((product) => product.id === productId)?.images[0] || item.image;
                             return (
                             <div key={item.id} className="flex items-center gap-3 px-5 py-3 border-b border-[#f0e8e0] last:border-0">
                               <div className="w-12 h-12 rounded-xl bg-[#fdf8f5] overflow-hidden flex items-center justify-center text-2xl flex-shrink-0">
@@ -170,6 +172,7 @@ export default function Header() {
           <Link href="/contacts" className="py-2 text-sm font-medium" onClick={() => setMobileOpen(false)}>Контакты</Link>
           <Link href="/sales" className="py-2 text-sm font-medium text-[#E8845A]" onClick={() => setMobileOpen(false)}>Акции 🔥</Link>
           <Link href="/about" className="py-2 text-sm font-medium" onClick={() => setMobileOpen(false)}>О компании</Link>
+          <Link href={user ? "/account" : "/auth"} className="py-2 text-sm font-medium" onClick={() => setMobileOpen(false)}>Личный кабинет</Link>
           <Link href="/cart" className="py-2 text-sm font-medium" onClick={() => setMobileOpen(false)}>Корзина ({totalItems})</Link>
         </div>
       )}
