@@ -87,7 +87,7 @@ export default function CheckoutPage() {
     { id: "pickup", label: "Самовывоз — Казань", desc: "г. Казань, ул. Айдарова, 15", price: 0, days: "после готовности заказа", isPvz: false },
     { id: "sdek_pvz", label: "СДЭК — Пункт выдачи", desc: "Укажите адрес удобного ПВЗ СДЭК", price: subtotal >= 3000 ? 0 : 300, days: "2–5 дней", isPvz: true },
     { id: "yandex_pvz", label: "Яндекс — Пункт выдачи", desc: "Укажите адрес удобного ПВЗ Яндекс", price: subtotal >= 3000 ? 0 : 300, days: "3–6 дней", isPvz: true },
-    { id: "ozon_pvz", label: "Ozon — Пункт выдачи", desc: "Укажите адрес удобного ПВЗ Ozon", price: 200, days: "3–7 дней", isPvz: true },
+    { id: "ozon_pvz", label: "Ozon — Пункт выдачи", desc: "Укажите адрес удобного ПВЗ Ozon", price: 225, days: "3–7 дней", isPvz: true },
     { id: "pochta", label: "Почта России", desc: "В любой населённый пункт России", price: subtotal >= 3000 ? 0 : 250, days: "5–14 дней", isPvz: false },
   ];
   const deliveryOptions = allDeliveryOptions.filter((option) => deliverySettings.enabled[option.id]);
@@ -120,8 +120,8 @@ export default function CheckoutPage() {
     if (!form.surname.trim()) e.surname = "Введите фамилию";
     if (phoneDigits(form.phone) !== 11) e.phone = "Введите номер полностью: +7 и 10 цифр";
     if (!isValidEmail(form.email)) e.email = "Проверьте email — похоже, есть опечатка";
-    if (delivery !== "pickup" && delivery !== "ozon_pvz" && !form.city.trim()) e.city = "Введите город";
-    if (selectedDelivery.isPvz && delivery !== "ozon_pvz" && !form.address.trim()) e.address = "Введите адрес пункта выдачи";
+    if (delivery !== "pickup" && !form.city.trim()) e.city = "Введите город";
+    if (selectedDelivery.isPvz && !form.address.trim()) e.address = "Введите адрес пункта выдачи";
     if (delivery === "pochta" && !form.address.trim()) e.address = "Выберите отделение Почты России на карте";
     setErrors(e);
     return Object.keys(e).length === 0;
@@ -147,9 +147,9 @@ export default function CheckoutPage() {
           },
           delivery: {
             method: delivery,
-            city: delivery === "pickup" ? "Казань" : delivery === "ozon_pvz" ? "" : form.city,
-            address: delivery === "pickup" ? "ул. Айдарова, 15" : delivery === "ozon_pvz" ? "" : form.address,
-            zip: delivery === "pickup" || delivery === "ozon_pvz" ? "" : form.zip,
+            city: delivery === "pickup" ? "Казань" : form.city,
+            address: delivery === "pickup" ? "ул. Айдарова, 15" : form.address,
+            zip: delivery === "pickup" ? "" : form.zip,
             ...(delivery === "pochta" && pochtaPoint ? {
               priceKopecks: deliveryPriceKopecks,
               pointId: pochtaPoint.id,
@@ -239,7 +239,10 @@ export default function CheckoutPage() {
                 <div className="grid sm:grid-cols-2 gap-4">
                   {renderField({ label: "Имя", name: "name", placeholder: "Имя" })}
                   {renderField({ label: "Фамилия", name: "surname", placeholder: "Фамилия" })}
-                  {renderField({ label: "Телефон", name: "phone", type: "tel", placeholder: "+7 (___) ___-__-__" })}
+                  <div>
+                    {renderField({ label: "Телефон", name: "phone", type: "tel", placeholder: "+7 (___) ___-__-__" })}
+                    <p className="text-xs text-[#aaa] mt-1">Укажите номер, который привязан к вашему Ozon-аккаунту.</p>
+                  </div>
                   {renderField({ label: "Email", name: "email", type: "email", placeholder: "на него придёт чек и уведомление" })}
                 </div>
               </div>
@@ -269,7 +272,7 @@ export default function CheckoutPage() {
                   ))}
                 </div>
 
-                {subtotal < 3000 && delivery !== "pickup" && (
+                {subtotal < 3000 && delivery !== "pickup" && delivery !== "ozon_pvz" && (
                   <div className="bg-[#fff8f5] border border-[#f5d5c0] rounded-2xl p-4 mb-5 text-sm text-[#8b4513]">
                     🎁 До бесплатной доставки не хватает <strong>{(3000 - subtotal).toLocaleString("ru-RU")} ₽</strong>
                   </div>
@@ -315,14 +318,6 @@ export default function CheckoutPage() {
                         : "Стоимость доставки будет рассчитана Почтой России при выборе отделения."}
                     </p>
                   </div>
-                ) : delivery === "ozon_pvz" ? (
-                  <div className="rounded-2xl border border-[#cddfff] bg-[#f4f8ff] p-4 text-sm">
-                    <p className="font-semibold text-[#2764c8]">Пункт выдачи выберете в Ozon Pay</p>
-                    <p className="mt-1 leading-relaxed text-[#61779e]">
-                      После нажатия «Оплатить заказ» Ozon откроет защищённую форму с картой и ближайшими ПВЗ. Здесь адрес вводить не нужно.
-                    </p>
-                    <p className="mt-2 font-medium text-[#2764c8]">Стоимость доставки для вас — 200 ₽.</p>
-                  </div>
                 ) : (
                 <div className="grid sm:grid-cols-2 gap-4">
                   {renderField({ label: "Город", name: "city", placeholder: "Казань" })}
@@ -331,6 +326,11 @@ export default function CheckoutPage() {
                     <div className="sm:col-span-2">
                       {renderField({ label: "Адрес пункта выдачи", name: "address", placeholder: "Например: ул. Ленина, 5 — ПВЗ на первом этаже" })}
                       <p className="text-xs text-[#aaa] mt-1">Найдите ближайший ПВЗ на сайте службы доставки и введите его адрес</p>
+                      {delivery === "ozon_pvz" && (
+                        <div className="mt-3 rounded-xl border border-[#cddfff] bg-[#f4f8ff] px-3 py-2.5 text-xs leading-relaxed text-[#61779e]">
+                          После отправки посылка появится в вашем личном кабинете Ozon — там вы сможете отслеживать её самостоятельно.
+                        </div>
+                      )}
                     </div>
                   )}
 

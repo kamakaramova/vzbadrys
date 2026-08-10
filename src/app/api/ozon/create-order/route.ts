@@ -45,7 +45,7 @@ const DELIVERY_PRICES: Record<DeliveryMethod, number> = {
   pickup: 0,
   sdek_pvz: 300,
   yandex_pvz: 300,
-  ozon_pvz: 200,
+  ozon_pvz: 225,
   pochta: 250,
 };
 
@@ -106,7 +106,7 @@ export async function POST(request: NextRequest) {
   if (!delivery?.method || !(delivery.method in DELIVERY_PRICES)) return badRequest("Выберите способ доставки");
   const deliverySettings = await getDeliverySettings();
   if (!deliverySettings.enabled[delivery.method]) return badRequest("Этот способ доставки временно недоступен");
-  if (delivery.method !== "ozon_pvz" && (!delivery.city?.trim() || !delivery.address?.trim())) {
+  if (delivery.method !== "pickup" && (!delivery.city?.trim() || !delivery.address?.trim())) {
     return badRequest("Укажите адрес доставки или ПВЗ");
   }
 
@@ -226,7 +226,7 @@ export async function POST(request: NextRequest) {
   )) {
     return badRequest("Выберите отделение Почты России, чтобы рассчитать доставку");
   }
-  const deliveryPriceKopecks = subtotal >= 3000
+  const deliveryPriceKopecks = subtotal >= 3000 && deliveryMethod !== "ozon_pvz"
     ? 0
     : deliveryMethod === "pochta"
       ? requestedPochtaPriceKopecks
@@ -356,9 +356,9 @@ export async function POST(request: NextRequest) {
     const ozonResponse = await postToOzon<OzonCreateOrderResponse>("/v1/createOrder", {
       accessKey: config.accessKey,
       amount: { currencyCode: CURRENCY_CODE, value: amountValue },
-      // Ozon Pay открывает свой сценарий выбора ПВЗ только для Ozon Доставки.
-      // Для остальных способов не включаем доставку в платёжной форме Ozon.
-      deliverySettings: { isEnabled: deliveryMethod === "ozon_pvz" },
+      // ПВЗ выбирается покупателем заранее на сайте, поэтому в платёжной форме
+      // Ozon не запускаем повторный сценарий выбора доставки.
+      deliverySettings: { isEnabled: false },
       enableFiscalization: true,
       expiresAt,
       extId,
