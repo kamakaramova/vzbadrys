@@ -117,7 +117,6 @@ export const products: Product[] = [
     documents: [
       { name: "Свидетельство о государственной регистрации", url: "/docs/magniy-bisglitinat-sgr.pdf?v=20260810b" },
       { name: "ISO и другие сертификаты", url: "/docs/iso-i-drugie-sertifikaty.pdf?v=20260810b" },
-      { name: "Протокол лабораторных исследований", url: "/docs/magniy-bisglitinat-laboratoriya.pdf?v=20260810b" },
     ],
     inStock: true,
     weight: "60 капсул",
@@ -190,7 +189,6 @@ export const products: Product[] = [
     documents: [
       { name: "Свидетельство о государственной регистрации", url: "/docs/magniy-citrat-b6-sgr.pdf?v=20260810b" },
       { name: "ISO и другие сертификаты", url: "/docs/iso-i-drugie-sertifikaty.pdf?v=20260810b" },
-      { name: "Протокол лабораторных исследований", url: "/docs/magniy-citrat-b6-laboratoriya.pdf?v=20260810b" },
     ],
     inStock: true,
     weight: "60 капсул",
@@ -276,7 +274,6 @@ export const products: Product[] = [
     documents: [
       { name: "Свидетельство о государственной регистрации", url: "/docs/selen-tsink-sgr.pdf?v=20260810b" },
       { name: "ISO и другие сертификаты", url: "/docs/iso-i-drugie-sertifikaty.pdf?v=20260810b" },
-      { name: "Протокол лабораторных исследований", url: "/docs/selen-tsink-laboratoriya.pdf?v=20260810b" },
     ],
     inStock: true,
     weight: "60 капсул",
