@@ -120,8 +120,8 @@ export default function CheckoutPage() {
     if (!form.surname.trim()) e.surname = "Введите фамилию";
     if (phoneDigits(form.phone) !== 11) e.phone = "Введите номер полностью: +7 и 10 цифр";
     if (!isValidEmail(form.email)) e.email = "Проверьте email — похоже, есть опечатка";
-    if (delivery !== "pickup" && !form.city.trim()) e.city = "Введите город";
-    if (selectedDelivery.isPvz && !form.address.trim()) e.address = "Введите адрес пункта выдачи";
+    if (delivery !== "pickup" && delivery !== "ozon_pvz" && !form.city.trim()) e.city = "Введите город";
+    if (selectedDelivery.isPvz && delivery !== "ozon_pvz" && !form.address.trim()) e.address = "Введите адрес пункта выдачи";
     if (delivery === "pochta" && !form.address.trim()) e.address = "Выберите отделение Почты России на карте";
     setErrors(e);
     return Object.keys(e).length === 0;
@@ -147,9 +147,9 @@ export default function CheckoutPage() {
           },
           delivery: {
             method: delivery,
-            city: delivery === "pickup" ? "Казань" : form.city,
-            address: delivery === "pickup" ? "ул. Айдарова, 15" : form.address,
-            zip: delivery === "pickup" ? "" : form.zip,
+            city: delivery === "pickup" ? "Казань" : delivery === "ozon_pvz" ? "" : form.city,
+            address: delivery === "pickup" ? "ул. Айдарова, 15" : delivery === "ozon_pvz" ? "" : form.address,
+            zip: delivery === "pickup" || delivery === "ozon_pvz" ? "" : form.zip,
             ...(delivery === "pochta" && pochtaPoint ? {
               priceKopecks: deliveryPriceKopecks,
               pointId: pochtaPoint.id,
@@ -314,6 +314,14 @@ export default function CheckoutPage() {
                         ? "Доставка бесплатна при заказе от 3 000 ₽."
                         : "Стоимость доставки будет рассчитана Почтой России при выборе отделения."}
                     </p>
+                  </div>
+                ) : delivery === "ozon_pvz" ? (
+                  <div className="rounded-2xl border border-[#cddfff] bg-[#f4f8ff] p-4 text-sm">
+                    <p className="font-semibold text-[#2764c8]">Пункт выдачи выберете в Ozon Pay</p>
+                    <p className="mt-1 leading-relaxed text-[#61779e]">
+                      После нажатия «Оплатить заказ» Ozon откроет защищённую форму с картой и ближайшими ПВЗ. Здесь адрес вводить не нужно.
+                    </p>
+                    <p className="mt-2 font-medium text-[#2764c8]">Стоимость доставки для вас — 200 ₽.</p>
                   </div>
                 ) : (
                 <div className="grid sm:grid-cols-2 gap-4">

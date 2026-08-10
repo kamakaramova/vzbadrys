@@ -106,7 +106,7 @@ export async function POST(request: NextRequest) {
   if (!delivery?.method || !(delivery.method in DELIVERY_PRICES)) return badRequest("Выберите способ доставки");
   const deliverySettings = await getDeliverySettings();
   if (!deliverySettings.enabled[delivery.method]) return badRequest("Этот способ доставки временно недоступен");
-  if (!delivery.city?.trim() || !delivery.address?.trim()) {
+  if (delivery.method !== "ozon_pvz" && (!delivery.city?.trim() || !delivery.address?.trim())) {
     return badRequest("Укажите адрес доставки или ПВЗ");
   }
 
@@ -115,8 +115,8 @@ export async function POST(request: NextRequest) {
   const customerPhone = customer.phone!;
   const customerEmail = customer.email!.trim().toLowerCase();
   const deliveryMethod = delivery.method;
-  const deliveryCity = delivery.city.trim();
-  const deliveryAddress = delivery.address.trim();
+  const deliveryCity = delivery.city?.trim() || "";
+  const deliveryAddress = delivery.address?.trim() || "";
 
   const requestedItems = (body.items ?? []).filter(
     (item): item is { id: string; quantity: number } =>
