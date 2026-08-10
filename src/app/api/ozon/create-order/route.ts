@@ -356,8 +356,9 @@ export async function POST(request: NextRequest) {
     const ozonResponse = await postToOzon<OzonCreateOrderResponse>("/v1/createOrder", {
       accessKey: config.accessKey,
       amount: { currencyCode: CURRENCY_CODE, value: amountValue },
-      // Доставка оформляется отдельно: без неописанного шага выбора ПВЗ в Acquiring.
-      deliverySettings: { isEnabled: false },
+      // Ozon Pay открывает свой сценарий выбора ПВЗ только для Ozon Доставки.
+      // Для остальных способов не включаем доставку в платёжной форме Ozon.
+      deliverySettings: { isEnabled: deliveryMethod === "ozon_pvz" },
       enableFiscalization: true,
       expiresAt,
       extId,
