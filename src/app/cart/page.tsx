@@ -33,10 +33,11 @@ export default function CartPage() {
   const [promoError, setPromoError] = useState("");
   const [referralError, setReferralError] = useState("");
   const freeDeliveryThreshold = 3000;
-  const amountToFreeDelivery = Math.max(0, freeDeliveryThreshold - subtotal);
-  const freeDeliveryProgress = Math.min(100, (subtotal / freeDeliveryThreshold) * 100);
   const promoDiscountAmount = Math.round((subtotal * promoDiscount) / 100);
   const referralDiscountAmount = Math.round((subtotal * referralDiscount) / 100);
+  const discountedSubtotal = Math.max(0, subtotal - promoDiscountAmount - referralDiscountAmount);
+  const amountToFreeDelivery = Math.max(0, freeDeliveryThreshold - discountedSubtotal);
+  const freeDeliveryProgress = Math.min(100, (discountedSubtotal / freeDeliveryThreshold) * 100);
 
   const validateCode = async (kind: "promo" | "referral", rawCode: string) => {
     if (!rawCode.trim()) return;
@@ -281,7 +282,7 @@ export default function CartPage() {
                           Бесплатная доставка доступна
                         </p>
                         <p className="mt-1 text-xs text-[#8b6b5d]">
-                          Вы достигли суммы 3 000 ₽
+                          Сумма товаров после скидок — от 3 000 ₽
                         </p>
                       </>
                     )}
@@ -308,7 +309,7 @@ export default function CartPage() {
                   <div className="flex justify-between text-sm">
                     <span className="text-[#6b6b6b]">Доставка</span>
                     <span className="text-green-600 font-semibold">
-                      {subtotal >= freeDeliveryThreshold ? "0 ₽" : "от 250 ₽"}
+                      {discountedSubtotal >= freeDeliveryThreshold ? "0 ₽" : "от 250 ₽"}
                     </span>
                   </div>
                   <p className="text-xs text-[#aaa] bg-[#fdf8f5] rounded-xl p-3">

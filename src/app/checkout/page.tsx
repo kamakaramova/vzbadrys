@@ -84,12 +84,18 @@ export default function CheckoutPage() {
       .catch(() => undefined);
   }, []);
 
+  const maxBonusPayment = Math.floor(subtotal * 0.3);
+  const promoDiscountAmount = Math.round((subtotal * promoDiscount) / 100);
+  const referralDiscountAmount = Math.round((subtotal * referralDiscount) / 100);
+  const allowedBonusPayment = Math.min(bonusPointsToSpend, maxBonusPayment, user?.bonusPoints || 0);
+  const discountedSubtotal = Math.max(0, subtotal - promoDiscountAmount - referralDiscountAmount - allowedBonusPayment);
+
   const allDeliveryOptions: { id: DeliveryMethod; label: string; desc: string; price: number; days: string; isPvz: boolean }[] = [
     { id: "pickup", label: "Самовывоз — Казань", desc: "г. Казань, ул. Айдарова, 15", price: 0, days: "после готовности заказа", isPvz: false },
-    { id: "sdek_pvz", label: "СДЭК — Пункт выдачи", desc: "Укажите адрес удобного ПВЗ СДЭК", price: subtotal >= 3000 ? 0 : 300, days: "2–5 дней", isPvz: true },
-    { id: "yandex_pvz", label: "Яндекс — Пункт выдачи", desc: "Укажите адрес удобного ПВЗ Яндекс", price: subtotal >= 3000 ? 0 : 300, days: "3–6 дней", isPvz: true },
+    { id: "sdek_pvz", label: "СДЭК — Пункт выдачи", desc: "Укажите адрес удобного ПВЗ СДЭК", price: discountedSubtotal >= 3000 ? 0 : 300, days: "2–5 дней", isPvz: true },
+    { id: "yandex_pvz", label: "Яндекс — Пункт выдачи", desc: "Укажите адрес удобного ПВЗ Яндекс", price: discountedSubtotal >= 3000 ? 0 : 300, days: "3–6 дней", isPvz: true },
     { id: "ozon_pvz", label: "Ozon — Пункт выдачи", desc: "Укажите адрес удобного ПВЗ Ozon", price: 225, days: "3–7 дней", isPvz: true },
-    { id: "pochta", label: "Почта России", desc: "В любой населённый пункт России", price: subtotal >= 3000 ? 0 : 250, days: "5–14 дней", isPvz: false },
+    { id: "pochta", label: "Почта России", desc: "В любой населённый пункт России", price: discountedSubtotal >= 3000 ? 0 : 250, days: "5–14 дней", isPvz: false },
   ];
   const deliveryOptions = allDeliveryOptions.filter((option) => deliverySettings.enabled[option.id]);
 
@@ -102,17 +108,13 @@ export default function CheckoutPage() {
 
   const selectedDelivery = deliveryOptions.find((d) => d.id === delivery) ?? allDeliveryOptions[0];
   const deliveryPriceKopecks = delivery === "pochta"
-    ? (subtotal >= 3000 ? 0 : pochtaPoint?.deliveryPriceKopecks)
+    ? (discountedSubtotal >= 3000 ? 0 : pochtaPoint?.deliveryPriceKopecks)
     : selectedDelivery.price * 100;
   const deliveryPrice = (deliveryPriceKopecks ?? 0) / 100;
   const formatPrice = (price: number) => price.toLocaleString("ru-RU", {
     minimumFractionDigits: Number.isInteger(price) ? 0 : 2,
     maximumFractionDigits: 2,
   });
-  const maxBonusPayment = Math.floor(subtotal * 0.3);
-  const promoDiscountAmount = Math.round((subtotal * promoDiscount) / 100);
-  const referralDiscountAmount = Math.round((subtotal * referralDiscount) / 100);
-  const allowedBonusPayment = Math.min(bonusPointsToSpend, maxBonusPayment, user?.bonusPoints || 0);
   const finalTotal = Math.max(0, total - allowedBonusPayment) + deliveryPrice;
 
   const validate = () => {
@@ -275,9 +277,9 @@ export default function CheckoutPage() {
                   ))}
                 </div>
 
-                {subtotal < 3000 && delivery !== "pickup" && delivery !== "ozon_pvz" && (
+                {discountedSubtotal < 3000 && delivery !== "pickup" && delivery !== "ozon_pvz" && (
                   <div className="bg-[#fff8f5] border border-[#f5d5c0] rounded-2xl p-4 mb-5 text-sm text-[#8b4513]">
-                    🎁 До бесплатной доставки не хватает <strong>{(3000 - subtotal).toLocaleString("ru-RU")} ₽</strong>
+                    🎁 До бесплатной доставки не хватает <strong>{(3000 - discountedSubtotal).toLocaleString("ru-RU")} ₽</strong>
                   </div>
                 )}
 
@@ -316,7 +318,7 @@ export default function CheckoutPage() {
                     )}
                     {errors.address && !pochtaPoint && <p className="text-xs text-red-400 mt-1">{errors.address}</p>}
                     <p className="text-xs text-[#aaa] mt-2">
-                      {subtotal >= 3000
+                      {discountedSubtotal >= 3000
                         ? "Доставка бесплатна при заказе от 3 000 ₽."
                         : "Стоимость доставки будет рассчитана Почтой России при выборе отделения."}
                     </p>

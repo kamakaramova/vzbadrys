@@ -223,15 +223,16 @@ export async function POST(request: NextRequest) {
     bonusSpent = requestedBonusPoints;
   }
   const discount = percentageDiscount + bonusSpent;
+  const discountedSubtotal = Math.max(0, subtotal - discount);
   const requestedPochtaPriceKopecks = Number(delivery.priceKopecks);
-  if (deliveryMethod === "pochta" && subtotal < 3000 && (
+  if (deliveryMethod === "pochta" && discountedSubtotal < 3000 && (
     !Number.isInteger(requestedPochtaPriceKopecks)
     || requestedPochtaPriceKopecks < 0
     || requestedPochtaPriceKopecks > 100000
   )) {
     return badRequest("Выберите отделение Почты России, чтобы рассчитать доставку");
   }
-  const deliveryPriceKopecks = subtotal >= 3000 && deliveryMethod !== "ozon_pvz"
+  const deliveryPriceKopecks = discountedSubtotal >= 3000 && deliveryMethod !== "ozon_pvz"
     ? 0
     : deliveryMethod === "pochta"
       ? requestedPochtaPriceKopecks
