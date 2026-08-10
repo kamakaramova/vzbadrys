@@ -112,8 +112,9 @@ export default function AccountPage() {
 
   const handleLogout = async () => { await logout(); router.push("/"); };
 
-  const copyRef = () => {
-    navigator.clipboard.writeText(`https://взбадрись.рф/cart?ref=${encodeURIComponent(user.referralCode)}`);
+  const copyStoreLink = () => {
+    // Латинский адрес надёжно распознаётся мессенджерами и не содержит скидочных кодов.
+    navigator.clipboard.writeText("https://vzbadrys.vercel.app");
     setCopiedReferralLink(true);
     setTimeout(() => setCopiedReferralLink(false), 2000);
   };
@@ -563,12 +564,12 @@ export default function AccountPage() {
 
                     <div className="bg-white rounded-3xl border border-[#f0e8e0] p-6">
                       <h3 className="font-bold text-base mb-2 flex items-center gap-2"><Gift size={18} className="text-[#E8845A]" /> Пригласить подругу</h3>
-                      <p className="text-sm text-[#6b6b6b] mb-4">Поделитесь ссылкой с подругой: ей — скидка 5%, вам — 50 бонусов после её первого оплаченного заказа.</p>
+                      <p className="text-sm text-[#6b6b6b] mb-4">Поделитесь ссылкой на магазин и кодом отдельно: подруге — скидка 5%, вам — 50 бонусов после её первого оплаченного заказа.</p>
                       <div className="grid sm:grid-cols-2 gap-3">
                         <div className="bg-[#fff8f5] border border-[#f5d5c0] rounded-2xl p-4">
-                          <p className="text-xs font-semibold text-[#8b6b5d] uppercase tracking-wide">Реферальная ссылка</p>
-                          <p className="mt-2 text-xs text-[#6b6b6b] truncate">взбадрись.рф/cart?ref={user.referralCode}</p>
-                          <button onClick={copyRef} className={`mt-3 w-full flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl font-semibold text-sm transition-all ${copiedReferralLink ? "bg-green-500 text-white" : "bg-[#E8845A] hover:bg-[#d4703f] text-white"}`}>
+                          <p className="text-xs font-semibold text-[#8b6b5d] uppercase tracking-wide">Ссылка на магазин</p>
+                          <p className="mt-2 text-xs text-[#6b6b6b] truncate">vzbadrys.vercel.app</p>
+                          <button onClick={copyStoreLink} className={`mt-3 w-full flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl font-semibold text-sm transition-all ${copiedReferralLink ? "bg-green-500 text-white" : "bg-[#E8845A] hover:bg-[#d4703f] text-white"}`}>
                             {copiedReferralLink ? <><Check size={15} /> Скопировано</> : <><Copy size={15} /> Копировать ссылку</>}
                           </button>
                         </div>
@@ -580,7 +581,7 @@ export default function AccountPage() {
                           </button>
                         </div>
                       </div>
-                      <p className="text-xs text-[#aaa] mt-3">Заказов по вашей ссылке: {loyalty.referralOrders}</p>
+                      <p className="text-xs text-[#aaa] mt-3">Заказов с вашим кодом: {loyalty.referralOrders}</p>
                     </div>
 
                     <div className="bg-white rounded-3xl border border-[#f0e8e0] p-6">
