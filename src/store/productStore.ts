@@ -66,7 +66,14 @@ export const useProductStore = create<ProductStore>((set, get) => ({
         const mergedProducts = defaultProducts.map((catalogueProduct) => {
           const savedProduct = savedById.get(catalogueProduct.id);
           return savedProduct
-            ? { ...catalogueProduct, ...savedProduct, sku: savedProduct.sku || catalogueProduct.sku }
+            ? {
+                ...catalogueProduct,
+                ...savedProduct,
+                sku: savedProduct.sku || catalogueProduct.sku,
+                // Документы хранятся как проверенные PDF в репозитории. Старые записи
+                // Supabase могут содержать прежние ссылки и не должны их перезаписывать.
+                documents: catalogueProduct.documents,
+              }
             : catalogueProduct;
         });
         const customProducts = payload.products.filter(
