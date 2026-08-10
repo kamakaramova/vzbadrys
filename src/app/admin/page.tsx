@@ -53,6 +53,7 @@ type FeedbackItem = {
   rating?: number;
   image_url?: string | null;
 };
+type FeedbackResponse = { id: string; feedback_type: "review" | "question"; feedback_id: string; body: string; created_at: string };
 const DEFAULT_DELIVERY_SETTINGS: DeliverySettings = {
   enabled: { pickup: true, sdek_pvz: true, yandex_pvz: true, ozon_pvz: true, pochta: true },
   pochtaWidgetId: 62722,
@@ -170,6 +171,7 @@ export default function AdminPage() {
   const [orderEmailLogsLoading, setOrderEmailLogsLoading] = useState(false);
   const [feedbackReviews, setFeedbackReviews] = useState<FeedbackItem[]>([]);
   const [feedbackQuestions, setFeedbackQuestions] = useState<FeedbackItem[]>([]);
+  const [feedbackResponses, setFeedbackResponses] = useState<FeedbackResponse[]>([]);
   const [feedbackLoading, setFeedbackLoading] = useState(false);
   const [feedbackError, setFeedbackError] = useState("");
   const [feedbackDrafts, setFeedbackDrafts] = useState<Record<string, string>>({});
@@ -413,9 +415,10 @@ export default function AdminPage() {
     try {
       const response = await fetch("/api/admin/feedback", { headers: { "x-admin-password": password }, cache: "no-store" });
       const data = await response.json().catch(() => ({}));
-      if (!response.ok || !Array.isArray(data.reviews) || !Array.isArray(data.questions)) throw new Error(data.error || "Не удалось загрузить отзывы и вопросы");
+      if (!response.ok || !Array.isArray(data.reviews) || !Array.isArray(data.questions) || !Array.isArray(data.responses)) throw new Error(data.error || "Не удалось загрузить отзывы и вопросы");
       setFeedbackReviews(data.reviews as FeedbackItem[]);
       setFeedbackQuestions(data.questions as FeedbackItem[]);
+      setFeedbackResponses(data.responses as FeedbackResponse[]);
     } catch (error) {
       setFeedbackError(error instanceof Error ? error.message : "Не удалось загрузить отзывы и вопросы");
     } finally {
@@ -431,15 +434,39 @@ export default function AdminPage() {
       const response = await fetch("/api/admin/feedback", {
         method: "PATCH",
         headers: { "content-type": "application/json", "x-admin-password": pw },
-        body: JSON.stringify({ id: item.id, type, answer: feedbackDrafts[`${type}:${item.id}`] ?? item.answer ?? "", ...(isPublished === undefined ? {} : { isPublished }) }),
+        body: JSON.stringify({ id: item.id, type, answer: feedbackDrafts[`${type}:${item.id}`] ?? "", ...(isPublished === undefined ? {} : { isPublished }) }),
       });
       const data = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(data.error || "Не удалось сохранить ответ");
       const update = (current: FeedbackItem[]) => current.map((entry) => entry.id === item.id ? { ...entry, ...data.item } : entry);
       if (type === "review") setFeedbackReviews(update); else setFeedbackQuestions(update);
-      setFeedbackDrafts((drafts) => ({ ...drafts, [`${type}:${item.id}`]: "" }));
+      if (data.response) setFeedbackResponses((current) => [data.response as FeedbackResponse, ...current]);
+      setFeedbackDrafts((drafts) => {
+        const next = { ...drafts };
+        delete next[`${type}:${item.id}`];
+        return next;
+      });
     } catch (error) {
       setFeedbackError(error instanceof Error ? error.message : "Не удалось сохранить ответ");
+    } finally {
+      setFeedbackSaving(null);
+    }
+  };
+
+  const deleteFeedback = async (type: "review" | "question", item: FeedbackItem) => {
+    const label = type === "review" ? "отзыв" : "вопрос";
+    if (!pw || !confirm(`Точно удалить ${label} от «${item.author_name}»? Восстановить его не получится.`)) return;
+    setFeedbackSaving(`${type}:${item.id}`);
+    setFeedbackError("");
+    try {
+      const response = await fetch(`/api/admin/feedback?type=${type}&id=${encodeURIComponent(item.id)}`, { method: "DELETE", headers: { "x-admin-password": pw } });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(data.error || "Не удалось удалить обращение");
+      if (type === "review") setFeedbackReviews((current) => current.filter((entry) => entry.id !== item.id));
+      else setFeedbackQuestions((current) => current.filter((entry) => entry.id !== item.id));
+      setFeedbackResponses((current) => current.filter((entry) => !(entry.feedback_type === type && entry.feedback_id === item.id)));
+    } catch (error) {
+      setFeedbackError(error instanceof Error ? error.message : "Не удалось удалить обращение");
     } finally {
       setFeedbackSaving(null);
     }
@@ -1090,11 +1117,17 @@ export default function AdminPage() {
             <div className="grid xl:grid-cols-2 gap-6">
               <section className="bg-white rounded-3xl border border-[#f0e8e0] overflow-hidden">
                 <div className="px-6 py-4 border-b border-[#f0e8e0] flex items-center justify-between"><div><h3 className="font-bold">Отзывы</h3><p className="text-xs text-[#aaa] mt-1">Их оставляют только покупатели из личного кабинета.</p></div><span className="text-xs font-bold bg-[#fff1e9] text-[#E8845A] px-2.5 py-1 rounded-full">{feedbackReviews.length}</span></div>
-                {feedbackLoading ? <p className="p-6 text-sm text-[#aaa]">Загружаем…</p> : feedbackReviews.length === 0 ? <p className="p-6 text-sm text-[#aaa]">Отзывов пока нет.</p> : <div className="divide-y divide-[#f0e8e0]">{feedbackReviews.map((item) => <article key={item.id} className="p-5"><div className="flex items-start justify-between gap-3"><div><p className="font-semibold text-sm">{item.author_name}</p><p className="text-xs text-[#aaa] mt-0.5">{item.author_email || "E-mail не указан"} · {new Date(item.created_at).toLocaleDateString("ru-RU")}</p></div>{item.rating && <span className="text-xs font-bold text-[#E8845A]">★ {item.rating}/5</span>}</div><p className="mt-3 text-sm leading-relaxed">{item.body}</p>{item.image_url && <a href={item.image_url} target="_blank" rel="noreferrer" className="mt-3 inline-block text-xs font-semibold text-[#E8845A] hover:underline">Открыть фото</a>}<textarea value={feedbackDrafts[`review:${item.id}`] ?? item.answer ?? ""} onChange={(event) => setFeedbackDrafts((drafts) => ({ ...drafts, [`review:${item.id}`]: event.target.value }))} rows={3} placeholder="Поблагодарите или ответьте покупателю" className="mt-4 w-full rounded-xl border border-[#f0e8e0] px-3 py-2.5 text-sm outline-none focus:border-[#E8845A]" /><div className="mt-3 flex flex-wrap gap-2"><button onClick={() => void saveFeedback("review", item)} disabled={feedbackSaving === `review:${item.id}`} className="px-4 py-2 rounded-xl bg-[#E8845A] text-white text-xs font-semibold disabled:opacity-60">{feedbackSaving === `review:${item.id}` ? "Сохраняем…" : item.answer ? "Обновить ответ" : "Опубликовать ответ"}</button><button onClick={() => void saveFeedback("review", item, !item.is_published)} disabled={feedbackSaving === `review:${item.id}`} className="px-4 py-2 rounded-xl border border-[#f0e8e0] text-xs font-semibold">{item.is_published ? "Скрыть отзыв" : "Показать отзыв"}</button></div></article>)}</div>}
+                {feedbackLoading ? <p className="p-6 text-sm text-[#aaa]">Загружаем…</p> : feedbackReviews.length === 0 ? <p className="p-6 text-sm text-[#aaa]">Отзывов пока нет.</p> : <div className="divide-y divide-[#f0e8e0]">{feedbackReviews.map((item) => {
+                  const history = feedbackResponses.filter((response) => response.feedback_type === "review" && response.feedback_id === item.id);
+                  return <article key={item.id} className="p-5"><div className="flex items-start justify-between gap-3"><div><p className="font-semibold text-sm">{item.author_name}</p><p className="text-xs text-[#aaa] mt-0.5">{item.author_email || "E-mail не указан"} · {new Date(item.created_at).toLocaleDateString("ru-RU")}</p></div>{item.rating && <span className="text-xs font-bold text-[#E8845A]">★ {item.rating}/5</span>}</div><p className="mt-3 text-sm leading-relaxed">{item.body}</p>{item.image_url && <a href={item.image_url} target="_blank" rel="noreferrer" className="mt-3 inline-block text-xs font-semibold text-[#E8845A] hover:underline">Открыть фото</a>}{history.length > 0 && <div className="mt-4 rounded-xl bg-[#fdf8f5] p-3"><p className="text-xs font-bold text-[#8b6b5d]">История ответов</p>{history.map((response) => <div key={response.id} className="mt-2 border-t border-[#f0e8e0] pt-2"><p className="text-sm">{response.body}</p><p className="mt-1 text-xs text-[#aaa]">{new Date(response.created_at).toLocaleString("ru-RU")}</p></div>)}</div>}<textarea value={feedbackDrafts[`review:${item.id}`] ?? ""} onChange={(event) => setFeedbackDrafts((drafts) => ({ ...drafts, [`review:${item.id}`]: event.target.value }))} rows={3} placeholder={item.answer ? "Напишите новый ответ — предыдущий останется в истории" : "Поблагодарите или ответьте покупателю"} className="mt-4 w-full rounded-xl border border-[#f0e8e0] px-3 py-2.5 text-sm outline-none focus:border-[#E8845A]" /><div className="mt-3 flex flex-wrap gap-2"><button onClick={() => void saveFeedback("review", item)} disabled={feedbackSaving === `review:${item.id}`} className="px-4 py-2 rounded-xl bg-[#E8845A] text-white text-xs font-semibold disabled:opacity-60">{feedbackSaving === `review:${item.id}` ? "Сохраняем…" : item.answer ? "Добавить ответ" : "Опубликовать ответ"}</button><button onClick={() => void saveFeedback("review", item, !item.is_published)} disabled={feedbackSaving === `review:${item.id}`} className="px-4 py-2 rounded-xl border border-[#f0e8e0] text-xs font-semibold">{item.is_published ? "Скрыть отзыв" : "Показать отзыв"}</button><button onClick={() => void deleteFeedback("review", item)} disabled={feedbackSaving === `review:${item.id}`} className="px-4 py-2 rounded-xl border border-red-200 text-red-600 text-xs font-semibold">Удалить отзыв</button></div></article>;
+                })}</div>}
               </section>
               <section className="bg-white rounded-3xl border border-[#f0e8e0] overflow-hidden">
                 <div className="px-6 py-4 border-b border-[#f0e8e0] flex items-center justify-between"><div><h3 className="font-bold">Вопросы</h3><p className="text-xs text-[#aaa] mt-1">Новый вопрос появится на сайте вместе с ответом.</p></div><span className="text-xs font-bold bg-[#fff1e9] text-[#E8845A] px-2.5 py-1 rounded-full">{feedbackQuestions.length}</span></div>
-                {feedbackLoading ? <p className="p-6 text-sm text-[#aaa]">Загружаем…</p> : feedbackQuestions.length === 0 ? <p className="p-6 text-sm text-[#aaa]">Вопросов пока нет.</p> : <div className="divide-y divide-[#f0e8e0]">{feedbackQuestions.map((item) => <article key={item.id} className="p-5"><div><p className="font-semibold text-sm">{item.author_name}</p><p className="text-xs text-[#aaa] mt-0.5">{item.author_email || "E-mail не указан"} · {new Date(item.created_at).toLocaleDateString("ru-RU")}</p></div><p className="mt-3 text-sm leading-relaxed">{item.body}</p><textarea value={feedbackDrafts[`question:${item.id}`] ?? item.answer ?? ""} onChange={(event) => setFeedbackDrafts((drafts) => ({ ...drafts, [`question:${item.id}`]: event.target.value }))} rows={3} placeholder="Напишите понятный ответ покупателю" className="mt-4 w-full rounded-xl border border-[#f0e8e0] px-3 py-2.5 text-sm outline-none focus:border-[#E8845A]" /><div className="mt-3 flex flex-wrap gap-2"><button onClick={() => void saveFeedback("question", item)} disabled={feedbackSaving === `question:${item.id}`} className="px-4 py-2 rounded-xl bg-[#E8845A] text-white text-xs font-semibold disabled:opacity-60">{feedbackSaving === `question:${item.id}` ? "Сохраняем…" : item.answer ? "Обновить ответ" : "Ответить и опубликовать"}</button><button onClick={() => void saveFeedback("question", item, !item.is_published)} disabled={feedbackSaving === `question:${item.id}`} className="px-4 py-2 rounded-xl border border-[#f0e8e0] text-xs font-semibold">{item.is_published ? "Скрыть с сайта" : "Опубликовать без ответа"}</button></div></article>)}</div>}
+                {feedbackLoading ? <p className="p-6 text-sm text-[#aaa]">Загружаем…</p> : feedbackQuestions.length === 0 ? <p className="p-6 text-sm text-[#aaa]">Вопросов пока нет.</p> : <div className="divide-y divide-[#f0e8e0]">{feedbackQuestions.map((item) => {
+                  const history = feedbackResponses.filter((response) => response.feedback_type === "question" && response.feedback_id === item.id);
+                  return <article key={item.id} className="p-5"><div><p className="font-semibold text-sm">{item.author_name}</p><p className="text-xs text-[#aaa] mt-0.5">{item.author_email || "E-mail не указан"} · {new Date(item.created_at).toLocaleDateString("ru-RU")}</p></div><p className="mt-3 text-sm leading-relaxed">{item.body}</p>{history.length > 0 && <div className="mt-4 rounded-xl bg-[#fdf8f5] p-3"><p className="text-xs font-bold text-[#8b6b5d]">История ответов</p>{history.map((response) => <div key={response.id} className="mt-2 border-t border-[#f0e8e0] pt-2"><p className="text-sm">{response.body}</p><p className="mt-1 text-xs text-[#aaa]">{new Date(response.created_at).toLocaleString("ru-RU")}</p></div>)}</div>}<textarea value={feedbackDrafts[`question:${item.id}`] ?? ""} onChange={(event) => setFeedbackDrafts((drafts) => ({ ...drafts, [`question:${item.id}`]: event.target.value }))} rows={3} placeholder={item.answer ? "Напишите новый ответ — предыдущий останется в истории" : "Напишите понятный ответ покупателю"} className="mt-4 w-full rounded-xl border border-[#f0e8e0] px-3 py-2.5 text-sm outline-none focus:border-[#E8845A]" /><div className="mt-3 flex flex-wrap gap-2"><button onClick={() => void saveFeedback("question", item)} disabled={feedbackSaving === `question:${item.id}`} className="px-4 py-2 rounded-xl bg-[#E8845A] text-white text-xs font-semibold disabled:opacity-60">{feedbackSaving === `question:${item.id}` ? "Сохраняем…" : item.answer ? "Добавить ответ" : "Ответить и опубликовать"}</button><button onClick={() => void saveFeedback("question", item, !item.is_published)} disabled={feedbackSaving === `question:${item.id}`} className="px-4 py-2 rounded-xl border border-[#f0e8e0] text-xs font-semibold">{item.is_published ? "Скрыть с сайта" : "Опубликовать без ответа"}</button><button onClick={() => void deleteFeedback("question", item)} disabled={feedbackSaving === `question:${item.id}`} className="px-4 py-2 rounded-xl border border-red-200 text-red-600 text-xs font-semibold">Удалить вопрос</button></div></article>;
+                })}</div>}
               </section>
             </div>
           </div>

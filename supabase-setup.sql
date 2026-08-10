@@ -203,6 +203,18 @@ update public.product_questions set is_published = true where is_published is nu
 alter table public.product_questions alter column is_published set default false;
 alter table public.product_questions alter column is_published set not null;
 
+-- История ответов команды на отзывы и вопросы: правки не затирают предыдущий текст.
+create table if not exists public.product_feedback_responses (
+  id uuid primary key default gen_random_uuid(),
+  feedback_type text not null check (feedback_type in ('review', 'question')),
+  feedback_id uuid not null,
+  body text not null check (char_length(body) between 1 and 3000),
+  created_at timestamptz not null default now()
+);
+alter table public.product_feedback_responses enable row level security;
+create index if not exists product_feedback_responses_feedback_idx
+  on public.product_feedback_responses (feedback_type, feedback_id, created_at desc);
+
 -- Необязательные фото отзывов. Загрузка выполняется сервером с секретным ключом.
 insert into storage.buckets (id, name, public)
 values ('review-media', 'review-media', true)
