@@ -3,6 +3,7 @@ import { X } from "lucide-react";
 
 import Footer from "@/components/Footer";
 import Header from "@/components/Header";
+import PaymentFailStatusSync from "@/components/PaymentFailStatusSync";
 
 export default async function PaymentFailPage({
   searchParams,
@@ -13,6 +14,7 @@ export default async function PaymentFailPage({
   return (
     <>
       <Header />
+      {order && <PaymentFailStatusSync orderId={order} />}
       <main className="min-h-[70vh] flex items-center justify-center px-4 py-20 bg-[#fdfcfb]">
         <div className="w-full max-w-lg bg-white border border-[#f0e8e0] rounded-3xl p-8 text-center">
           <div className="w-16 h-16 rounded-full bg-red-50 flex items-center justify-center mx-auto mb-5">
