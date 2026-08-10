@@ -1,6 +1,8 @@
 import Link from "next/link";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
+import { products } from "@/lib/products";
+import { ClipboardCheck, FileText, FlaskConical, ShieldCheck } from "lucide-react";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
@@ -9,6 +11,8 @@ export const metadata: Metadata = {
 };
 
 export default function AboutPage() {
+  const supplements = products.filter((product) => product.category === "bads");
+
   return (
     <>
       <Header />
@@ -101,35 +105,46 @@ export default function AboutPage() {
               Только так можно быть уверенными в том, что потом окажется у вас дома.
             </p>
 
-            {/* Галерея фото производства */}
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-10">
-              {[
-                "Цех производства",
-                "Контроль качества сырья",
-                "Фасовка и упаковка",
-                "Лаборатория контроля",
-                "Проверка документов",
-                "Готовая продукция",
-              ].map((caption, i) => (
-                <div key={i} className="aspect-square rounded-2xl bg-white border border-[#f0e8e0] flex flex-col items-center justify-center text-center p-4 overflow-hidden">
-                  <span className="text-3xl mb-2 opacity-40">📷</span>
-                  <p className="text-xs text-[#aaa] leading-snug">{caption}</p>
-                </div>
-              ))}
-            </div>
-
-            {/* Что мы проверяем */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
               {[
-                { title: "Чистый состав", desc: "Только нужные действующие вещества — без лишних добавок, красителей и балласта." },
-                { title: "Сочетаемость компонентов", desc: "Формы и дозировки подобраны так, чтобы компоненты внутри БАД работали вместе." },
-                { title: "Качественное сырьё", desc: "Проверяем происхождение и чистоту сырья прямо на производстве." },
-                { title: "Сертификация", desc: "Свидетельства о госрегистрации и сертификаты — проверяем каждый документ." },
+                { icon: ClipboardCheck, title: "Состав", desc: "Сначала проверяем формы действующих веществ, дозировки и сочетаемость компонентов." },
+                { icon: ShieldCheck, title: "Документы", desc: "Для каждого БАД размещаем свидетельство о госрегистрации и документы о качестве." },
+                { icon: FlaskConical, title: "Лабораторные анализы", desc: "Публикуем протоколы исследований, чтобы подтверждения можно было изучить самостоятельно." },
+                { icon: FileText, title: "Открытый доступ", desc: "Не прячем документы в личной переписке: они доступны в карточке каждого продукта." },
               ].map((card, i) => (
                 <div key={i} className="bg-white border border-[#f0e8e0] rounded-2xl p-5">
+                  <card.icon size={22} className="mb-4 text-[#E8845A]" />
                   <h3 className="font-semibold text-sm text-[#E8845A] mb-2">{card.title}</h3>
                   <p className="text-sm text-[#6b6b6b] leading-relaxed">{card.desc}</p>
                 </div>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        <section className="py-16">
+          <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
+            <p className="text-xs font-semibold text-[#E8845A] uppercase tracking-widest mb-4 text-center">Проверить самостоятельно</p>
+            <h2 className="text-2xl md:text-3xl font-bold text-center mb-3">Документы по каждому БАДу</h2>
+            <p className="text-center text-[#6b6b6b] max-w-2xl mx-auto mb-10 leading-relaxed">
+              В карточке каждого продукта есть три реальных PDF: свидетельство о государственной регистрации, документы о стандартах качества и лабораторные анализы.
+            </p>
+            <div className="grid gap-5 md:grid-cols-3">
+              {supplements.map((product) => (
+                <article key={product.id} className="rounded-3xl border border-[#f0e8e0] bg-[#fdf8f5] p-5">
+                  <Link href={`/product/${product.id}`} className="mb-4 block font-bold leading-snug hover:text-[#E8845A]">
+                    {product.name}
+                  </Link>
+                  <div className="flex flex-col gap-2">
+                    {product.documents.map((document) => (
+                      <a key={document.url} href={document.url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 rounded-xl bg-white px-3 py-2.5 text-sm font-medium text-[#454545] transition-colors hover:bg-[#FDDCCA]/40">
+                        <FileText size={16} className="shrink-0 text-[#E8845A]" />
+                        <span className="min-w-0 flex-1">{document.name}</span>
+                        <span className="text-xs text-[#E8845A]">PDF</span>
+                      </a>
+                    ))}
+                  </div>
+                </article>
               ))}
             </div>
           </div>

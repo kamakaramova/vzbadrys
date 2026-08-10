@@ -3,7 +3,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { Product } from "@/lib/products";
 import { productImagePaths } from "@/lib/productImages";
-import { ShoppingCart, Heart, FileText, ChevronLeft, ChevronRight, Check, Shield, AlertCircle, Copy, Share2 } from "lucide-react";
+import { ShoppingCart, Heart, FileText, ChevronLeft, ChevronRight, Check, Shield, AlertCircle, Copy, Share2, ExternalLink } from "lucide-react";
 import { useCartStore } from "@/store/cartStore";
 import { useAuthStore } from "@/store/authStore";
 import ProductReviews from "./ProductReviews";
@@ -46,6 +46,11 @@ export default function ProductClient({
   const activeOldPrice = selectedVariant ? selectedVariant.oldPrice : product.oldPrice;
   // Счётчик вкладки и список ниже используют один и тот же набор файлов.
   const documents = product.documents.filter((document) => document.name.trim() && document.url.trim());
+  const documentDescription = (name: string) => {
+    if (name.includes("государственной регистрации")) return "Официальный документ именно для этого продукта.";
+    if (name.includes("ISO")) return "Документы о системе качества и производственных стандартах.";
+    return "Протокол лабораторных исследований продукта.";
+  };
 
   const handleAddToCart = () => {
     for (let i = 0; i < qty; i++) {
@@ -372,10 +377,17 @@ export default function ProductClient({
 
         {activeTab === "docs" && (
           <div className="max-w-xl flex flex-col gap-3">
+            <p className="text-sm text-[#777] leading-relaxed">Все документы доступны в PDF и открываются в новой вкладке.</p>
             {documents.map((doc, i) => (
-              <a key={i} href={doc.url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-3 p-4 bg-[#fdf8f5] rounded-2xl hover:bg-[#FDDCCA]/30 transition-colors group">
-                <FileText size={20} className="text-[#E8845A] flex-shrink-0" />
-                <span className="text-sm font-medium group-hover:text-[#E8845A] transition-colors">{doc.name}</span>
+              <a key={i} href={doc.url} target="_blank" rel="noopener noreferrer" className="group flex items-center gap-3 rounded-2xl border border-[#f0e8e0] bg-[#fdf8f5] p-4 transition-colors hover:bg-[#FDDCCA]/30">
+                <FileText size={22} className="shrink-0 text-[#E8845A]" />
+                <span className="min-w-0 flex-1">
+                  <span className="block font-semibold text-[#252525]">{doc.name}</span>
+                  <span className="mt-1 block text-sm text-[#777]">{documentDescription(doc.name)}</span>
+                </span>
+                <span className="inline-flex shrink-0 items-center gap-1 rounded-full border border-[#E8845A] px-3 py-1.5 text-xs font-semibold text-[#E8845A] transition-colors group-hover:bg-[#E8845A] group-hover:text-white">
+                  Открыть PDF <ExternalLink size={14} />
+                </span>
               </a>
             ))}
             <details className="mt-2 rounded-2xl border border-[#f0e8e0] bg-[#fdf8f5] px-4 py-3 text-sm text-[#6b6b6b]">
