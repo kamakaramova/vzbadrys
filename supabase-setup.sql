@@ -171,6 +171,15 @@ create table if not exists public.product_reviews (
 alter table public.product_reviews enable row level security;
 create index if not exists product_reviews_product_idx on public.product_reviews (product_id, created_at desc);
 
+-- Модерация и ответ бренда. Старые отзывы остаются опубликованными.
+alter table public.product_reviews add column if not exists author_email text;
+alter table public.product_reviews add column if not exists answer text;
+alter table public.product_reviews add column if not exists answered_at timestamptz;
+alter table public.product_reviews add column if not exists is_published boolean;
+update public.product_reviews set is_published = true where is_published is null;
+alter table public.product_reviews alter column is_published set default true;
+alter table public.product_reviews alter column is_published set not null;
+
 -- Вопрос можно задать после входа; покупка для вопроса не требуется.
 create table if not exists public.product_questions (
   id uuid primary key default gen_random_uuid(),
@@ -182,6 +191,17 @@ create table if not exists public.product_questions (
 );
 alter table public.product_questions enable row level security;
 create index if not exists product_questions_product_idx on public.product_questions (product_id, created_at desc);
+
+-- Вопрос может задать и гость: для ответа сохраняем имя и e-mail.
+-- Новые вопросы появляются на карточке товара после ответа или ручной публикации в админке.
+alter table public.product_questions alter column user_id drop not null;
+alter table public.product_questions add column if not exists author_email text;
+alter table public.product_questions add column if not exists answer text;
+alter table public.product_questions add column if not exists answered_at timestamptz;
+alter table public.product_questions add column if not exists is_published boolean;
+update public.product_questions set is_published = true where is_published is null;
+alter table public.product_questions alter column is_published set default false;
+alter table public.product_questions alter column is_published set not null;
 
 -- Необязательные фото отзывов. Загрузка выполняется сервером с секретным ключом.
 insert into storage.buckets (id, name, public)

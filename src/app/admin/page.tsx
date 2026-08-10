@@ -5,12 +5,12 @@ import {
   BarChart2, Users, ShoppingBag, TrendingUp,
   Search, Download, ChevronUp, ChevronDown,
   X, Check, Package, Eye, Tag, Trash2, ToggleLeft, ToggleRight,
-  Plus, Edit2, ImageIcon, Mail, Send, UserPlus, RefreshCw, Link2,
+  Plus, Edit2, ImageIcon, Mail, Send, UserPlus, RefreshCw, Link2, MessageCircle,
 } from "lucide-react";
 import { useProductStore } from "@/store/productStore";
 import { Product, WeightVariant } from "@/lib/products";
 
-type Tab = "dashboard" | "orders" | "customers" | "promos" | "products" | "emails" | "integrations";
+type Tab = "dashboard" | "orders" | "customers" | "feedback" | "promos" | "products" | "emails" | "integrations";
 type SortField = "name" | "email" | "totalSpent" | "ordersCount" | "avgCheck" | "lastOrder" | "createdAt";
 type SortDir = "asc" | "desc";
 type OrderSortField = "date" | "total" | "status" | "userName";
@@ -39,6 +39,19 @@ type LoyaltyStats = {
 type DeliverySettings = {
   enabled: { pickup: boolean; sdek_pvz: boolean; yandex_pvz: boolean; ozon_pvz: boolean; pochta: boolean };
   pochtaWidgetId: number;
+};
+type FeedbackItem = {
+  id: string;
+  product_id: string;
+  author_name: string;
+  author_email?: string | null;
+  body: string;
+  answer?: string | null;
+  answered_at?: string | null;
+  is_published: boolean;
+  created_at: string;
+  rating?: number;
+  image_url?: string | null;
 };
 const DEFAULT_DELIVERY_SETTINGS: DeliverySettings = {
   enabled: { pickup: true, sdek_pvz: true, yandex_pvz: true, ozon_pvz: true, pochta: true },
@@ -155,6 +168,12 @@ export default function AdminPage() {
   const [deliverySettingsMessage, setDeliverySettingsMessage] = useState("");
   const [orderEmailLogs, setOrderEmailLogs] = useState<EmailLog[]>([]);
   const [orderEmailLogsLoading, setOrderEmailLogsLoading] = useState(false);
+  const [feedbackReviews, setFeedbackReviews] = useState<FeedbackItem[]>([]);
+  const [feedbackQuestions, setFeedbackQuestions] = useState<FeedbackItem[]>([]);
+  const [feedbackLoading, setFeedbackLoading] = useState(false);
+  const [feedbackError, setFeedbackError] = useState("");
+  const [feedbackDrafts, setFeedbackDrafts] = useState<Record<string, string>>({});
+  const [feedbackSaving, setFeedbackSaving] = useState<string | null>(null);
 
   const [newPromoCode, setNewPromoCode] = useState("");
   const [newPromoOwner, setNewPromoOwner] = useState("");
@@ -387,6 +406,45 @@ export default function AdminPage() {
     }
   };
 
+  const loadFeedback = async (password = pw) => {
+    if (!password) return;
+    setFeedbackLoading(true);
+    setFeedbackError("");
+    try {
+      const response = await fetch("/api/admin/feedback", { headers: { "x-admin-password": password }, cache: "no-store" });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok || !Array.isArray(data.reviews) || !Array.isArray(data.questions)) throw new Error(data.error || "Не удалось загрузить отзывы и вопросы");
+      setFeedbackReviews(data.reviews as FeedbackItem[]);
+      setFeedbackQuestions(data.questions as FeedbackItem[]);
+    } catch (error) {
+      setFeedbackError(error instanceof Error ? error.message : "Не удалось загрузить отзывы и вопросы");
+    } finally {
+      setFeedbackLoading(false);
+    }
+  };
+
+  const saveFeedback = async (type: "review" | "question", item: FeedbackItem, isPublished?: boolean) => {
+    if (!pw || feedbackSaving) return;
+    setFeedbackSaving(`${type}:${item.id}`);
+    setFeedbackError("");
+    try {
+      const response = await fetch("/api/admin/feedback", {
+        method: "PATCH",
+        headers: { "content-type": "application/json", "x-admin-password": pw },
+        body: JSON.stringify({ id: item.id, type, answer: feedbackDrafts[`${type}:${item.id}`] ?? item.answer ?? "", ...(isPublished === undefined ? {} : { isPublished }) }),
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(data.error || "Не удалось сохранить ответ");
+      const update = (current: FeedbackItem[]) => current.map((entry) => entry.id === item.id ? { ...entry, ...data.item } : entry);
+      if (type === "review") setFeedbackReviews(update); else setFeedbackQuestions(update);
+      setFeedbackDrafts((drafts) => ({ ...drafts, [`${type}:${item.id}`]: "" }));
+    } catch (error) {
+      setFeedbackError(error instanceof Error ? error.message : "Не удалось сохранить ответ");
+    } finally {
+      setFeedbackSaving(null);
+    }
+  };
+
   useEffect(() => {
     if (authed && tab === "emails") {
       const timer = window.setTimeout(() => {
@@ -402,6 +460,10 @@ export default function AdminPage() {
       void loadPromos();
       void loadLoyaltyStats();
     }
+  }, [authed, tab]);
+
+  useEffect(() => {
+    if (authed && tab === "feedback") void loadFeedback();
   }, [authed, tab]);
 
   useEffect(() => {
@@ -425,6 +487,7 @@ export default function AdminPage() {
         await loadAdminOrders(pw);
         await loadPromos(pw);
         await loadLoyaltyStats(pw);
+        await loadFeedback(pw);
       } else {
         setPwError(true);
       }
@@ -658,12 +721,13 @@ export default function AdminPage() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Табы */}
         <div className="flex gap-1.5 sm:gap-2 mb-6 sm:mb-8 bg-[#f5f0ec] p-1.5 rounded-2xl w-full overflow-x-auto">
-          {(["dashboard", "orders", "customers", "promos", "products", "emails", "integrations"] as const).map((id) => {
-            const labels: Record<typeof id, string> = { dashboard: "Дашборд", orders: "Заказы", customers: "Покупатели", promos: "Промокоды", products: "Товары", emails: "Письма", integrations: "Интеграции" };
+          {(["dashboard", "orders", "customers", "feedback", "promos", "products", "emails", "integrations"] as const).map((id) => {
+            const labels: Record<typeof id, string> = { dashboard: "Дашборд", orders: "Заказы", customers: "Покупатели", feedback: "Отзывы и вопросы", promos: "Промокоды", products: "Товары", emails: "Письма", integrations: "Интеграции" };
             const icons: Record<typeof id, React.ReactNode> = {
               dashboard: <BarChart2 size={15} />,
               orders: <ShoppingBag size={15} />,
               customers: <Users size={15} />,
+              feedback: <MessageCircle size={15} />,
               promos: <Tag size={15} />,
               products: <Package size={15} />,
               emails: <Mail size={15} />,
@@ -1008,6 +1072,30 @@ export default function AdminPage() {
                   </tbody>
                 </table>
               </div>
+            </div>
+          </div>
+        )}
+
+        {/* ОТЗЫВЫ И ВОПРОСЫ */}
+        {tab === "feedback" && (
+          <div className="space-y-6">
+            <div className="flex flex-col sm:flex-row sm:items-end gap-3 justify-between">
+              <div>
+                <h2 className="text-xl font-bold">Отзывы и вопросы</h2>
+                <p className="text-sm text-[#6b6b6b] mt-1">Отвечайте покупателям здесь — ответ сразу появится на карточке соответствующего товара.</p>
+              </div>
+              <button onClick={() => void loadFeedback()} disabled={feedbackLoading} className="inline-flex items-center gap-2 border border-[#f0e8e0] bg-white hover:border-[#E8845A] disabled:opacity-60 text-sm font-semibold px-4 py-2.5 rounded-full"><RefreshCw size={15} className={feedbackLoading ? "animate-spin" : ""} /> Обновить</button>
+            </div>
+            {feedbackError && <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600">{feedbackError}</div>}
+            <div className="grid xl:grid-cols-2 gap-6">
+              <section className="bg-white rounded-3xl border border-[#f0e8e0] overflow-hidden">
+                <div className="px-6 py-4 border-b border-[#f0e8e0] flex items-center justify-between"><div><h3 className="font-bold">Отзывы</h3><p className="text-xs text-[#aaa] mt-1">Их оставляют только покупатели из личного кабинета.</p></div><span className="text-xs font-bold bg-[#fff1e9] text-[#E8845A] px-2.5 py-1 rounded-full">{feedbackReviews.length}</span></div>
+                {feedbackLoading ? <p className="p-6 text-sm text-[#aaa]">Загружаем…</p> : feedbackReviews.length === 0 ? <p className="p-6 text-sm text-[#aaa]">Отзывов пока нет.</p> : <div className="divide-y divide-[#f0e8e0]">{feedbackReviews.map((item) => <article key={item.id} className="p-5"><div className="flex items-start justify-between gap-3"><div><p className="font-semibold text-sm">{item.author_name}</p><p className="text-xs text-[#aaa] mt-0.5">{item.author_email || "E-mail не указан"} · {new Date(item.created_at).toLocaleDateString("ru-RU")}</p></div>{item.rating && <span className="text-xs font-bold text-[#E8845A]">★ {item.rating}/5</span>}</div><p className="mt-3 text-sm leading-relaxed">{item.body}</p>{item.image_url && <a href={item.image_url} target="_blank" rel="noreferrer" className="mt-3 inline-block text-xs font-semibold text-[#E8845A] hover:underline">Открыть фото</a>}<textarea value={feedbackDrafts[`review:${item.id}`] ?? item.answer ?? ""} onChange={(event) => setFeedbackDrafts((drafts) => ({ ...drafts, [`review:${item.id}`]: event.target.value }))} rows={3} placeholder="Поблагодарите или ответьте покупателю" className="mt-4 w-full rounded-xl border border-[#f0e8e0] px-3 py-2.5 text-sm outline-none focus:border-[#E8845A]" /><div className="mt-3 flex flex-wrap gap-2"><button onClick={() => void saveFeedback("review", item)} disabled={feedbackSaving === `review:${item.id}`} className="px-4 py-2 rounded-xl bg-[#E8845A] text-white text-xs font-semibold disabled:opacity-60">{feedbackSaving === `review:${item.id}` ? "Сохраняем…" : item.answer ? "Обновить ответ" : "Опубликовать ответ"}</button><button onClick={() => void saveFeedback("review", item, !item.is_published)} disabled={feedbackSaving === `review:${item.id}`} className="px-4 py-2 rounded-xl border border-[#f0e8e0] text-xs font-semibold">{item.is_published ? "Скрыть отзыв" : "Показать отзыв"}</button></div></article>)}</div>}
+              </section>
+              <section className="bg-white rounded-3xl border border-[#f0e8e0] overflow-hidden">
+                <div className="px-6 py-4 border-b border-[#f0e8e0] flex items-center justify-between"><div><h3 className="font-bold">Вопросы</h3><p className="text-xs text-[#aaa] mt-1">Новый вопрос появится на сайте вместе с ответом.</p></div><span className="text-xs font-bold bg-[#fff1e9] text-[#E8845A] px-2.5 py-1 rounded-full">{feedbackQuestions.length}</span></div>
+                {feedbackLoading ? <p className="p-6 text-sm text-[#aaa]">Загружаем…</p> : feedbackQuestions.length === 0 ? <p className="p-6 text-sm text-[#aaa]">Вопросов пока нет.</p> : <div className="divide-y divide-[#f0e8e0]">{feedbackQuestions.map((item) => <article key={item.id} className="p-5"><div><p className="font-semibold text-sm">{item.author_name}</p><p className="text-xs text-[#aaa] mt-0.5">{item.author_email || "E-mail не указан"} · {new Date(item.created_at).toLocaleDateString("ru-RU")}</p></div><p className="mt-3 text-sm leading-relaxed">{item.body}</p><textarea value={feedbackDrafts[`question:${item.id}`] ?? item.answer ?? ""} onChange={(event) => setFeedbackDrafts((drafts) => ({ ...drafts, [`question:${item.id}`]: event.target.value }))} rows={3} placeholder="Напишите понятный ответ покупателю" className="mt-4 w-full rounded-xl border border-[#f0e8e0] px-3 py-2.5 text-sm outline-none focus:border-[#E8845A]" /><div className="mt-3 flex flex-wrap gap-2"><button onClick={() => void saveFeedback("question", item)} disabled={feedbackSaving === `question:${item.id}`} className="px-4 py-2 rounded-xl bg-[#E8845A] text-white text-xs font-semibold disabled:opacity-60">{feedbackSaving === `question:${item.id}` ? "Сохраняем…" : item.answer ? "Обновить ответ" : "Ответить и опубликовать"}</button><button onClick={() => void saveFeedback("question", item, !item.is_published)} disabled={feedbackSaving === `question:${item.id}`} className="px-4 py-2 rounded-xl border border-[#f0e8e0] text-xs font-semibold">{item.is_published ? "Скрыть с сайта" : "Опубликовать без ответа"}</button></div></article>)}</div>}
+              </section>
             </div>
           </div>
         )}
@@ -2230,6 +2318,27 @@ export default function AdminPage() {
                   {statusSaved ? <><Check size={14} /> Сохранено</> : "Сохранить статус"}
                 </button>
               </div>
+              {selectedOrder.isTest && (
+                <div className="rounded-2xl border border-red-200 bg-red-50 p-5">
+                  <p className="font-semibold text-red-700 text-sm">Тестовый заказ</p>
+                  <p className="text-xs text-red-600 mt-1">Его можно удалить, чтобы он не учитывался в дашборде и отчётах. Отменить удаление будет нельзя.</p>
+                  <button
+                    onClick={async () => {
+                      if (!confirm(`Точно удалить тестовый заказ ${selectedOrder.id}?`)) return;
+                      try {
+                        const response = await fetch(`/api/admin/orders?id=${encodeURIComponent(selectedOrder.id)}`, { method: "DELETE", headers: { "x-admin-password": pw } });
+                        const data = await response.json().catch(() => ({}));
+                        if (!response.ok) throw new Error(data.error || "Не удалось удалить тестовый заказ");
+                        setDbOrders((current) => current.filter((order) => order.id !== selectedOrder.id));
+                        setSelectedOrder(null);
+                      } catch (error) {
+                        setOrdersError(error instanceof Error ? error.message : "Не удалось удалить тестовый заказ");
+                      }
+                    }}
+                    className="mt-4 inline-flex items-center gap-2 rounded-xl bg-red-600 hover:bg-red-700 text-white px-4 py-2.5 text-sm font-semibold"
+                  ><Trash2 size={15} /> Удалить тестовый заказ</button>
+                </div>
+              )}
             </div>
           </div>
         </div>

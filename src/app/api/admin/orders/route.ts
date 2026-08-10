@@ -167,3 +167,20 @@ export async function PATCH(request: NextRequest) {
 
   return NextResponse.json({ ok: true, email: emailResult });
 }
+
+// Тестовые заказы можно убрать из панели после проверки оплаты.
+// Реальные заказы намеренно не удаляются через интерфейс администратора.
+export async function DELETE(request: NextRequest) {
+  if (!isAuthorized(request)) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+  const db = getServerSupabase();
+  if (!db) return NextResponse.json({ error: "not_configured" }, { status: 503 });
+
+  const orderId = new URL(request.url).searchParams.get("id") || "";
+  if (!/^VZB-\d{8}-[A-F0-9]{8}$/.test(orderId)) return NextResponse.json({ error: "invalid_order" }, { status: 400 });
+  const { data: order, error: readError } = await db.from("payment_orders").select("id, is_test").eq("id", orderId).maybeSingle();
+  if (readError || !order) return NextResponse.json({ error: "Заказ не найден" }, { status: 404 });
+  if (!order.is_test) return NextResponse.json({ error: "Удалять через панель можно только тестовые заказы" }, { status: 403 });
+  const { error } = await db.from("payment_orders").delete().eq("id", orderId).eq("is_test", true);
+  if (error) return NextResponse.json({ error: "Не удалось удалить тестовый заказ" }, { status: 500 });
+  return NextResponse.json({ ok: true });
+}

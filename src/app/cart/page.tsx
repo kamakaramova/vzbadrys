@@ -309,7 +309,7 @@ export default function CartPage() {
                   <div className="flex justify-between text-sm">
                     <span className="text-[#6b6b6b]">Доставка</span>
                     <span className="text-green-600 font-semibold">
-                      {discountedSubtotal >= freeDeliveryThreshold ? "0 ₽" : "от 250 ₽"}
+                      {discountedSubtotal >= freeDeliveryThreshold ? "0 ₽" : "от 200 ₽"}
                     </span>
                   </div>
                   <p className="text-xs text-[#aaa] bg-[#fdf8f5] rounded-xl p-3">
@@ -319,7 +319,7 @@ export default function CartPage() {
 
                 <div className="border-t border-[#f0e8e0] pt-4 mb-6">
                   <div className="flex justify-between">
-                    <span className="font-bold text-lg">К оплате</span>
+                    <span className="font-bold text-lg">Предварительная стоимость</span>
                     <span className="font-bold text-xl text-[#E8845A]">{total.toLocaleString("ru-RU")} ₽</span>
                   </div>
                 </div>
