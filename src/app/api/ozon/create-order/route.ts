@@ -21,6 +21,7 @@ interface CreateOrderBody {
   customer?: { name?: string; surname?: string; phone?: string; email?: string };
   delivery?: {
     method?: DeliveryMethod;
+    region?: string;
     city?: string;
     address?: string;
     zip?: string;
@@ -106,6 +107,9 @@ export async function POST(request: NextRequest) {
   if (!delivery?.method || !(delivery.method in DELIVERY_PRICES)) return badRequest("Выберите способ доставки");
   const deliverySettings = await getDeliverySettings();
   if (!deliverySettings.enabled[delivery.method]) return badRequest("Этот способ доставки временно недоступен");
+  if (delivery.method === "ozon_pvz" && !delivery.region?.trim()) {
+    return badRequest("Укажите регион, область или республику для ПВЗ Ozon");
+  }
   if (delivery.method !== "pickup" && (!delivery.city?.trim() || !delivery.address?.trim())) {
     return badRequest("Укажите адрес доставки или ПВЗ");
   }
@@ -115,6 +119,7 @@ export async function POST(request: NextRequest) {
   const customerPhone = customer.phone!;
   const customerEmail = customer.email!.trim().toLowerCase();
   const deliveryMethod = delivery.method;
+  const deliveryRegion = delivery.region?.trim() || "";
   const deliveryCity = delivery.city?.trim() || "";
   const deliveryAddress = delivery.address?.trim() || "";
 
@@ -307,6 +312,7 @@ export async function POST(request: NextRequest) {
     items: orderLines,
     delivery: {
       method: deliveryMethod,
+      region: deliveryRegion,
       city: deliveryCity,
       address: deliveryAddress,
       zip: delivery.zip?.trim() || "",

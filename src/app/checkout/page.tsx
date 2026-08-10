@@ -63,6 +63,7 @@ export default function CheckoutPage() {
     surname: "",
     phone: "",
     email: "",
+    region: "",
     city: "",
     address: "",
     zip: "",
@@ -120,6 +121,7 @@ export default function CheckoutPage() {
     if (!form.surname.trim()) e.surname = "Введите фамилию";
     if (phoneDigits(form.phone) !== 11) e.phone = "Введите номер полностью: +7 и 10 цифр";
     if (!isValidEmail(form.email)) e.email = "Проверьте email — похоже, есть опечатка";
+    if (delivery === "ozon_pvz" && !form.region.trim()) e.region = "Укажите регион, область или республику";
     if (delivery !== "pickup" && !form.city.trim()) e.city = "Введите город";
     if (selectedDelivery.isPvz && !form.address.trim()) e.address = "Введите адрес пункта выдачи";
     if (delivery === "pochta" && !form.address.trim()) e.address = "Выберите отделение Почты России на карте";
@@ -147,6 +149,7 @@ export default function CheckoutPage() {
           },
           delivery: {
             method: delivery,
+            region: delivery === "ozon_pvz" ? form.region : "",
             city: delivery === "pickup" ? "Казань" : form.city,
             address: delivery === "pickup" ? "ул. Айдарова, 15" : form.address,
             zip: delivery === "pickup" ? "" : form.zip,
@@ -320,6 +323,7 @@ export default function CheckoutPage() {
                   </div>
                 ) : (
                 <div className="grid sm:grid-cols-2 gap-4">
+                  {delivery === "ozon_pvz" && renderField({ label: "Регион / область / республика", name: "region", placeholder: "Например: Республика Татарстан" })}
                   {renderField({ label: "Город", name: "city", placeholder: "Казань" })}
                   {renderField({ label: "Индекс (необязательно)", name: "zip", placeholder: "123456" })}
                   {selectedDelivery.isPvz && (
