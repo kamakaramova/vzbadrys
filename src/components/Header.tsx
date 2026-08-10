@@ -76,7 +76,7 @@ export default function Header() {
               {cartOpen && (
                 <>
                   <div className="fixed inset-0 z-40" onClick={() => setCartOpen(false)} />
-                  <div className="fixed inset-x-3 top-[5.25rem] max-h-[calc(100dvh-6rem)] overflow-y-auto bg-white rounded-3xl shadow-2xl border border-[#f0e8e0] z-50 sm:absolute sm:inset-x-auto sm:top-full sm:mt-2 sm:w-80 sm:max-h-none sm:overflow-hidden">
+                  <div className="fixed inset-x-3 top-[5.25rem] max-h-[calc(100dvh-6rem)] overflow-y-auto bg-white rounded-3xl shadow-2xl border border-[#f0e8e0] z-50 sm:absolute sm:inset-x-auto sm:right-0 sm:top-full sm:mt-2 sm:w-80 sm:max-h-none sm:overflow-hidden">
                     <div className="px-5 py-4 border-b border-[#f0e8e0] flex items-center justify-between">
                       <p className="font-bold text-base">Корзина</p>
                       <button onClick={() => setCartOpen(false)}><X size={18} className="text-[#aaa] hover:text-[#1a1a1a]" /></button>

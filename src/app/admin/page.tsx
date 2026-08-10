@@ -176,6 +176,8 @@ export default function AdminPage() {
   const [showAddProduct, setShowAddProduct] = useState(false);
   const [receiveQtys, setReceiveQtys] = useState<Record<string, string>>({});
   const [receiveSaved, setReceiveSaved] = useState<Record<string, boolean>>({});
+  const [productsSaving, setProductsSaving] = useState(false);
+  const [productsMessage, setProductsMessage] = useState("");
 
   const openProductEditor = (product: Product) => {
     if (product.category !== "seeds" || (product.weightVariants?.length ?? 0) > 0) {
@@ -1599,22 +1601,36 @@ export default function AdminPage() {
               <div className="flex gap-2">
                 <button
                   onClick={async () => {
-                    if (!confirm("Залить текущие товары в базу данных? Это первичная настройка — сделай один раз после подключения базы.")) return;
-                    const r = await seedDatabase();
-                    alert(r.ok ? "Товары загружены в базу ✅" : `Не получилось: ${r.error}`);
+                    setProductsSaving(true);
+                    setProductsMessage("");
+                    const result = await seedDatabase();
+                    setProductsSaving(false);
+                    setProductsMessage(result.ok ? "Все изменения сохранены в базе и уже попадут на сайт." : `Не удалось сохранить: ${result.error}`);
                   }}
-                  className="text-xs font-semibold text-white bg-[#E8845A] hover:bg-[#d4703f] px-3 py-2 rounded-xl"
+                  disabled={productsSaving}
+                  className="text-xs font-semibold text-white bg-[#E8845A] hover:bg-[#d4703f] disabled:bg-[#e8b6a0] px-3 py-2 rounded-xl"
                 >
-                  Залить в базу (1 раз)
+                  {productsSaving ? "Сохраняем…" : "Сохранить все изменения"}
                 </button>
                 <button
-                  onClick={() => { if (confirm("Сбросить товары к исходным? Текущие правки будут потеряны.")) { resetToDefault(); alert("Товары сброшены к исходным"); } }}
+                  onClick={async () => {
+                    if (!confirm("Сбросить товары к исходным? Текущие правки будут потеряны.")) return;
+                    setProductsSaving(true);
+                    const result = await resetToDefault();
+                    setProductsSaving(false);
+                    setProductsMessage(result.ok ? "Исходные товары сохранены в базе." : `Не удалось сохранить: ${result.error}`);
+                  }}
                   className="text-xs text-[#aaa] hover:text-[#E8845A] px-3 py-2 rounded-xl border border-[#f0e8e0] bg-white"
                 >
                   Сбросить к исходным
                 </button>
               </div>
             </div>
+            {productsMessage && (
+              <p className={`text-xs font-medium ${productsMessage.startsWith("Не удалось") ? "text-red-500" : "text-green-600"}`}>
+                {productsMessage}
+              </p>
+            )}
 
             {/* ПРИЁМКА ТОВАРА */}
             <div className="bg-white rounded-3xl border border-[#f0e8e0] overflow-hidden">
@@ -1658,10 +1674,14 @@ export default function AdminPage() {
                         />
                         <span className="text-xs text-[#aaa] w-6">{unit}</span>
                         <button
-                          onClick={() => {
+                          onClick={async () => {
                             const qty = parseInt(receiveQtys[p.id] || "0");
                             if (!qty || qty < 1) return;
-                            receiveStock(p.id, qty);
+                            const result = await receiveStock(p.id, qty);
+                            if (!result.ok) {
+                              setProductsMessage(`Не удалось сохранить остаток: ${result.error}`);
+                              return;
+                            }
                             setReceiveQtys({ ...receiveQtys, [p.id]: "" });
                             setReceiveSaved({ ...receiveSaved, [p.id]: true });
                             setTimeout(() => setReceiveSaved((prev) => ({ ...prev, [p.id]: false })), 1500);
@@ -1672,11 +1692,17 @@ export default function AdminPage() {
                         </button>
                         {/* Установить точный остаток */}
                         <button
-                          onClick={() => {
+                          onClick={async () => {
                             const qty = prompt(`Установить точный остаток для «${p.name}» (в ${isSeed ? "граммах" : "штуках"}):\nТекущий остаток: ${p.stockQty ?? "не задан"}`);
                             if (qty === null) return;
                             const num = parseInt(qty);
-                            if (!isNaN(num) && num >= 0) setStockQty(p.id, num);
+                            if (!isNaN(num) && num >= 0) {
+                              const result = await setStockQty(p.id, num);
+                              setProductsMessage(result.ok
+                                ? `Остаток «${p.name}» сохранён: ${num} ${unit}`
+                                : `Не удалось сохранить остаток: ${result.error}`,
+                              );
+                            }
                           }}
                           title="Установить точный остаток"
                           className="p-2 rounded-xl border border-[#f0e8e0] text-[#aaa] hover:text-[#E8845A] hover:border-[#E8845A] transition-all text-xs"
@@ -1747,7 +1773,13 @@ export default function AdminPage() {
                     {/* Действия */}
                     <div className="flex items-center gap-1 flex-shrink-0">
                       <button
-                        onClick={() => toggleStock(p.id)}
+                        onClick={async () => {
+                          const result = await toggleStock(p.id);
+                          setProductsMessage(result.ok
+                            ? `Изменение наличия «${p.name}» сохранено.`
+                            : `Не удалось сохранить наличие: ${result.error}`,
+                          );
+                        }}
                         title={p.inStock ? "Снять с продажи" : "Вернуть в продажу"}
                         className={`p-2 rounded-xl transition-all ${p.inStock ? "text-green-500 hover:bg-green-50" : "text-[#ccc] hover:bg-[#fdf8f5]"}`}
                       >
@@ -1760,7 +1792,11 @@ export default function AdminPage() {
                         <Edit2 size={16} />
                       </button>
                       <button
-                        onClick={() => { if (confirm(`Удалить «${p.name}»?`)) deleteProduct(p.id); }}
+                        onClick={async () => {
+                          if (!confirm(`Удалить «${p.name}»?`)) return;
+                          const result = await deleteProduct(p.id);
+                          setProductsMessage(result.ok ? "Товар удалён из базы." : `Не удалось удалить товар: ${result.error}`);
+                        }}
                         className="p-2 rounded-xl text-[#ccc] hover:bg-red-50 hover:text-red-400 transition-all"
                       >
                         <Trash2 size={16} />
@@ -1771,7 +1807,7 @@ export default function AdminPage() {
               </div>
             </div>
 
-            <p className="text-xs text-[#aaa] text-center">Изменения сохраняются в базе и автоматически появляются на сайте.</p>
+            <p className="text-xs text-[#aaa] text-center">После изменения остатка или наличия нажмите «Сохранить все изменения». Товары с остатком 0 не показываются в каталоге.</p>
           </div>
         )}
       </div>{/* /max-w-7xl */}
@@ -2022,10 +2058,10 @@ export default function AdminPage() {
             </div>
             <div className="px-6 pb-6 flex gap-3">
               <button
-                onClick={() => {
+                onClick={async () => {
                   const variants = editingProduct.weightVariants;
                   const firstVariant = editingProduct.category === "seeds" && variants?.length ? variants[0] : null;
-                  updateProduct(editingProduct.id, firstVariant
+                  const result = await updateProduct(editingProduct.id, firstVariant
                     ? {
                         ...editingProduct,
                         price: firstVariant.price,
@@ -2034,6 +2070,10 @@ export default function AdminPage() {
                         weight: (variants ?? []).map((v) => v.label).join(" / "),
                       }
                     : editingProduct);
+                  if (!result.ok) {
+                    setProductsMessage(`Не удалось сохранить товар: ${result.error}`);
+                    return;
+                  }
                   setProductSaved(true);
                   setTimeout(() => { setProductSaved(false); setEditingProduct(null); }, 1200);
                 }}

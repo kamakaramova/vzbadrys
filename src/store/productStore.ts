@@ -2,7 +2,8 @@
 import { useEffect } from "react";
 import { create } from "zustand";
 import { Product, products as defaultProducts } from "@/lib/products";
-import { supabase, isSupabaseConfigured } from "@/lib/supabase";
+
+type SaveResult = { ok: boolean; error?: string };
 
 interface ProductStore {
   products: Product[];
@@ -11,29 +12,31 @@ interface ProductStore {
   adminPassword: string | null;
   setAdminPassword: (pw: string | null) => void;
   init: () => Promise<void>;
-  updateProduct: (id: string, updates: Partial<Product>) => void;
-  addProduct: (product: Product) => void;
-  deleteProduct: (id: string) => void;
-  toggleStock: (id: string) => void;
-  resetToDefault: () => void;
+  updateProduct: (id: string, updates: Partial<Product>) => Promise<SaveResult>;
+  addProduct: (product: Product) => Promise<SaveResult>;
+  deleteProduct: (id: string) => Promise<SaveResult>;
+  toggleStock: (id: string) => Promise<SaveResult>;
+  resetToDefault: () => Promise<SaveResult>;
   seedDatabase: () => Promise<{ ok: boolean; error?: string }>;
   getProducts: () => Product[];
-  receiveStock: (id: string, qty: number) => void;
-  writeOffStock: (id: string, qty: number) => void;
-  setStockQty: (id: string, qty: number) => void;
+  receiveStock: (id: string, qty: number) => Promise<SaveResult>;
+  writeOffStock: (id: string, qty: number) => Promise<SaveResult>;
+  setStockQty: (id: string, qty: number) => Promise<SaveResult>;
 }
 
 // Отправка изменённого товара в базу (только из админки, где задан пароль).
-async function persist(product: Product, password: string | null) {
-  if (!password || !isSupabaseConfigured) return;
+async function persist(product: Product, password: string | null): Promise<SaveResult> {
+  if (!password) return { ok: false, error: "Сессия администратора закончилась. Войдите заново." };
   try {
-    await fetch("/api/products", {
+    const response = await fetch("/api/products", {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ password, op: "upsert", product }),
     });
+    const data = await response.json().catch(() => ({}));
+    return response.ok ? { ok: true } : { ok: false, error: data.error || "Не удалось сохранить изменения" };
   } catch {
-    /* тихо игнорируем — локальное состояние уже обновлено */
+    return { ok: false, error: "Не удалось связаться с базой. Проверьте соединение и повторите." };
   }
 }
 
@@ -51,29 +54,34 @@ export const useProductStore = create<ProductStore>((set, get) => ({
     if (get().initialized || get().loading) return;
     set({ loading: true });
 
-    // Пытаемся загрузить из базы. Если не настроено или пусто — статичные данные.
-    if (isSupabaseConfigured && supabase) {
-      const { data, error } = await supabase.from("products").select("data");
-      if (!error && data && data.length > 0) {
-        set({
-          products: data.map((r) => {
-            const savedProduct = r.data as Product;
-            const catalogueProduct = defaultProducts.find((product) => product.id === savedProduct.id);
-
-            // Старые записи в Supabase были созданы до появления артикулов.
-            // Берём новый артикул из каталога, не затирая остальные изменения администратора.
-            return { ...savedProduct, sku: savedProduct.sku || catalogueProduct?.sku };
-          }),
-          initialized: true,
-          loading: false,
+    // Читаем через серверный маршрут, а не напрямую из браузера. Так правила RLS
+    // не могут вернуть старый каталог или пустой результат после правки в админке.
+    try {
+      const response = await fetch("/api/products", { cache: "no-store" });
+      const payload = await response.json();
+      if (response.ok && Array.isArray(payload.products)) {
+        const savedById = new Map<string, Product>(
+          payload.products.map((product: Product): [string, Product] => [product.id, product]),
+        );
+        const mergedProducts = defaultProducts.map((catalogueProduct) => {
+          const savedProduct = savedById.get(catalogueProduct.id);
+          return savedProduct
+            ? { ...catalogueProduct, ...savedProduct, sku: savedProduct.sku || catalogueProduct.sku }
+            : catalogueProduct;
         });
+        const customProducts = payload.products.filter(
+          (product: Product) => !defaultProducts.some((catalogueProduct) => catalogueProduct.id === product.id),
+        );
+        set({ products: [...mergedProducts, ...customProducts], initialized: true, loading: false });
         return;
       }
+    } catch {
+      // На случай временной недоступности базы сохраняем доступность витрины.
     }
     set({ products: defaultProducts, initialized: true, loading: false });
   },
 
-  updateProduct: (id, updates) => {
+  updateProduct: async (id, updates) => {
     let changed: Product | undefined;
     set((s) => ({
       products: s.products.map((p) => {
@@ -82,27 +90,32 @@ export const useProductStore = create<ProductStore>((set, get) => ({
         return changed;
       }),
     }));
-    if (changed) persist(changed, get().adminPassword);
+    return changed ? persist(changed, get().adminPassword) : { ok: false, error: "Товар не найден" };
   },
 
-  addProduct: (product) => {
+  addProduct: async (product) => {
     set((s) => ({ products: [...s.products, product] }));
-    persist(product, get().adminPassword);
+    return persist(product, get().adminPassword);
   },
 
-  deleteProduct: (id) => {
+  deleteProduct: async (id) => {
     set((s) => ({ products: s.products.filter((p) => p.id !== id) }));
     const pw = get().adminPassword;
-    if (pw && isSupabaseConfigured) {
-      fetch("/api/products", {
+    if (!pw) return { ok: false, error: "Сессия администратора закончилась. Войдите заново." };
+    try {
+      const response = await fetch("/api/products", {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ password: pw, op: "delete", id }),
-      }).catch(() => {});
+      });
+      const data = await response.json().catch(() => ({}));
+      return response.ok ? { ok: true } : { ok: false, error: data.error || "Не удалось удалить товар" };
+    } catch {
+      return { ok: false, error: "Не удалось связаться с базой. Повторите попытку." };
     }
   },
 
-  toggleStock: (id) => {
+  toggleStock: async (id) => {
     let changed: Product | undefined;
     set((s) => ({
       products: s.products.map((p) => {
@@ -111,20 +124,21 @@ export const useProductStore = create<ProductStore>((set, get) => ({
         return changed;
       }),
     }));
-    if (changed) persist(changed, get().adminPassword);
+    return changed ? persist(changed, get().adminPassword) : { ok: false, error: "Товар не найден" };
   },
 
-  resetToDefault: () => {
+  resetToDefault: async () => {
     set({ products: defaultProducts });
     const pw = get().adminPassword;
-    defaultProducts.forEach((p) => persist(p, pw));
+    const results = await Promise.all(defaultProducts.map((product) => persist(product, pw)));
+    const failed = results.find((result) => !result.ok);
+    return failed || { ok: true };
   },
 
   // Первичная заливка товаров в базу (одна кнопка в админке)
   seedDatabase: async () => {
     const pw = get().adminPassword;
     if (!pw) return { ok: false, error: "Нет доступа" };
-    if (!isSupabaseConfigured) return { ok: false, error: "База не подключена" };
     try {
       const res = await fetch("/api/products", {
         method: "POST",
@@ -141,7 +155,7 @@ export const useProductStore = create<ProductStore>((set, get) => ({
 
   getProducts: () => get().products,
 
-  receiveStock: (id, qty) => {
+  receiveStock: async (id, qty) => {
     let changed: Product | undefined;
     set((s) => ({
       products: s.products.map((p) => {
@@ -151,10 +165,10 @@ export const useProductStore = create<ProductStore>((set, get) => ({
         return changed;
       }),
     }));
-    if (changed) persist(changed, get().adminPassword);
+    return changed ? persist(changed, get().adminPassword) : { ok: false, error: "Товар не найден" };
   },
 
-  writeOffStock: (id, qty) => {
+  writeOffStock: async (id, qty) => {
     let changed: Product | undefined;
     set((s) => ({
       products: s.products.map((p) => {
@@ -164,10 +178,10 @@ export const useProductStore = create<ProductStore>((set, get) => ({
         return changed;
       }),
     }));
-    if (changed) persist(changed, get().adminPassword);
+    return changed ? persist(changed, get().adminPassword) : { ok: false, error: "Товар не найден" };
   },
 
-  setStockQty: (id, qty) => {
+  setStockQty: async (id, qty) => {
     let changed: Product | undefined;
     set((s) => ({
       products: s.products.map((p) => {
@@ -177,7 +191,7 @@ export const useProductStore = create<ProductStore>((set, get) => ({
         return changed;
       }),
     }));
-    if (changed) persist(changed, get().adminPassword);
+    return changed ? persist(changed, get().adminPassword) : { ok: false, error: "Товар не найден" };
   },
 }));
 
