@@ -2365,25 +2365,25 @@ export default function AdminPage() {
                   {statusSaved ? <><Check size={14} /> Сохранено</> : "Сохранить статус"}
                 </button>
               </div>
-              {selectedOrder.isTest && (
+              {selectedOrder.canDelete && (
                 <div className="rounded-2xl border border-red-200 bg-red-50 p-5">
-                  <p className="font-semibold text-red-700 text-sm">Тестовый заказ</p>
-                  <p className="text-xs text-red-600 mt-1">Его можно удалить, чтобы он не учитывался в дашборде и отчётах. Отменить удаление будет нельзя.</p>
+                  <p className="font-semibold text-red-700 text-sm">Удаление заказа</p>
+                  <p className="text-xs text-red-600 mt-1">Этот заказ не оплачен, отменён или завершился ошибкой. Его можно убрать из дашборда и отчётов; отменить удаление будет нельзя.</p>
                   <button
                     onClick={async () => {
-                      if (!confirm(`Точно удалить тестовый заказ ${selectedOrder.id}?`)) return;
+                      if (!confirm(`Точно удалить заказ ${selectedOrder.id}? Это действие нельзя отменить.`)) return;
                       try {
-                        const response = await fetch(`/api/admin/orders?id=${encodeURIComponent(selectedOrder.id)}`, { method: "DELETE", headers: { "x-admin-password": pw } });
+                        const response = await fetch(`/api/admin/orders?id=${encodeURIComponent(selectedOrder.id)}&confirm=true`, { method: "DELETE", headers: { "x-admin-password": pw } });
                         const data = await response.json().catch(() => ({}));
-                        if (!response.ok) throw new Error(data.error || "Не удалось удалить тестовый заказ");
+                        if (!response.ok) throw new Error(data.error || "Не удалось удалить заказ");
                         setDbOrders((current) => current.filter((order) => order.id !== selectedOrder.id));
                         setSelectedOrder(null);
                       } catch (error) {
-                        setOrdersError(error instanceof Error ? error.message : "Не удалось удалить тестовый заказ");
+                        setOrdersError(error instanceof Error ? error.message : "Не удалось удалить заказ");
                       }
                     }}
                     className="mt-4 inline-flex items-center gap-2 rounded-xl bg-red-600 hover:bg-red-700 text-white px-4 py-2.5 text-sm font-semibold"
-                  ><Trash2 size={15} /> Удалить тестовый заказ</button>
+                  ><Trash2 size={15} /> Удалить заказ</button>
                 </div>
               )}
             </div>

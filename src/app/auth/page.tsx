@@ -174,7 +174,7 @@ function AuthContent() {
                 {error}
               </div>
             )}
-            {mode === "login" && success && (
+            {success && (
               <div className="mb-4 bg-green-50 border border-green-200 rounded-2xl px-4 py-3 text-sm text-green-700 flex items-center gap-2">
                 <Check size={16} /> {success}
               </div>

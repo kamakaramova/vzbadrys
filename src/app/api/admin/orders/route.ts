@@ -36,6 +36,7 @@ function mapOrder(row: Record<string, unknown>) {
     : ["payment_failed", "creation_failed", "payment_processing_error"].includes(paymentStatus)
       ? "cancelled"
       : "processing";
+  const canDelete = paymentStatus !== "paid" || status === "cancelled";
 
   return {
     id: String(row.id),
@@ -55,6 +56,7 @@ function mapOrder(row: Record<string, unknown>) {
     paidAt: row.paid_at ? String(row.paid_at) : undefined,
     stockWrittenOff: Boolean(row.stock_written_off),
     isTest: Boolean(row.is_test),
+    canDelete,
     comment: row.comment ? String(row.comment) : undefined,
     trackNumber: delivery.trackNumber ? String(delivery.trackNumber) : undefined,
     userId: row.user_id ? String(row.user_id) : undefined,
@@ -168,19 +170,27 @@ export async function PATCH(request: NextRequest) {
   return NextResponse.json({ ok: true, email: emailResult });
 }
 
-// Тестовые заказы можно убрать из панели после проверки оплаты.
-// Реальные заказы намеренно не удаляются через интерфейс администратора.
+// Администратор может убрать только неоплаченный, отменённый или ошибочный заказ.
+// Подтверждение требуется и в интерфейсе, и в самом API.
 export async function DELETE(request: NextRequest) {
   if (!isAuthorized(request)) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   const db = getServerSupabase();
   if (!db) return NextResponse.json({ error: "not_configured" }, { status: 503 });
 
-  const orderId = new URL(request.url).searchParams.get("id") || "";
+  const searchParams = new URL(request.url).searchParams;
+  const orderId = searchParams.get("id") || "";
+  if (searchParams.get("confirm") !== "true") {
+    return NextResponse.json({ error: "Требуется подтверждение удаления" }, { status: 400 });
+  }
   if (!/^VZB-\d{8}-[A-F0-9]{8}$/.test(orderId)) return NextResponse.json({ error: "invalid_order" }, { status: 400 });
-  const { data: order, error: readError } = await db.from("payment_orders").select("id, is_test").eq("id", orderId).maybeSingle();
+  const { data: order, error: readError } = await db.from("payment_orders").select("id, status, delivery").eq("id", orderId).maybeSingle();
   if (readError || !order) return NextResponse.json({ error: "Заказ не найден" }, { status: 404 });
-  if (!order.is_test) return NextResponse.json({ error: "Удалять через панель можно только тестовые заказы" }, { status: 403 });
-  const { error } = await db.from("payment_orders").delete().eq("id", orderId).eq("is_test", true);
-  if (error) return NextResponse.json({ error: "Не удалось удалить тестовый заказ" }, { status: 500 });
+  const delivery = (order.delivery ?? {}) as Record<string, unknown>;
+  const isCancelled = delivery.orderStatus === "cancelled";
+  if (order.status === "paid" && !isCancelled) {
+    return NextResponse.json({ error: "Оплаченный активный заказ удалить нельзя" }, { status: 403 });
+  }
+  const { error } = await db.from("payment_orders").delete().eq("id", orderId);
+  if (error) return NextResponse.json({ error: "Не удалось удалить заказ" }, { status: 500 });
   return NextResponse.json({ ok: true });
 }

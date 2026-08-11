@@ -37,6 +37,7 @@ export interface Order {
   paidAt?: string;
   stockWrittenOff?: boolean;
   isTest?: boolean;
+  canDelete?: boolean;
 }
 
 export interface User {
