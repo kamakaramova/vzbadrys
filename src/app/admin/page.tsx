@@ -526,7 +526,7 @@ export default function AdminPage() {
   };
 
   const customerStats = useMemo(() => {
-    const customers = new Map<string, {
+    type CustomerProfile = {
       id: string;
       name: string;
       email: string;
@@ -534,36 +534,50 @@ export default function AdminPage() {
       createdAt: string;
       bonusPoints: number;
       referralCode: string;
-    }>();
+    };
+    type CustomerGroup = { keys: Set<string>; profiles: CustomerProfile[]; userOrders: Order[] };
+    const groups: CustomerGroup[] = [];
+    const groupByKey = new Map<string, CustomerGroup>();
+    const identityKeys = (profile: Pick<CustomerProfile, "id" | "email" | "phone">) => {
+      const email = profile.email.trim().toLowerCase();
+      const phone = profile.phone.replace(/\D/g, "");
+      return [
+        email ? `email:${email}` : "",
+        phone ? `phone:${phone}` : "",
+        profile.id ? `user:${profile.id}` : "",
+      ].filter(Boolean);
+    };
+    const addToGroup = (profile: CustomerProfile, order?: Order) => {
+      const keys = identityKeys(profile);
+      const matching = [...new Set(keys.map((key) => groupByKey.get(key)).filter(Boolean) as CustomerGroup[])];
+      const group = matching[0] ?? { keys: new Set<string>(), profiles: [], userOrders: [] };
+      if (!matching.length) groups.push(group);
+      matching.slice(1).forEach((other) => {
+        if (other === group) return;
+        group.profiles.push(...other.profiles);
+        group.userOrders.push(...other.userOrders);
+        other.keys.forEach((key) => { group.keys.add(key); groupByKey.set(key, group); });
+        groups.splice(groups.indexOf(other), 1);
+      });
+      group.profiles.push(profile);
+      if (order) group.userOrders.push(order);
+      keys.forEach((key) => { group.keys.add(key); groupByKey.set(key, group); });
+    };
 
-    users.forEach((user) => {
-      const key = user.email.trim().toLowerCase() || user.phone.replace(/\D/g, "") || user.id;
-      customers.set(key, user);
-    });
-    orders.forEach((order) => {
-      const email = (order.userEmail ?? "").trim().toLowerCase();
-      const phone = (order.userPhone ?? "").replace(/\D/g, "");
-      const key = email || phone || order.userId || order.id;
-      if (!customers.has(key)) {
-        customers.set(key, {
-          id: order.userId || `order-${key}`,
-          name: order.userName || "Покупатель",
-          email: order.userEmail || "",
-          phone: order.userPhone || "",
-          createdAt: order.date,
-          bonusPoints: 0,
-          referralCode: "—",
-        });
-      }
-    });
+    users.forEach((user) => addToGroup(user));
+    orders.forEach((order) => addToGroup({
+      id: order.userId || "",
+      name: order.userName || "Покупатель",
+      email: order.userEmail || "",
+      phone: order.userPhone || "",
+      createdAt: order.date,
+      bonusPoints: 0,
+      referralCode: "—",
+    }, order));
 
-    return [...customers.values()].map((u) => {
-      const userOrders = orders.filter(
-        (o) =>
-          (o.userId && o.userId === u.id) ||
-          (o.userEmail && o.userEmail.toLowerCase() === u.email.toLowerCase()) ||
-          (o.userPhone && o.userPhone.replace(/\D/g, "") === u.phone.replace(/\D/g, ""))
-      );
+    return groups.map((group) => {
+      const u = group.profiles.find((profile) => profile.name && profile.name !== "Покупатель") ?? group.profiles[0];
+      const userOrders = group.userOrders;
       const paidUserOrders = userOrders.filter((order) => order.paymentStatus === "paid");
       const totalSpent = paidUserOrders.reduce((s, o) => s + o.total, 0);
       const ordersCount = paidUserOrders.length;
