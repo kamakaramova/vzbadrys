@@ -8,7 +8,7 @@ const CALLBACK_PATH = "/api/ozon/delivery/oauth/callback";
 export function getOzonDeliveryOAuthConfig() {
   const clientId = process.env.OZON_DELIVERY_OAUTH_CLIENT_ID;
   const clientSecret = process.env.OZON_DELIVERY_OAUTH_CLIENT_SECRET;
-  const siteUrl = (process.env.NEXT_PUBLIC_SITE_URL || "https://vzbadris.ru").replace(/\/$/, "");
+  const siteUrl = (process.env.NEXT_PUBLIC_SITE_URL || "https://xn--80abckmj9cj3h.xn--p1ai").replace(/\/$/, "");
   if (!clientId || !clientSecret) throw new Error("OAuth-данные Ozon Доставки ещё не добавлены в Vercel");
   return { clientId, clientSecret, redirectUri: `${siteUrl}${CALLBACK_PATH}` };
 }
