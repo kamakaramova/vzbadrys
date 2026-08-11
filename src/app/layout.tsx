@@ -4,7 +4,7 @@ import CookieBanner from "@/components/CookieBanner";
 import AuthBootstrap from "@/components/AuthBootstrap";
 
 export const metadata: Metadata = {
-  metadataBase: new URL("https://xn--80abckmj9cj3h.xn--p1ai"),
+  metadataBase: new URL("https://vzbadris.ru"),
   title: "взБАДрись — магазин БАДов и суперфудов",
   description: "Качественные БАДы и суперфуды с документами. Магний, цинк, селен и семена для здоровья. Доставка по России.",
   keywords: "БАДы, магний, цинк, селен, семена, нутрициолог, витамины, здоровье",
@@ -13,7 +13,7 @@ export const metadata: Metadata = {
   openGraph: {
     title: "взБАДрись — магазин БАДов и суперфудов",
     description: "Качественные БАДы и суперфуды с документами. Доставка по России.",
-    url: "https://xn--80abckmj9cj3h.xn--p1ai",
+    url: "https://vzbadris.ru",
     siteName: "взБАДрись",
     locale: "ru_RU",
     type: "website",

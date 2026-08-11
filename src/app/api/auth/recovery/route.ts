@@ -22,7 +22,7 @@ export async function POST(request: NextRequest) {
   const db = getServerSupabase();
   if (!db) return NextResponse.json({ error: "Восстановление пока не настроено" }, { status: 503 });
 
-  const siteUrl = (process.env.NEXT_PUBLIC_SITE_URL || "https://xn--80abckmj9cj3h.xn--p1ai").replace(/\/$/, "");
+  const siteUrl = (process.env.NEXT_PUBLIC_SITE_URL || "https://vzbadris.ru").replace(/\/$/, "");
   const { data, error } = await db.auth.admin.generateLink({
     type: "recovery",
     email,

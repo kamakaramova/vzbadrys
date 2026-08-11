@@ -44,7 +44,7 @@ export async function POST(request: NextRequest) {
 
   const referralCode = `VZB${crypto.randomUUID().replaceAll("-", "").slice(0, 7).toUpperCase()}`;
   const consentAcceptedAt = new Date().toISOString();
-  const siteUrl = (process.env.NEXT_PUBLIC_SITE_URL || "https://xn--80abckmj9cj3h.xn--p1ai").replace(/\/$/, "");
+  const siteUrl = (process.env.NEXT_PUBLIC_SITE_URL || "https://vzbadris.ru").replace(/\/$/, "");
   const { data, error } = await db.auth.admin.generateLink({
     type: "signup",
     email,

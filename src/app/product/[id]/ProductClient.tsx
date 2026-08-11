@@ -72,7 +72,7 @@ export default function ProductClient({
     setTimeout(() => setAdded(false), 2000);
   };
 
-  const shareUrl = () => `https://взбадрись.рф/product/${encodeURIComponent(product.id)}`;
+  const shareUrl = () => `https://vzbadris.ru/product/${encodeURIComponent(product.id)}`;
   const copyLink = async () => {
     await navigator.clipboard.writeText(shareUrl());
     setLinkCopied(true);

@@ -114,7 +114,7 @@ export default function AccountPage() {
 
   const copyStoreLink = () => {
     // Латинский адрес надёжно распознаётся мессенджерами и не содержит скидочных кодов.
-    navigator.clipboard.writeText("https://vzbadrys.vercel.app");
+    navigator.clipboard.writeText("https://vzbadris.ru");
     setCopiedReferralLink(true);
     setTimeout(() => setCopiedReferralLink(false), 2000);
   };
@@ -568,7 +568,7 @@ export default function AccountPage() {
                       <div className="grid sm:grid-cols-2 gap-3">
                         <div className="bg-[#fff8f5] border border-[#f5d5c0] rounded-2xl p-4">
                           <p className="text-xs font-semibold text-[#8b6b5d] uppercase tracking-wide">Ссылка на магазин</p>
-                          <p className="mt-2 text-xs text-[#6b6b6b] truncate">vzbadrys.vercel.app</p>
+                          <p className="mt-2 text-xs text-[#6b6b6b] truncate">vzbadris.ru</p>
                           <button onClick={copyStoreLink} className={`mt-3 w-full flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl font-semibold text-sm transition-all ${copiedReferralLink ? "bg-green-500 text-white" : "bg-[#E8845A] hover:bg-[#d4703f] text-white"}`}>
                             {copiedReferralLink ? <><Check size={15} /> Скопировано</> : <><Copy size={15} /> Копировать ссылку</>}
                           </button>

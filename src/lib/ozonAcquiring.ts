@@ -24,7 +24,7 @@ export function getOzonConfig() {
   const accessKey = process.env.OZON_ACQUIRING_ACCESS_KEY;
   const secretKey = process.env.OZON_ACQUIRING_SECRET_KEY;
   const notificationSecret = process.env.OZON_ACQUIRING_NOTIFICATION_SECRET;
-  const siteUrl = (process.env.NEXT_PUBLIC_SITE_URL || "https://xn--80abckmj9cj3h.xn--p1ai").replace(/\/$/, "");
+  const siteUrl = (process.env.NEXT_PUBLIC_SITE_URL || "https://vzbadris.ru").replace(/\/$/, "");
   const vatCandidate = process.env.OZON_ACQUIRING_VAT || "VAT_NONE";
   const fiscalizationCandidate = process.env.OZON_ACQUIRING_FISCALIZATION_TYPE || "FISCAL_TYPE_DOUBLE";
 
