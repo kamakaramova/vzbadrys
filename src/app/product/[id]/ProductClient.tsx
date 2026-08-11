@@ -19,11 +19,16 @@ export default function ProductClient({
 }) {
   const [activeTab, setActiveTab] = useState<Tab>("description");
   const [imageIndex, setImageIndex] = useState(0);
-  // Кандидаты фото: конвенция /products/<id>/1..6.jpg (кладёшь файлы — появляются сами)
+  // У БАДов список файлов известен заранее, поэтому показываем его сразу и строго
+  // в порядке 1, 2, 3… Не ждём событий загрузки: браузер может закешировать первое
+  // фото до того, как React успеет подписаться на onLoad.
   const imageCandidates = productImagePaths(product.id, 8);
+  const hasFixedGallery = product.category === "bads";
   // Отмечаем, какие фото реально загрузились, и показываем их СТРОГО по порядку 1,2,3…
   const [loadedMap, setLoadedMap] = useState<Record<string, boolean>>({});
-  const loadedImages = imageCandidates.filter((src) => loadedMap[src]);
+  const loadedImages = hasFixedGallery
+    ? imageCandidates
+    : imageCandidates.filter((src) => loadedMap[src]);
   const hasPhotos = loadedImages.length > 0;
   const shownIndex = Math.min(imageIndex, Math.max(0, loadedImages.length - 1));
   const [qty, setQty] = useState(1);
@@ -116,17 +121,19 @@ export default function ProductClient({
           {/* Галерея */}
           <div>
             {/* Невидимая предзагрузка — определяем, какие фото реально существуют */}
-            <div style={{ display: "none" }}>
-              {imageCandidates.map((src) => (
-                <img
-                  key={src}
-                  src={src}
-                  alt=""
-                  onLoad={() => setLoadedMap((prev) => (prev[src] ? prev : { ...prev, [src]: true }))}
-                  onError={() => {}}
-                />
-              ))}
-            </div>
+            {!hasFixedGallery && (
+              <div style={{ display: "none" }}>
+                {imageCandidates.map((src) => (
+                  <img
+                    key={src}
+                    src={src}
+                    alt=""
+                    onLoad={() => setLoadedMap((prev) => (prev[src] ? prev : { ...prev, [src]: true }))}
+                    onError={() => {}}
+                  />
+                ))}
+              </div>
+            )}
 
             <div className="flex flex-col-reverse sm:flex-row gap-3">
               {/* Лента миниатюр слева (как на маркетплейсах) */}
