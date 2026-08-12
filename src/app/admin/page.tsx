@@ -9,6 +9,7 @@ import {
 } from "lucide-react";
 import { useProductStore } from "@/store/productStore";
 import { Product, WeightVariant } from "@/lib/products";
+import SalesDynamicsChart from "@/components/admin/SalesDynamicsChart";
 
 type Tab = "dashboard" | "orders" | "customers" | "feedback" | "promos" | "products" | "emails" | "integrations";
 type SortField = "name" | "email" | "totalSpent" | "ordersCount" | "avgCheck" | "lastOrder" | "createdAt";
@@ -862,6 +863,8 @@ export default function AdminPage() {
                 ))}
               </div>
             </div>
+
+            <SalesDynamicsChart orders={orders} />
 
             <div className="grid lg:grid-cols-2 gap-6">
               <div className="bg-white rounded-3xl border border-[#f0e8e0] p-6">
