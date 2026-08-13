@@ -81,6 +81,16 @@ export function createOrderStatusSignature(params: {
   return sha256(params.accessKey + params.orderId + params.secretKey);
 }
 
+export function createPaymentReturnToken(orderId: string, secretKey: string) {
+  return sha256(`payment-failed:${orderId}:${secretKey}`);
+}
+
+export function verifyPaymentReturnToken(received: string, orderId: string, secretKey: string) {
+  if (!/^[a-f0-9]{64}$/i.test(received)) return false;
+  const expected = createPaymentReturnToken(orderId, secretKey);
+  return timingSafeEqual(Buffer.from(expected, "hex"), Buffer.from(received.toLowerCase(), "hex"));
+}
+
 export function verifyNotificationSignature(params: {
   received: string;
   accessKey: string;

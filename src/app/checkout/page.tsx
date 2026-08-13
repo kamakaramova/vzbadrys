@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
@@ -74,6 +74,25 @@ export default function CheckoutPage() {
   const [showPochtaMap, setShowPochtaMap] = useState(false);
   const [pochtaPoint, setPochtaPoint] = useState<PochtaPoint | null>(null);
   const [deliverySettings, setDeliverySettings] = useState<PublicDeliverySettings>(DEFAULT_DELIVERY_SETTINGS);
+  const prefilledUserId = useRef<string | null>(null);
+
+  // У авторизованного покупателя уже есть данные профиля. Подставляем их один раз,
+  // но не блокируем поля — для конкретного заказа их можно свободно изменить.
+  useEffect(() => {
+    if (!user || prefilledUserId.current === user.id) return;
+
+    const [firstName = "", ...lastNameParts] = user.name.trim().split(/\s+/);
+    const surname = lastNameParts.join(" ");
+
+    setForm((current) => ({
+      ...current,
+      name: current.name || firstName,
+      surname: current.surname || surname,
+      phone: current.phone || formatPhone(user.phone),
+      email: current.email || user.email,
+    }));
+    prefilledUserId.current = user.id;
+  }, [user?.id, user?.name, user?.phone, user?.email]);
 
   useEffect(() => {
     fetch("/api/delivery-settings", { cache: "no-store" })
@@ -94,7 +113,7 @@ export default function CheckoutPage() {
     { id: "pickup", label: "Самовывоз — Казань", desc: "г. Казань, ул. Айдарова, 15", price: 0, days: "после готовности заказа", isPvz: false },
     { id: "sdek_pvz", label: "СДЭК — Пункт выдачи", desc: "Укажите адрес удобного ПВЗ СДЭК", price: discountedSubtotal >= 3000 ? 0 : 300, days: "2–5 дней", isPvz: true },
     { id: "yandex_pvz", label: "Яндекс — Пункт выдачи", desc: "Укажите адрес удобного ПВЗ Яндекс", price: discountedSubtotal >= 3000 ? 0 : 300, days: "3–6 дней", isPvz: true },
-    { id: "ozon_pvz", label: "Ozon — Пункт выдачи", desc: "Укажите адрес удобного ПВЗ Ozon", price: 225, days: "3–7 дней", isPvz: true },
+    { id: "ozon_pvz", label: "Ozon — Пункт выдачи", desc: "Укажите адрес удобного ПВЗ Ozon", price: discountedSubtotal >= 3000 ? 0 : 225, days: "3–7 дней", isPvz: true },
     { id: "pochta", label: "Почта России", desc: "В любой населённый пункт России", price: discountedSubtotal >= 3000 ? 0 : 250, days: "5–14 дней", isPvz: false },
   ];
   const deliveryOptions = allDeliveryOptions.filter((option) => deliverySettings.enabled[option.id]);
@@ -277,7 +296,7 @@ export default function CheckoutPage() {
                   ))}
                 </div>
 
-                {discountedSubtotal < 3000 && delivery !== "pickup" && delivery !== "ozon_pvz" && (
+                {discountedSubtotal < 3000 && delivery !== "pickup" && (
                   <div className="bg-[#fff8f5] border border-[#f5d5c0] rounded-2xl p-4 mb-5 text-sm text-[#8b4513]">
                     🎁 До бесплатной доставки не хватает <strong>{(3000 - discountedSubtotal).toLocaleString("ru-RU")} ₽</strong>
                   </div>

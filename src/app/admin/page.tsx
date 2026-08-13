@@ -9,8 +9,11 @@ import {
 } from "lucide-react";
 import { useProductStore } from "@/store/productStore";
 import { Product, WeightVariant } from "@/lib/products";
+import type { CellObject, SheetData } from "write-excel-file/browser";
+import SalesDynamicsChart from "@/components/admin/SalesDynamicsChart";
+import ShipmentsWorkspace from "@/components/admin/ShipmentsWorkspace";
 
-type Tab = "dashboard" | "orders" | "customers" | "feedback" | "promos" | "products" | "emails" | "integrations";
+type Tab = "dashboard" | "orders" | "shipments" | "customers" | "feedback" | "promos" | "products" | "emails" | "integrations";
 type SortField = "name" | "email" | "totalSpent" | "ordersCount" | "avgCheck" | "lastOrder" | "createdAt";
 type SortDir = "asc" | "desc";
 type OrderSortField = "date" | "total" | "status" | "userName";
@@ -85,6 +88,16 @@ function paymentStatusInfo(status?: string) {
   };
 }
 
+function shortDeliveryMethod(method?: string) {
+  const value = (method || "").toLowerCase();
+  if (value.includes("ozon") || value.includes("озон")) return "Ozon";
+  if (value.includes("почт")) return "Почта";
+  if (value.includes("самовывоз") || value === "pickup") return "Самовывоз";
+  if (value.includes("сдэк") || value.includes("sdek")) return "СДЭК";
+  if (value.includes("яндекс") || value.includes("yandex")) return "Яндекс";
+  return "Доставка";
+}
+
 function orderBadge(order: Order) {
   if (order.paymentStatus !== "paid") {
     return paymentStatusInfo(order.paymentStatus);
@@ -93,6 +106,14 @@ function orderBadge(order: Order) {
     label: STATUS_LABELS[order.status],
     color: STATUS_COLORS[order.status],
   };
+}
+
+function pendingOrdersLabel(count: number) {
+  const mod10 = count % 10;
+  const mod100 = count % 100;
+  if (mod10 === 1 && mod100 !== 11) return `есть ещё ${count} неотправленный заказ`;
+  if (mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14)) return `есть ещё ${count} неотправленных заказа`;
+  return `есть ещё ${count} неотправленных заказов`;
 }
 
 function exportCSV(rows: Record<string, string | number>[], filename: string) {
@@ -144,8 +165,17 @@ export default function AdminPage() {
   const [editStatus, setEditStatus] = useState<Order["status"]>("processing");
   const [editTrack, setEditTrack] = useState("");
   const [statusSaved, setStatusSaved] = useState(false);
+  const [editingOrderContacts, setEditingOrderContacts] = useState(false);
+  const [editOrderEmail, setEditOrderEmail] = useState("");
+  const [editOrderPhone, setEditOrderPhone] = useState("");
+  const [editOrderRegion, setEditOrderRegion] = useState("");
+  const [editOrderCity, setEditOrderCity] = useState("");
+  const [editOrderAddress, setEditOrderAddress] = useState("");
+  const [orderContactsSaving, setOrderContactsSaving] = useState(false);
+  const [orderContactsMessage, setOrderContactsMessage] = useState("");
   const [dbOrders, setDbOrders] = useState<Order[]>([]);
   const [ordersLoading, setOrdersLoading] = useState(false);
+  const [excelExporting, setExcelExporting] = useState(false);
   const [ordersError, setOrdersError] = useState("");
   const [ordersSyncMessage, setOrdersSyncMessage] = useState("");
   const [emailLogs, setEmailLogs] = useState<EmailLog[]>([]);
@@ -234,6 +264,22 @@ export default function AdminPage() {
   const promos = mounted ? dbPromos : [];
   const allProducts = mounted ? productStore.products : [];
   const { updateProduct, deleteProduct, toggleStock, resetToDefault, receiveStock, setStockQty, setAdminPassword, seedDatabase } = productStore;
+
+  const openOrderDetails = (order: Order) => {
+    setSelectedOrder(order);
+    setEditStatus(order.status);
+    setEditTrack(order.trackNumber ?? "");
+    setStatusSaved(false);
+    setEditingOrderContacts(false);
+    setEditOrderEmail(order.userEmail ?? "");
+    setEditOrderPhone(order.userPhone ?? "");
+    setEditOrderRegion(order.deliveryRegion ?? "");
+    setEditOrderCity(order.deliveryCity ?? "");
+    setEditOrderAddress(order.deliveryAddressLine ?? order.deliveryAddress ?? "");
+    setOrderContactsMessage("");
+    setOrderEmailLogs([]);
+    void loadOrderEmailLogs(order.id);
+  };
 
   const loadAdminOrders = async (password = pw) => {
     if (!password) return;
@@ -659,6 +705,24 @@ export default function AdminPage() {
     });
   }, [orders, orderSearch, orderSortField, orderSortDir]);
 
+  const relatedCustomerOrders = useMemo(() => {
+    if (!selectedOrder) return [];
+    const selectedEmail = (selectedOrder.userEmail ?? "").trim().toLowerCase();
+    const selectedPhone = (selectedOrder.userPhone ?? "").replace(/\D/g, "");
+
+    return orders
+      .filter((order) => {
+        if (order.id === selectedOrder.id) return false;
+        if (order.status !== "processing" && order.status !== "confirmed") return false;
+        if (selectedOrder.userId && order.userId === selectedOrder.userId) return true;
+        const orderEmail = (order.userEmail ?? "").trim().toLowerCase();
+        if (selectedEmail && orderEmail === selectedEmail) return true;
+        const orderPhone = (order.userPhone ?? "").replace(/\D/g, "");
+        return selectedPhone.length >= 10 && orderPhone === selectedPhone;
+      })
+      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+  }, [orders, selectedOrder]);
+
   const toggleSort = (field: SortField) => {
     if (sortField === field) setSortDir((d) => (d === "asc" ? "desc" : "asc"));
     else { setSortField(field); setSortDir("desc"); }
@@ -697,7 +761,87 @@ export default function AdminPage() {
       `заказы_${new Date().toISOString().slice(0, 10)}.csv`
     );
 
-  const selectedCustomer = selectedCustomerId
+  const exportOrdersExcel = async () => {
+    if (!orders.length || excelExporting) return;
+    setExcelExporting(true);
+    setOrdersError("");
+    try {
+      const { default: writeXlsxFile } = await import("write-excel-file/browser");
+      const headers = [
+        "Номер", "Дата", "Покупатель", "Email", "Телефон", "Статус заказа",
+        "Статус оплаты", "Способ доставки", "Адрес доставки", "Состав заказа",
+        "Товары, ₽", "Скидка, ₽", "Доставка, ₽", "Итого, ₽", "Промокод",
+        "Способ оплаты", "Трек-номер", "Комментарий",
+      ];
+      const headerRow: CellObject[] = headers.map((value) => ({
+        value,
+        type: String,
+        fontWeight: "bold",
+        textColor: "#FFFFFF",
+        backgroundColor: "#E8845A",
+        align: "center",
+        alignVertical: "center",
+        wrap: true,
+        height: 30,
+        bottomBorderColor: "#D4703F",
+        bottomBorderStyle: "thin",
+      }));
+      const textCell = (value: string, shaded: boolean): CellObject => ({
+        value,
+        type: String,
+        format: "@",
+        wrap: true,
+        alignVertical: "top",
+        ...(shaded ? { backgroundColor: "#FFF8F4" } : {}),
+      });
+      const numberCell = (value: number, shaded: boolean): CellObject => ({
+        value,
+        type: Number,
+        format: '#,##0.00" ₽"',
+        align: "right",
+        alignVertical: "top",
+        ...(shaded ? { backgroundColor: "#FFF8F4" } : {}),
+      });
+      const rows: SheetData = orders.map((order, index) => {
+        const shaded = index % 2 === 1;
+        return [
+          textCell(order.id, shaded),
+          { value: new Date(order.date), type: Date, format: "dd.mm.yyyy hh:mm", alignVertical: "top", ...(shaded ? { backgroundColor: "#FFF8F4" } : {}) },
+          textCell(order.userName ?? "", shaded),
+          textCell(order.userEmail ?? "", shaded),
+          textCell(order.userPhone ?? "", shaded),
+          textCell(STATUS_LABELS[order.status], shaded),
+          textCell(paymentStatusInfo(order.paymentStatus).label, shaded),
+          textCell(order.deliveryMethod, shaded),
+          textCell(order.deliveryAddress, shaded),
+          textCell(order.items.map((item) => `${item.name} × ${item.quantity}`).join("; "), shaded),
+          numberCell(order.subtotal, shaded),
+          numberCell(order.discount, shaded),
+          numberCell(order.deliveryCost, shaded),
+          numberCell(order.total, shaded),
+          textCell(order.promoCode ?? "", shaded),
+          textCell(order.paymentMethod, shaded),
+          textCell(order.trackNumber ?? "", shaded),
+          textCell(order.comment ?? "", shaded),
+        ];
+      });
+      const sheetData: SheetData = [headerRow, ...rows];
+      const output = writeXlsxFile(sheetData, {
+        sheet: "Заказы",
+        stickyRowsCount: 1,
+        showGridLines: false,
+        columns: [28, 20, 24, 30, 20, 22, 22, 22, 42, 48, 15, 15, 15, 15, 18, 24, 24, 36]
+          .map((width) => ({ width })),
+      }, { fontFamily: "Arial", fontSize: 10 });
+      await output.toFile(`заказы_${new Date().toISOString().slice(0, 10)}.xlsx`);
+    } catch {
+      setOrdersError("Не удалось сформировать Excel-файл. Обновите страницу и попробуйте ещё раз.");
+    } finally {
+      setExcelExporting(false);
+    }
+  };
+
+  const selectedCustomer = selectedCustomerId !== null
     ? customerStats.find((c) => c.id === selectedCustomerId)
     : null;
 
@@ -762,11 +906,12 @@ export default function AdminPage() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Табы */}
         <div className="flex gap-1.5 sm:gap-2 mb-6 sm:mb-8 bg-[#f5f0ec] p-1.5 rounded-2xl w-full overflow-x-auto">
-          {(["dashboard", "orders", "customers", "feedback", "promos", "products", "emails", "integrations"] as const).map((id) => {
-            const labels: Record<typeof id, string> = { dashboard: "Дашборд", orders: "Заказы", customers: "Покупатели", feedback: "Отзывы и вопросы", promos: "Промокоды", products: "Товары", emails: "Письма", integrations: "Интеграции" };
+          {(["dashboard", "orders", "shipments", "customers", "feedback", "promos", "products", "emails", "integrations"] as const).map((id) => {
+            const labels: Record<typeof id, string> = { dashboard: "Дашборд", orders: "Заказы", shipments: "Отгрузки", customers: "Покупатели", feedback: "Отзывы и вопросы", promos: "Промокоды", products: "Товары", emails: "Письма", integrations: "Интеграции" };
             const icons: Record<typeof id, React.ReactNode> = {
               dashboard: <BarChart2 size={15} />,
               orders: <ShoppingBag size={15} />,
+              shipments: <Package size={15} />,
               customers: <Users size={15} />,
               feedback: <MessageCircle size={15} />,
               promos: <Tag size={15} />,
@@ -825,10 +970,10 @@ export default function AdminPage() {
                     count: orders.filter((o) => ["creating", "awaiting_payment", "authorized", "processing_payment"].includes(o.paymentStatus ?? "")).length,
                   },
                   {
-                    key: "processing",
-                    label: STATUS_LABELS.processing,
-                    color: STATUS_COLORS.processing,
-                    count: orders.filter((o) => o.paymentStatus === "paid" && o.status === "processing").length,
+                    key: "paid",
+                    label: "Оплаченные",
+                    color: "bg-green-100 text-green-700",
+                    count: paidOrders.length,
                   },
                   {
                     key: "confirmed",
@@ -862,6 +1007,8 @@ export default function AdminPage() {
                 ))}
               </div>
             </div>
+
+            <SalesDynamicsChart orders={orders} />
 
             <div className="grid lg:grid-cols-2 gap-6">
               <div className="bg-white rounded-3xl border border-[#f0e8e0] p-6">
@@ -910,9 +1057,14 @@ export default function AdminPage() {
                             <p className="text-xs font-semibold font-mono">{o.id}</p>
                             <p className="text-xs text-[#aaa]">{o.userName ?? "—"} · {new Date(o.date).toLocaleDateString("ru-RU")}</p>
                           </div>
-                          <span className={`text-xs font-semibold px-2 py-0.5 rounded-full flex-shrink-0 ${orderBadge(o).color}`}>
-                            {orderBadge(o).label}
-                          </span>
+                          <div className="flex flex-wrap justify-end gap-1.5 flex-shrink-0">
+                            <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${STATUS_COLORS[o.status]}`}>
+                              {STATUS_LABELS[o.status]}
+                            </span>
+                            <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${paymentStatusInfo(o.paymentStatus).color}`}>
+                              Оплата: {paymentStatusInfo(o.paymentStatus).label}
+                            </span>
+                          </div>
                           <p className="text-sm font-bold flex-shrink-0">{o.total.toLocaleString("ru-RU")} ₽</p>
                         </div>
                       ))}
@@ -946,9 +1098,16 @@ export default function AdminPage() {
                 </button>
                 <button
                   onClick={exportOrders}
-                  className="flex items-center gap-2 bg-[#E8845A] text-white text-sm font-semibold px-5 py-2.5 rounded-full hover:bg-[#d4703f] transition-all"
+                  className="flex items-center gap-2 border border-[#E8845A] text-[#E8845A] bg-white text-sm font-semibold px-4 py-2.5 rounded-full hover:bg-[#fff7f3] transition-all"
                 >
                   <Download size={15} /> Скачать CSV
+                </button>
+                <button
+                  onClick={() => void exportOrdersExcel()}
+                  disabled={excelExporting || !orders.length}
+                  className="flex items-center gap-2 bg-[#E8845A] text-white text-sm font-semibold px-5 py-2.5 rounded-full hover:bg-[#d4703f] transition-all disabled:opacity-50"
+                >
+                  <Download size={15} /> {excelExporting ? "Готовим Excel…" : "Скачать Excel"}
                 </button>
               </div>
             </div>
@@ -984,6 +1143,7 @@ export default function AdminPage() {
                           Статус<SIcon f="status" cur={orderSortField} dir={orderSortDir} />
                         </button>
                       </th>
+                      <th className="text-left px-5 py-3">Доставка</th>
                       <th className="text-left px-5 py-3">Оплата</th>
                       <th className="text-left px-5 py-3">
                         <button onClick={() => toggleOrderSort("total")} className="flex items-center hover:text-[#1a1a1a]">
@@ -995,7 +1155,7 @@ export default function AdminPage() {
                   </thead>
                   <tbody>
                     {sortedOrders.length === 0 ? (
-                      <tr><td colSpan={7} className="text-center py-12 text-[#aaa] text-sm">Заказов нет</td></tr>
+                      <tr><td colSpan={8} className="text-center py-12 text-[#aaa] text-sm">Заказов нет</td></tr>
                     ) : sortedOrders.map((o) => (
                       <tr key={o.id} className="border-b border-[#f0e8e0] last:border-0 hover:bg-[#fdf8f5] transition-colors">
                         <td className="px-5 py-3 font-mono text-xs font-semibold text-[#E8845A]">{o.id}</td>
@@ -1007,6 +1167,9 @@ export default function AdminPage() {
                         <td className="px-5 py-3">
                           <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${STATUS_COLORS[o.status]}`}>{STATUS_LABELS[o.status]}</span>
                         </td>
+                        <td className="px-5 py-3 text-xs font-semibold text-[#6b6b6b] whitespace-nowrap">
+                          {shortDeliveryMethod(o.deliveryMethod)}
+                        </td>
                         <td className="px-5 py-3">
                           <span className={`text-xs font-semibold px-2.5 py-1 rounded-full whitespace-nowrap ${paymentStatusInfo(o.paymentStatus).color}`}>
                             {paymentStatusInfo(o.paymentStatus).label}
@@ -1015,7 +1178,7 @@ export default function AdminPage() {
                         <td className="px-5 py-3 font-bold whitespace-nowrap">{o.total.toLocaleString("ru-RU")} ₽</td>
                         <td className="px-5 py-3">
                           <button
-                            onClick={() => { setSelectedOrder(o); setEditStatus(o.status); setEditTrack(o.trackNumber ?? ""); setStatusSaved(false); setOrderEmailLogs([]); void loadOrderEmailLogs(o.id); }}
+                            onClick={() => openOrderDetails(o)}
                             className="flex items-center gap-1 text-xs text-[#E8845A] hover:underline font-semibold"
                           >
                             <Eye size={13} /> Открыть
@@ -1029,6 +1192,8 @@ export default function AdminPage() {
             </div>
           </div>
         )}
+
+        {tab === "shipments" && <ShipmentsWorkspace password={pw} />}
 
         {/* ПОКУПАТЕЛИ */}
         {tab === "customers" && (
@@ -2236,11 +2401,137 @@ export default function AdminPage() {
               <button onClick={() => setSelectedOrder(null)}><X size={20} className="text-[#aaa] hover:text-[#1a1a1a]" /></button>
             </div>
             <div className="p-6 space-y-5">
+              {relatedCustomerOrders.length > 0 && (
+                <div className="rounded-2xl border border-[#F0B38F] bg-[#FFF4ED] p-4">
+                  <div className="flex items-start gap-3">
+                    <div className="mt-0.5 flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full bg-[#E8845A] text-white">
+                      <ShoppingBag size={17} />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="font-bold text-[#9A4F30]">
+                        У покупателя {pendingOrdersLabel(relatedCustomerOrders.length)}
+                      </p>
+                      <p className="mt-1 text-sm text-[#7B5A4C]">Проверьте перед сборкой и отправкой: возможно, заказы нужно объединить.</p>
+                      <div className="mt-3 space-y-2">
+                        {relatedCustomerOrders.map((order) => (
+                          <button
+                            key={order.id}
+                            type="button"
+                            onClick={() => openOrderDetails(order)}
+                            className="flex w-full flex-col gap-2 rounded-xl border border-[#F3D2C0] bg-white px-3 py-3 text-left transition-colors hover:border-[#E8845A] sm:flex-row sm:items-center sm:justify-between"
+                          >
+                            <span className="min-w-0">
+                              <span className="block truncate font-mono text-xs font-bold text-[#E8845A]">{order.id}</span>
+                              <span className="mt-0.5 block text-xs text-[#8A817C]">{new Date(order.date).toLocaleString("ru-RU")}</span>
+                            </span>
+                            <span className="flex flex-wrap items-center gap-2">
+                              <span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${STATUS_COLORS[order.status]}`}>
+                                {STATUS_LABELS[order.status]}
+                              </span>
+                              <span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${paymentStatusInfo(order.paymentStatus).color}`}>
+                                {paymentStatusInfo(order.paymentStatus).label}
+                              </span>
+                              <span className="whitespace-nowrap text-sm font-bold">{order.total.toLocaleString("ru-RU")} ₽</span>
+                              <span className="text-xs font-semibold text-[#E8845A]">Открыть →</span>
+                            </span>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
               <div>
-                <p className="text-xs font-semibold text-[#aaa] uppercase tracking-wide mb-2">Покупатель</p>
-                <p className="font-semibold">{selectedOrder.userName ?? "—"}</p>
-                <p className="text-sm text-[#6b6b6b]">{selectedOrder.userEmail}</p>
-                <p className="text-sm text-[#6b6b6b]">{selectedOrder.userPhone}</p>
+                <div className="flex items-center justify-between gap-3 mb-2">
+                  <p className="text-xs font-semibold text-[#aaa] uppercase tracking-wide">Покупатель и доставка</p>
+                  <button
+                    onClick={() => { setEditingOrderContacts((value) => !value); setOrderContactsMessage(""); }}
+                    className="inline-flex items-center gap-1.5 rounded-xl border border-[#f0e8e0] px-3 py-2 text-xs font-semibold text-[#6b6b6b] hover:border-[#E8845A] hover:text-[#E8845A]"
+                  >
+                    <Edit2 size={13} /> {editingOrderContacts ? "Отмена" : "Редактировать"}
+                  </button>
+                </div>
+                {!editingOrderContacts ? (
+                  <>
+                    <p className="font-semibold">{selectedOrder.userName ?? "—"}</p>
+                    <p className="text-sm text-[#6b6b6b]">{selectedOrder.userEmail}</p>
+                    <p className="text-sm text-[#6b6b6b]">{selectedOrder.userPhone}</p>
+                    <p className="mt-2 text-sm text-[#6b6b6b]">{selectedOrder.deliveryAddress}</p>
+                    {orderContactsMessage && <p className="mt-2 text-sm font-medium text-green-600">{orderContactsMessage}</p>}
+                  </>
+                ) : (
+                  <div className="rounded-2xl border border-[#f0e8e0] bg-[#fdf8f5] p-4">
+                    <p className="mb-4 text-xs text-[#6b6b6b]">Изменения сохранятся только в этом заказе. Сумма, товары и оплата не изменятся.</p>
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      <div>
+                        <label className="mb-1 block text-xs font-semibold text-[#6b6b6b]">Email</label>
+                        <input type="email" value={editOrderEmail} onChange={(event) => setEditOrderEmail(event.target.value)} className="w-full rounded-xl border border-[#f0e8e0] bg-white px-3 py-2.5 text-sm outline-none focus:border-[#E8845A]" />
+                      </div>
+                      <div>
+                        <label className="mb-1 block text-xs font-semibold text-[#6b6b6b]">Телефон</label>
+                        <input type="tel" value={editOrderPhone} onChange={(event) => setEditOrderPhone(event.target.value)} className="w-full rounded-xl border border-[#f0e8e0] bg-white px-3 py-2.5 text-sm outline-none focus:border-[#E8845A]" />
+                      </div>
+                      <div>
+                        <label className="mb-1 block text-xs font-semibold text-[#6b6b6b]">Республика, область или регион</label>
+                        <input value={editOrderRegion} onChange={(event) => setEditOrderRegion(event.target.value)} className="w-full rounded-xl border border-[#f0e8e0] bg-white px-3 py-2.5 text-sm outline-none focus:border-[#E8845A]" />
+                      </div>
+                      <div>
+                        <label className="mb-1 block text-xs font-semibold text-[#6b6b6b]">Город</label>
+                        <input value={editOrderCity} onChange={(event) => setEditOrderCity(event.target.value)} className="w-full rounded-xl border border-[#f0e8e0] bg-white px-3 py-2.5 text-sm outline-none focus:border-[#E8845A]" />
+                      </div>
+                    </div>
+                    <div className="mt-3">
+                      <label className="mb-1 block text-xs font-semibold text-[#6b6b6b]">Адрес доставки или ПВЗ</label>
+                      <textarea value={editOrderAddress} onChange={(event) => setEditOrderAddress(event.target.value)} rows={3} className="w-full resize-y rounded-xl border border-[#f0e8e0] bg-white px-3 py-2.5 text-sm outline-none focus:border-[#E8845A]" />
+                    </div>
+                    {orderContactsMessage && <p className={`mt-3 text-sm font-medium ${orderContactsMessage === "Данные заказа сохранены" ? "text-green-600" : "text-red-600"}`}>{orderContactsMessage}</p>}
+                    <button
+                      disabled={orderContactsSaving}
+                      onClick={async () => {
+                        if (!confirm(`Сохранить новые контактные данные и адрес в заказе ${selectedOrder.id}?`)) return;
+                        setOrderContactsSaving(true);
+                        setOrderContactsMessage("");
+                        try {
+                          const response = await fetch("/api/admin/orders", {
+                            method: "PATCH",
+                            headers: { "content-type": "application/json", "x-admin-password": pw },
+                            body: JSON.stringify({
+                              action: "contacts",
+                              orderId: selectedOrder.id,
+                              email: editOrderEmail,
+                              phone: editOrderPhone,
+                              region: editOrderRegion,
+                              city: editOrderCity,
+                              address: editOrderAddress,
+                            }),
+                          });
+                          const data = await response.json().catch(() => ({}));
+                          if (!response.ok) throw new Error(data.error || "Не удалось сохранить данные заказа");
+                          const deliveryAddress = [editOrderRegion.trim(), editOrderCity.trim(), editOrderAddress.trim()].filter(Boolean).join(", ");
+                          const updates: Partial<Order> = {
+                            userEmail: editOrderEmail.trim().toLowerCase(),
+                            userPhone: editOrderPhone.trim(),
+                            deliveryRegion: editOrderRegion.trim(),
+                            deliveryCity: editOrderCity.trim(),
+                            deliveryAddressLine: editOrderAddress.trim(),
+                            deliveryAddress,
+                          };
+                          setSelectedOrder((order) => order ? { ...order, ...updates } : null);
+                          setDbOrders((current) => current.map((order) => order.id === selectedOrder.id ? { ...order, ...updates } : order));
+                          setOrderContactsMessage("Данные заказа сохранены");
+                          setEditingOrderContacts(false);
+                        } catch (error) {
+                          setOrderContactsMessage(error instanceof Error ? error.message : "Не удалось сохранить данные заказа");
+                        } finally {
+                          setOrderContactsSaving(false);
+                        }
+                      }}
+                      className="mt-4 inline-flex items-center gap-2 rounded-xl bg-[#E8845A] px-4 py-2.5 text-sm font-semibold text-white hover:bg-[#d4703f] disabled:opacity-50"
+                    >
+                      <Check size={14} /> {orderContactsSaving ? "Сохраняем…" : "Сохранить изменения"}
+                    </button>
+                  </div>
+                )}
               </div>
               <div>
                 <p className="text-xs font-semibold text-[#aaa] uppercase tracking-wide mb-2">Состав</p>

@@ -7,6 +7,11 @@ import { getServerSupabase } from "@/lib/supabaseServer";
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD;
 const PENDING_STATUSES = ["creating", "awaiting_payment", "authorized", "processing_payment"];
 
+function safeOzonError(error: unknown) {
+  const message = error instanceof Error ? error.message : "Ozon не дал статус";
+  return message.replace(/[a-f0-9]{32,}/gi, "[скрыто]").slice(0, 240);
+}
+
 function isAuthorized(request: NextRequest) {
   return Boolean(ADMIN_PASSWORD && request.headers.get("x-admin-password") === ADMIN_PASSWORD);
 }
@@ -44,8 +49,10 @@ export async function POST(request: NextRequest) {
       checked += 1;
       if (!result.ok) problems.push(`${order.id}: ${result.error}`);
       else if (result.changed) changed += 1;
-    } catch {
-      problems.push(`${order.id}: Ozon не дал статус`);
+    } catch (error) {
+      const message = safeOzonError(error);
+      console.warn(`Ozon payment status sync failed: ${message}`);
+      problems.push(`${order.id}: ${message}`);
     }
   }
 

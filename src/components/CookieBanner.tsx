@@ -12,6 +12,7 @@ export default function CookieBanner() {
 
   const accept = () => {
     localStorage.setItem("vzbadrys-cookie-consent", "1");
+    window.dispatchEvent(new Event("vzbadrys-cookie-consent"));
     setVisible(false);
   };
 

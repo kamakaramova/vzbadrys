@@ -5,6 +5,7 @@ import type { Product } from "@/lib/products";
 import {
   CURRENCY_CODE,
   createOrderSignature,
+  createPaymentReturnToken,
   getOzonConfig,
   postToOzon,
 } from "@/lib/ozonAcquiring";
@@ -232,7 +233,7 @@ export async function POST(request: NextRequest) {
   )) {
     return badRequest("Выберите отделение Почты России, чтобы рассчитать доставку");
   }
-  const deliveryPriceKopecks = discountedSubtotal >= 3000 && deliveryMethod !== "ozon_pvz"
+  const deliveryPriceKopecks = discountedSubtotal >= 3000
     ? 0
     : deliveryMethod === "pochta"
       ? requestedPochtaPriceKopecks
@@ -360,6 +361,7 @@ export async function POST(request: NextRequest) {
   }
 
   try {
+    const failToken = createPaymentReturnToken(extId, config.secretKey);
     const ozonResponse = await postToOzon<OzonCreateOrderResponse>("/v1/createOrder", {
       accessKey: config.accessKey,
       amount: { currencyCode: CURRENCY_CODE, value: amountValue },
@@ -368,7 +370,7 @@ export async function POST(request: NextRequest) {
       enableFiscalization: true,
       expiresAt,
       extId,
-      failUrl: `${config.siteUrl}/payment/fail?order=${encodeURIComponent(extId)}`,
+      failUrl: `${config.siteUrl}/payment/fail?order=${encodeURIComponent(extId)}&token=${failToken}`,
       fiscalizationPhone: customerPhone.replace(/\D/g, ""),
       fiscalizationType: config.fiscalizationType,
       items: ozonItems,

@@ -119,7 +119,7 @@ export default function ProductClient({
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-10">
         <div className="grid md:grid-cols-2 gap-6 sm:gap-12">
           {/* Галерея */}
-          <div>
+          <div className="min-w-0 w-full">
             {/* Невидимая предзагрузка — определяем, какие фото реально существуют */}
             {!hasFixedGallery && (
               <div style={{ display: "none" }}>
@@ -135,7 +135,7 @@ export default function ProductClient({
               </div>
             )}
 
-            <div className="flex flex-col-reverse sm:flex-row gap-3">
+            <div className="flex min-w-0 w-full flex-col-reverse gap-3 sm:flex-row">
               {/* Лента миниатюр слева (как на маркетплейсах) */}
               {loadedImages.length > 1 && (
                 <div className="flex flex-row sm:flex-col gap-2 w-full sm:w-16 flex-shrink-0 sm:max-h-[460px] overflow-x-auto sm:overflow-y-auto">
@@ -152,9 +152,9 @@ export default function ProductClient({
               )}
 
               {/* Главное фото */}
-              <div className="relative aspect-[4/5] flex-1 max-w-[460px] bg-[#fdf8f5] rounded-2xl overflow-hidden flex items-center justify-center">
+              <div className="relative aspect-[4/5] min-w-0 w-full max-w-full flex-1 bg-[#fdf8f5] rounded-2xl overflow-hidden flex items-center justify-center sm:max-w-[460px]">
                 {hasPhotos ? (
-                  <img src={loadedImages[shownIndex]} alt={product.name} className="w-full h-full object-cover" />
+                  <img src={loadedImages[shownIndex]} alt={product.name} className="block w-full h-full max-w-full object-cover" />
                 ) : (
                   <div className="text-center">
                     <div className="text-[100px]">{product.category === "bads" ? "💊" : "🌱"}</div>

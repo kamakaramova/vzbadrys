@@ -118,7 +118,14 @@ export async function applyOzonPaymentStatus({
       }
       return { ok: true, changed: true };
     } catch {
-      await db.from("payment_orders").update({ status: "payment_processing_error", updated_at: new Date().toISOString() }).eq("id", order.id);
+      // Статус paid записывается до вторичных действий (бонусы, письмо и т. п.).
+      // Если одно из них упало уже после успешной фиксации оплаты, не затираем paid
+      // поздней ошибкой обработки.
+      await db
+        .from("payment_orders")
+        .update({ status: "payment_processing_error", updated_at: new Date().toISOString() })
+        .eq("id", order.id)
+        .neq("status", "paid");
       return { ok: false, error: "payment_processing_failed" };
     }
   }

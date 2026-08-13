@@ -35,7 +35,10 @@ export default function CartPage() {
   const freeDeliveryThreshold = 3000;
   const promoDiscountAmount = Math.round((subtotal * promoDiscount) / 100);
   const referralDiscountAmount = Math.round((subtotal * referralDiscount) / 100);
-  const discountedSubtotal = Math.max(0, subtotal - promoDiscountAmount - referralDiscountAmount);
+  // Порог бесплатной доставки считаем строго от конечной суммы товаров после
+  // всех скидок. Используем тот же итог, который показываем покупателю ниже,
+  // чтобы расчёты никогда не расходились.
+  const discountedSubtotal = Math.max(0, total);
   const amountToFreeDelivery = Math.max(0, freeDeliveryThreshold - discountedSubtotal);
   const freeDeliveryProgress = Math.min(100, (discountedSubtotal / freeDeliveryThreshold) * 100);
 

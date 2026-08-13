@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 
 import { getServerSupabase } from "@/lib/supabaseServer";
+import { deliveryMethodLabel, paymentMethodLabel } from "@/lib/orderLabels";
 
 const ORDER_STATUSES = new Set(["processing", "confirmed", "shipped", "delivered", "cancelled"]);
 
@@ -35,9 +36,9 @@ function mapOrder(row: Record<string, unknown>) {
     deliveryCost,
     total,
     promoCode: row.promo_code ? String(row.promo_code) : undefined,
-    deliveryMethod: String(delivery.method ?? ""),
-    deliveryAddress: [delivery.city, delivery.address].filter(Boolean).join(", "),
-    paymentMethod: row.payment_method ? String(row.payment_method) : "Ozon Pay",
+    deliveryMethod: deliveryMethodLabel(delivery.method),
+    deliveryAddress: [delivery.region, delivery.city, delivery.address].filter(Boolean).join(", "),
+    paymentMethod: paymentMethodLabel(row.payment_method),
     paymentStatus,
     paidAt: row.paid_at ? String(row.paid_at) : undefined,
     comment: row.comment ? String(row.comment) : undefined,

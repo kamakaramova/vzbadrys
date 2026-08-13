@@ -26,6 +26,9 @@ export interface Order {
   promoDiscountPercent?: number;
   deliveryMethod: string;
   deliveryAddress: string;
+  deliveryRegion?: string;
+  deliveryCity?: string;
+  deliveryAddressLine?: string;
   paymentMethod: string;
   comment?: string;
   trackNumber?: string;
@@ -170,7 +173,10 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
       return { ok: false, error: error?.message || "Не удалось войти" };
     }
     set({ user: mapUser(data.user) });
-    await get().loadOrders();
+    // Вход не должен зависеть от загрузки истории заказов: при медленном
+    // соединении с сервером пользователь уже авторизован, а список заказов
+    // спокойно подгрузится в фоне.
+    void get().loadOrders();
     return { ok: true };
   },
 

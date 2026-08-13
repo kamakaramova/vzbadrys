@@ -10,9 +10,11 @@ export interface EmailOrder {
   customerName: string;
   total: number;
   items: { name: string; quantity: number; price: number }[];
+  deliveryMethodCode?: string;
   deliveryMethod?: string;
   deliveryAddress?: string;
   trackNumber?: string;
+  bonusBalance?: number;
 }
 
 function escapeHtml(value: string) {
@@ -35,9 +37,10 @@ function layout(title: string, lead: string, body: string) {
   <body style="margin:0;background:#f7f3f0;font-family:Arial,sans-serif;color:#2d2926">
     <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background:#f7f3f0;padding:24px 12px">
       <tr><td align="center">
-        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width:620px;background:#fff;border:1px solid #f0e2da">
-          <tr><td style="background:#fddcca;padding:22px 28px;text-align:center">
+        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width:620px;background:#fff;border:1px solid #f0e2da;border-radius:22px;overflow:hidden">
+          <tr><td style="background:#fddcca;padding:24px 28px;text-align:center">
             <div style="font-size:24px;font-weight:800;color:#2d2926">вз<span style="color:#e8845a">БАД</span>рись</div>
+            <div style="font-size:12px;line-height:1.5;margin-top:5px;color:#8a5d47">Добавки с документами и заботой о Вас</div>
           </td></tr>
           <tr><td style="padding:32px 28px">
             <h1 style="font-size:25px;line-height:1.25;margin:0 0 14px">${escapeHtml(title)}</h1>
@@ -71,7 +74,7 @@ function orderCard(order: EmailOrder) {
     )
     .join("");
 
-  return `<div style="border:1px solid #f0e2da;padding:18px;margin:0 0 20px">
+  return `<div style="border:1px solid #f0e2da;border-radius:16px;padding:18px;margin:0 0 20px;background:#fffdfb">
     <p style="margin:0 0 12px;font-size:13px;color:#8a7b72">Заказ ${escapeHtml(order.id)}</p>
     <table role="presentation" width="100%" cellspacing="0" cellpadding="0">${items}</table>
     <p style="margin:16px 0 0;text-align:right;font-size:18px;font-weight:800;color:#e8845a">
@@ -86,32 +89,78 @@ export function orderEmail(
 ): { subject: string; html: string } {
   const name = order.customerName || "Здравствуйте";
   const escapedName = escapeHtml(name);
+  const accountUrl = "https://xn--80abckmj9cj3h.xn--p1ai/account";
+  const deliveryCode = order.deliveryMethodCode || "";
+  const trackBlock = order.trackNumber
+    ? `<div style="background:#fff3ec;border-radius:14px;padding:16px;margin-bottom:20px">
+        <p style="margin:0 0 5px;font-size:13px;color:#806f65">Трек-номер</p>
+        <p style="margin:0;font-size:19px;font-weight:800;color:#e8845a">${escapeHtml(order.trackNumber)}</p>
+      </div>`
+    : "";
+  const deliveryBlock = order.deliveryAddress
+    ? `<div style="background:#fdf8f5;border-radius:14px;padding:16px;margin-bottom:20px">
+        <p style="margin:0 0 5px;font-size:13px;color:#806f65">${deliveryCode === "pickup" ? "Адрес самовывоза" : "Доставка"}</p>
+        <p style="margin:0;font-size:15px;line-height:1.55;color:#2d2926"><b>${escapeHtml(order.deliveryMethod || "")}</b><br>${escapeHtml(order.deliveryAddress)}</p>
+      </div>`
+    : "";
+  const shippedContent = (() => {
+    if (deliveryCode === "ozon_pvz") {
+      return {
+        subject: `Ваш заказ ${order.id} передан в доставку Ozon`,
+        title: "Заказ отправился к Вам",
+        lead: `${name}, мы передали Ваш заказ в доставку Ozon. После оформления посылка появится в личном кабинете Ozon. Там Вы сможете следить за её движением и увидеть, когда она поступит в выбранный ПВЗ.`,
+        extra: `${deliveryBlock}<div style="background:#fff3ec;border-radius:14px;padding:16px;margin-bottom:20px"><p style="margin:0;font-size:14px;line-height:1.6;color:#5f5752"><b>Обратите внимание:</b> номер телефона в заказе должен совпадать с номером, который привязан к Вашему аккаунту Ozon.</p></div>${trackBlock}${actionButton("Открыть личный кабинет Ozon", "https://www.ozon.ru/my/orderlist/")}`,
+      };
+    }
+    if (deliveryCode === "pochta") {
+      const trackingUrl = order.trackNumber
+        ? `https://www.pochta.ru/tracking?barcode=${encodeURIComponent(order.trackNumber)}`
+        : "https://www.pochta.ru/tracking";
+      return {
+        subject: `Ваш заказ ${order.id} передан Почте России`,
+        title: "Заказ уже в пути",
+        lead: `${name}, мы передали Ваш заказ Почте России. Следить за посылкой можно по трек-номеру. Когда она поступит в отделение, статус обновится на сайте или в приложении Почты России.`,
+        extra: `${deliveryBlock}${trackBlock}${actionButton("Отследить посылку", trackingUrl)}`,
+      };
+    }
+    if (deliveryCode === "pickup") {
+      return {
+        subject: `Ваш заказ ${order.id} готов к самовывозу`,
+        title: "Ваш заказ уже ждёт Вас",
+        lead: `${name}, хорошие новости: мы собрали и подготовили Ваш заказ.`,
+        extra: `<div style="background:#fff3ec;border-radius:14px;padding:18px;margin-bottom:20px"><p style="margin:0 0 8px;font-size:15px;line-height:1.6;color:#2d2926"><b>Адрес:</b> г. Казань, ул. Айдарова, 15</p><p style="margin:0 0 8px;font-size:15px;line-height:1.6;color:#2d2926"><b>Самовывоз:</b> по средам, с 10:00 до 20:00 по московскому времени</p><p style="margin:0;font-size:15px;line-height:1.6;color:#2d2926"><b>Телефон:</b> <a href="tel:+79872970767" style="color:#e8845a;text-decoration:none">+7 987 297 07 67</a></p></div><p style="font-size:15px;line-height:1.65;margin:0 0 18px;color:#5f5752">Пожалуйста, не менее чем за час до приезда позвоните нам и согласуйте время получения. Так мы точно будем ждать Вас и передадим заказ без задержек.</p>${actionButton("Позвонить и договориться", "tel:+79872970767")}`,
+      };
+    }
+    return {
+      subject: `Заказ ${order.id} отправился к Вам`,
+      title: "Заказ уже в пути",
+      lead: `${name}, Ваш заказ передан в доставку. Как только он прибудет в пункт выдачи, служба доставки сообщит Вам.`,
+      extra: `${deliveryBlock}${trackBlock}`,
+    };
+  })();
+  const hasBonusBalance = typeof order.bonusBalance === "number" && Number.isFinite(order.bonusBalance);
+  const bonusBalance = hasBonusBalance ? Math.max(0, Math.floor(order.bonusBalance || 0)) : 0;
+  const bonusSummary = hasBonusBalance
+    ? `<div style="background:#fff3ec;border-radius:16px;padding:18px;margin-bottom:20px;text-align:center"><p style="margin:0 0 6px;font-size:14px;color:#806f65">Сейчас на Вашем бонусном счёте</p><p style="margin:0;font-size:28px;font-weight:800;color:#e8845a">${bonusBalance.toLocaleString("ru-RU")} бонусов</p><p style="margin:8px 0 0;font-size:13px;line-height:1.55;color:#806f65">1 бонус = 1 ₽. Бонусами можно оплатить до 30% стоимости товаров в следующем заказе.</p></div>`
+    : `<div style="background:#fff3ec;border-radius:16px;padding:18px;margin-bottom:20px"><p style="margin:0;font-size:14px;line-height:1.6;color:#5f5752">Бонусы за покупку уже доступны в личном кабинете. Ими можно оплатить до 30% стоимости товаров в следующем заказе.</p></div>`;
   const statusContent: Record<OrderEmailStatus, { subject: string; title: string; lead: string; extra?: string }> = {
     paid: {
-      subject: `Оплата прошла — начинаем собирать заказ ${order.id}`,
-      title: "Всё получилось!",
-      lead: `${name}, спасибо за заказ во «взБАДрись»! Оплата прошла, и Ваш заказ уже ждёт сборки. Мы внимательно всё проверим и бережно упакуем. Когда заказ отправится к Вам, пришлём отдельное письмо.`,
+      subject: `Оплата заказа ${order.id} прошла`,
+      title: "Спасибо, оплата прошла",
+      lead: `${name}, спасибо за заказ во «взБАДрись»! Он уже передан на сборку. Мы проверим товары и аккуратно их упакуем. Когда заказ будет готов к выдаче или отправится в доставку, Вам придёт отдельное письмо.`,
+      extra: actionButton("Посмотреть заказ", accountUrl),
     },
     confirmed: {
-      subject: `Ваш заказ ${order.id} уже собираем`,
-      title: "Собираем полезное для Вас",
-      lead: `${name}, Ваш заказ уже у нас в работе. Проверяем товары и готовим посылку к отправке. Как только передадим её в службу доставки, сразу сообщим.`,
+      subject: `Мы уже собираем Ваш заказ ${order.id}`,
+      title: "Ваш заказ уже у нас в работе",
+      lead: `${name}, проверяем товары и готовим их к отправке. Как только заказ передадут в доставку или подготовят к самовывозу, мы сразу сообщим.`,
     },
-    shipped: {
-      subject: `Заказ ${order.id} отправился к Вам`,
-      title: "Уже в пути!",
-      lead: `${name}, Ваш заказ передан в доставку. Теперь осталось совсем немного подождать.`,
-      extra: order.trackNumber
-        ? `<div style="background:#fff3ec;padding:16px;margin-bottom:20px">
-            <p style="margin:0 0 5px;font-size:13px;color:#806f65">Трек-номер</p>
-            <p style="margin:0;font-size:19px;font-weight:800;color:#e8845a">${escapeHtml(order.trackNumber)}</p>
-          </div>`
-        : undefined,
-    },
+    shipped: shippedContent,
     delivered: {
-      subject: `Ваш заказ ${order.id} доставлен`,
-      title: "Посылка уже ждёт Вас",
-      lead: `${name}, заказ доставлен. Надеемся, знакомство со «взБАДрись» станет началом приятной и полезной привычки. Спасибо, что выбрали нас!`,
+      subject: "Спасибо, что выбрали «взБАДрись»!",
+      title: "Спасибо, что выбрали нас",
+      lead: `${name}, Ваш заказ получен. Надеемся, всё добралось благополучно и покупки Вас порадовали. Нам очень приятно быть частью Вашей заботы о себе.`,
+      extra: `${bonusSummary}<div style="border:1px solid #f0e2da;border-radius:16px;padding:18px;margin-bottom:20px"><p style="margin:0 0 8px;font-size:17px;font-weight:800;color:#2d2926">Как увеличить количество бонусов?</p><p style="margin:0;font-size:15px;line-height:1.65;color:#5f5752">В личном кабинете можно оставить отзыв о купленных добавках. За каждый опубликованный отзыв мы начислим ещё 20 бонусов. Ваш опыт поможет другим покупателям определиться с выбором.</p></div>${actionButton("Оставить отзыв", accountUrl)}<p style="font-size:15px;line-height:1.65;margin:0;color:#5f5752">Спасибо, что выбираете нас. Будем рады видеть Вас снова!</p>`,
     },
     cancelled: {
       subject: `Заказ ${order.id} отменён`,
@@ -120,16 +169,17 @@ export function orderEmail(
     },
   };
   const content = statusContent[status];
-  const delivery = order.deliveryAddress
-    ? `<p style="font-size:14px;line-height:1.5;color:#5f5752"><b>Доставка:</b> ${escapeHtml(order.deliveryMethod || "")}<br>${escapeHtml(order.deliveryAddress)}</p>`
-    : "";
+  const delivery = status === "shipped" ? "" : deliveryBlock;
+  const body = status === "delivered"
+    ? content.extra || ""
+    : `${orderCard(order)}${delivery}${content.extra || ""}`;
 
   return {
     subject: content.subject,
     html: layout(
       content.title,
       content.lead,
-      `${content.extra || ""}${orderCard(order)}${delivery}<span style="display:none">${escapedName}</span>`
+      `${body}<span style="display:none">${escapedName}</span>`
     ),
   };
 }
