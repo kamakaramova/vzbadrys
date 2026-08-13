@@ -228,14 +228,39 @@ export default function ShipmentsWorkspace({ password }: { password: string }) {
     {error && <p className="rounded-xl bg-red-50 text-red-600 px-4 py-3 text-sm">{error}</p>}
     {statusMessage && <p className="rounded-xl bg-green-50 text-green-700 px-4 py-3 text-sm">{statusMessage}</p>}
     <div ref={tableRef} onScroll={rememberView} className="border border-[#eadfd8] rounded-2xl bg-white overflow-auto max-h-[72vh] [scrollbar-gutter:stable]">
-      <table className="min-w-[1770px] w-full text-[12px] border-collapse table-fixed">
+      <table className="min-w-[1808px] w-full text-[12px] border-collapse table-fixed">
+        <colgroup>
+          <col style={{ width: 44 }}/>
+          <col style={{ width: 150 }}/>
+          <col style={{ width: 165 }}/>
+          <col style={{ width: 185 }}/>
+          <col style={{ width: 82 }}/>
+          <col style={{ width: 220 }}/>
+          <col style={{ width: 86 }}/>
+          <col style={{ width: 88 }}/>
+          <col style={{ width: 145 }}/>
+          {checks.map(([key]) => <col key={key} style={{ width: 52 }}/>) }
+          <col style={{ width: 165 }}/>
+          <col style={{ width: 180 }}/>
+          <col style={{ width: 90 }}/>
+        </colgroup>
         <thead className="sticky top-0 z-20 bg-[#faf6f3] text-[#706762]"><tr>
           <th className="sticky left-0 z-30 bg-[#faf6f3] w-11 text-center px-2 py-3 border-b border-r border-[#eadfd8] font-semibold">№</th>
-          {['Дата / заказ','Покупатель','Товары','Сумма заказа','Доставка / адрес','Доставка клиенту','Доставка факт','ПВЗ отправки',...checks.map(([,label]) => label),'Статус заказа','Комментарий','Последнее изменение'].map((label) => <th key={label} className="text-left px-2.5 py-3 border-b border-r border-[#eadfd8] whitespace-nowrap font-semibold">{label}</th>)}
+          {['Дата / заказ','Покупатель','Товары','Сумма заказа','Доставка / адрес','Доставка клиенту','Доставка факт','ПВЗ отправки',...checks.map(([,label]) => label),'Статус заказа','Комментарий','Последнее изменение'].map((label, index) => <th key={label} className={`${index >= 8 && index <= 11 ? "text-center px-1" : "text-left px-2.5"} py-3 border-b border-r border-[#eadfd8] leading-tight font-semibold`}>{label}</th>)}
         </tr></thead>
         <tbody>{visible.map((row, index) => <tr key={row.id} className="group align-top hover:bg-[#fffdfb]">
           <td className="sticky left-0 z-10 bg-white group-hover:bg-[#fffdfb] px-2 py-3 border-b border-r border-[#eee7e2] text-center font-bold tabular-nums text-[#8f8782]">{index + 1}</td>
-          <td className="px-2.5 py-3 border-b border-r border-[#eee7e2] w-[175px]"><div>{new Date(row.createdAt).toLocaleDateString("ru-RU")}</div><button onClick={() => void copyOrder(row.id)} title="Скопировать номер заказа" className="mt-1 w-full inline-flex items-center gap-1.5 font-mono text-[11px] font-bold text-[#c66d48] hover:bg-[#fff0e8] rounded-md py-1 transition-colors"><Clipboard size={12}/><span className="whitespace-nowrap">{copiedOrder === row.id ? "Скопировано" : row.id}</span></button></td>
+          <td className="px-2.5 py-3 border-b border-r border-[#eee7e2] w-[175px]">
+            <div>{new Date(row.createdAt).toLocaleDateString("ru-RU")}</div>
+            <div className="mt-1.5 flex items-start gap-1.5">
+              <span className="min-w-0 font-mono text-[11px] leading-[1.35] font-bold text-[#c66d48]">
+                {copiedOrder === row.id ? <span className="font-sans text-green-600">Скопировано</span> : <>{row.id.slice(0, row.id.lastIndexOf("-"))}<br/>{row.id.slice(row.id.lastIndexOf("-") + 1)}</>}
+              </span>
+              <button onClick={() => void copyOrder(row.id)} title="Скопировать номер заказа" aria-label={`Скопировать номер заказа ${row.id}`} className="shrink-0 inline-flex w-6 h-6 items-center justify-center rounded-md border border-[#eadfd8] bg-white text-[#c66d48] hover:bg-[#fff0e8] hover:border-[#e7b49e] transition-colors">
+                <Clipboard size={12}/>
+              </button>
+            </div>
+          </td>
           <td className="px-2.5 py-3 border-b border-r border-[#eee7e2] w-[180px]"><b>{row.customerName}</b><div className="text-[#837a75] mt-1 whitespace-nowrap">{row.phone}</div><div className="text-[#aaa] break-all">{row.email}</div></td>
           <td className="px-2.5 py-3 border-b border-r border-[#eee7e2] w-[205px]">{row.items.map((item) => <div key={item.id} className="mb-1 leading-snug">{item.name} <b>×{item.quantity}</b></div>)}</td>
           <td className="px-2.5 py-3 border-b border-r border-[#eee7e2] w-[105px] font-extrabold whitespace-nowrap tabular-nums">{money(row.total)}</td>
