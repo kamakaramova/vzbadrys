@@ -4,7 +4,7 @@ import { decrementProductStock } from "@/lib/stock";
 import { emailAddressFromOrder, toEmailOrder, type PaymentOrderRow } from "@/lib/email/order";
 import { sendEmail } from "@/lib/email/send";
 import { orderEmail } from "@/lib/email/templates";
-import { ORDER_BONUS_PERCENT, REFERRER_FIRST_ORDER_BONUS } from "@/lib/loyalty";
+import { ensureOrderReward, findConfirmedUserByEmail, REFERRER_FIRST_ORDER_BONUS } from "@/lib/loyalty";
 import { getServerSupabase } from "@/lib/supabaseServer";
 
 type Database = NonNullable<ReturnType<typeof getServerSupabase>>;
@@ -83,14 +83,18 @@ export async function applyOzonPaymentStatus({
       if (paidError) throw new Error(paidError.message);
 
       await db.from("bonus_ledger").update({ status: "posted" }).eq("order_id", order.id).eq("status", "reserved");
-      if (order.user_id) {
-        const orderBonus = Math.floor((Number(order.amount_kopecks) / 100) * ORDER_BONUS_PERCENT / 100);
-        if (orderBonus > 0) {
-          await db.from("bonus_ledger").insert({ user_id: order.user_id, amount: orderBonus, kind: "order_reward", order_id: order.id, status: "posted" });
-        }
-        if (order.referral_owner_id && order.referral_owner_id !== order.user_id) {
+      let rewardUserId = order.user_id ? String(order.user_id) : "";
+      if (!rewardUserId) {
+        const customer = (order.customer ?? {}) as Record<string, unknown>;
+        const matchedUser = await findConfirmedUserByEmail(db, String(customer.email ?? ""));
+        rewardUserId = matchedUser?.id || "";
+        if (rewardUserId) await db.from("payment_orders").update({ user_id: rewardUserId }).eq("id", order.id).is("user_id", null);
+      }
+      if (rewardUserId) {
+        await ensureOrderReward(db, { id: String(order.id), userId: rewardUserId, amountKopecks: Number(order.amount_kopecks) });
+        if (order.referral_owner_id && order.referral_owner_id !== rewardUserId) {
           const { error: rewardClaimError } = await db.from("referral_rewards").insert({
-            referred_user_id: order.user_id,
+            referred_user_id: rewardUserId,
             referrer_user_id: order.referral_owner_id,
             order_id: order.id,
           });
