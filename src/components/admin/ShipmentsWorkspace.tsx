@@ -190,7 +190,11 @@ export default function ShipmentsWorkspace({ password }: { password: string }) {
     const completedCosts = rows.filter((row) => row.warehouse.actualDeliveryCost !== null);
     const actualDelivery = completedCosts.reduce((sum, row) => sum + Number(row.warehouse.actualDeliveryCost), 0);
     const comparableCollected = completedCosts.reduce((sum, row) => sum + row.customerDeliveryCost, 0);
-    return { revenue, deliveryCollected, actualDelivery, deliveryBalance: comparableCollected - actualDelivery, completedCosts: completedCosts.length };
+    const statusCounts = rows.reduce<Record<string, number>>((counts, row) => {
+      counts[row.orderStatus] = (counts[row.orderStatus] || 0) + 1;
+      return counts;
+    }, {});
+    return { revenue, deliveryCollected, actualDelivery, deliveryBalance: comparableCollected - actualDelivery, completedCosts: completedCosts.length, statusCounts };
   }, [rows]);
 
   const copyOrder = async (id: string) => {
@@ -216,6 +220,18 @@ export default function ShipmentsWorkspace({ password }: { password: string }) {
         <div className={`mt-1 text-xl font-extrabold tabular-nums ${summary.deliveryBalance < 0 ? "text-red-700" : "text-green-700"}`}>{summary.deliveryBalance > 0 ? "+" : ""}{money(summary.deliveryBalance)}</div>
         <div className="mt-0.5 text-[11px] text-[#8b817b]">Только заказы с заполненным фактом</div>
       </div>
+    </div>
+    <div className="grid grid-cols-2 xl:grid-cols-4 gap-2.5">
+      {[
+        ["Новые", summary.statusCounts.processing || 0, "Ещё не переданы на сборку", "border-amber-200 bg-amber-50", "text-amber-800"],
+        ["На сборке", summary.statusCounts.confirmed || 0, "Нужно подготовить к отправке", "border-orange-200 bg-orange-50", "text-orange-800"],
+        ["Переданы в доставку", summary.statusCounts.shipped || 0, "Уже отгружены", "border-purple-200 bg-purple-50", "text-purple-700"],
+        ["Завершены", summary.statusCounts.delivered || 0, "Заказ получен покупателем", "border-green-200 bg-green-50", "text-green-700"],
+      ].map(([label, value, note, cardClass, valueClass]) => <div key={label} className={`rounded-2xl border px-4 py-3 ${cardClass}`}>
+        <div className="text-xs font-semibold text-[#756c67]">{label}</div>
+        <div className={`mt-1 text-xl font-extrabold tabular-nums ${valueClass}`}>{value}</div>
+        <div className="mt-0.5 text-[11px] text-[#8b817b]">{note}</div>
+      </div>)}
     </div>
     <div className="bg-white border border-[#eee4de] rounded-2xl p-4 flex flex-wrap items-end gap-3">
       <label className="text-xs font-semibold text-[#756c67]">С даты<input type="date" value={from} onChange={(e) => setFrom(e.target.value)} className="block mt-1 border border-[#e8ddd7] rounded-lg px-3 py-2 text-sm"/></label>
