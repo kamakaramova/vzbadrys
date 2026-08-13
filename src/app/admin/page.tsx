@@ -918,7 +918,7 @@ export default function AdminPage() {
         <button onClick={() => { void fetch("/api/admin/login", { method: "DELETE" }); setAuthed(false); setPw(""); setAdminPassword(null); }} className="text-xs text-[#aaa] hover:text-[#E8845A]">Выйти</button>
       </div>
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div className={`${tab === "shipments" ? "max-w-[1920px] px-3 sm:px-4 lg:px-5" : "max-w-7xl px-4 sm:px-6 lg:px-8"} mx-auto py-8`}>
         {/* Табы */}
         <div className="flex gap-1.5 sm:gap-2 mb-6 sm:mb-8 bg-[#f5f0ec] p-1.5 rounded-2xl w-full overflow-x-auto">
           {(["dashboard", "orders", "shipments", "customers", "feedback", "promos", "products", "emails", "integrations"] as const).map((id) => {

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Check, Clipboard, RefreshCw, Search } from "lucide-react";
 
 type Warehouse = {
@@ -39,6 +39,16 @@ const STATUS_STYLE: Record<string, string> = {
 
 const today = () => new Date().toLocaleDateString("sv-SE", { timeZone: "Europe/Moscow" });
 const money = (value: number) => `${value.toLocaleString("ru-RU", { maximumFractionDigits: 2 })} ₽`;
+const STORAGE_KEY = "vzbadrys-admin-shipments-view";
+
+function savedView() {
+  if (typeof window === "undefined") return null;
+  try {
+    return JSON.parse(sessionStorage.getItem(STORAGE_KEY) || "null") as null | {
+      from?: string; to?: string; search?: string; onlyIncomplete?: boolean; scrollLeft?: number; scrollTop?: number;
+    };
+  } catch { return null; }
+}
 
 export default function ShipmentsWorkspace({ password }: { password: string }) {
   const [rows, setRows] = useState<Shipment[]>([]);
@@ -52,18 +62,61 @@ export default function ShipmentsWorkspace({ password }: { password: string }) {
   const [saved, setSaved] = useState<string | null>(null);
   const [statusSaving, setStatusSaving] = useState<string | null>(null);
   const [statusMessage, setStatusMessage] = useState("");
+  const [copiedOrder, setCopiedOrder] = useState<string | null>(null);
+  const tableRef = useRef<HTMLDivElement>(null);
+  const editingRef = useRef(false);
+  const savingRef = useRef(false);
+  const restoredViewRef = useRef(false);
+  const saveTimers = useRef(new Map<string, ReturnType<typeof setTimeout>>());
 
-  const load = async () => {
-    setLoading(true); setError("");
+  const load = async (quiet = false) => {
+    if (!quiet) setLoading(true);
+    setError("");
     try {
       const response = await fetch(`/api/admin/shipments?from=${from}&to=${to}`, { headers: { "x-admin-password": password }, cache: "no-store" });
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || "Не удалось загрузить отгрузки");
       setRows(data.shipments || []);
     } catch (e) { setError(e instanceof Error ? e.message : "Не удалось загрузить отгрузки"); }
-    finally { setLoading(false); }
+    finally { if (!quiet) setLoading(false); }
   };
-  useEffect(() => { load(); }, [from, to]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    const id = window.setTimeout(() => { void load(); }, 0);
+    return () => window.clearTimeout(id);
+  }, [from, to]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    const id = window.setInterval(() => {
+      if (!editingRef.current && !savingRef.current && saveTimers.current.size === 0 && document.visibilityState === "visible") void load(true);
+    }, 30_000);
+    return () => window.clearInterval(id);
+  }, [from, to]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    const id = window.setTimeout(() => {
+      const view = savedView();
+      if (!view) { restoredViewRef.current = true; return; }
+      if (view.from) setFrom(view.from);
+      if (view.to) setTo(view.to);
+      setSearch(view.search || "");
+      setOnlyIncomplete(Boolean(view.onlyIncomplete));
+      requestAnimationFrame(() => {
+        if (!tableRef.current) return;
+        tableRef.current.scrollLeft = view.scrollLeft || 0;
+        tableRef.current.scrollTop = view.scrollTop || 0;
+      });
+      restoredViewRef.current = true;
+    }, 0);
+    return () => window.clearTimeout(id);
+  }, []);
+  const rememberView = () => {
+    const table = tableRef.current;
+    sessionStorage.setItem(STORAGE_KEY, JSON.stringify({
+      from, to, search, onlyIncomplete, scrollLeft: table?.scrollLeft || 0, scrollTop: table?.scrollTop || 0,
+    }));
+  };
+  useEffect(() => {
+    if (!restoredViewRef.current) return;
+    rememberView();
+  }, [from, to, search, onlyIncomplete]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const visible = useMemo(() => rows.filter((row) => {
     const q = search.trim().toLowerCase();
@@ -77,7 +130,7 @@ export default function ShipmentsWorkspace({ password }: { password: string }) {
   const updateLocal = (id: string, changes: Partial<Warehouse>) => setRows((current) => current.map((row) =>
     row.id === id ? { ...row, warehouse: { ...row.warehouse, ...changes } } : row));
   const save = async (id: string, changes: Partial<Warehouse>) => {
-    setSaving(id); setSaved(null); setError("");
+    savingRef.current = true; setSaving(id); setSaved(null); setError("");
     try {
       const response = await fetch("/api/admin/shipments", {
         method: "PATCH", headers: { "content-type": "application/json", "x-admin-password": password },
@@ -87,7 +140,16 @@ export default function ShipmentsWorkspace({ password }: { password: string }) {
       if (!response.ok) throw new Error(data.error || "Не удалось сохранить");
       setSaved(id); window.setTimeout(() => setSaved((value) => value === id ? null : value), 1800);
     } catch (e) { setError(e instanceof Error ? e.message : "Не удалось сохранить"); await load(); }
-    finally { setSaving(null); }
+    finally { savingRef.current = false; setSaving(null); }
+  };
+  const scheduleSave = (id: string, key: keyof Warehouse, value: unknown, delay = 650) => {
+    const timerKey = `${id}:${key}`;
+    const existing = saveTimers.current.get(timerKey);
+    if (existing) clearTimeout(existing);
+    saveTimers.current.set(timerKey, setTimeout(() => {
+      saveTimers.current.delete(timerKey);
+      void save(id, { [key]: value });
+    }, delay));
   };
   const toggle = (row: Shipment, key: keyof Warehouse) => {
     const value = !Boolean(row.warehouse[key]); updateLocal(row.id, { [key]: value }); save(row.id, { [key]: value });
@@ -122,10 +184,38 @@ export default function ShipmentsWorkspace({ password }: { password: string }) {
     ["honestSignDone", "Честный знак"],
   ];
 
-  return <section className="space-y-4">
+  const summary = useMemo(() => {
+    const revenue = rows.reduce((sum, row) => sum + row.total, 0);
+    const deliveryCollected = rows.reduce((sum, row) => sum + row.customerDeliveryCost, 0);
+    const completedCosts = rows.filter((row) => row.warehouse.actualDeliveryCost !== null);
+    const actualDelivery = completedCosts.reduce((sum, row) => sum + Number(row.warehouse.actualDeliveryCost), 0);
+    const comparableCollected = completedCosts.reduce((sum, row) => sum + row.customerDeliveryCost, 0);
+    return { revenue, deliveryCollected, actualDelivery, deliveryBalance: comparableCollected - actualDelivery, completedCosts: completedCosts.length };
+  }, [rows]);
+
+  const copyOrder = async (id: string) => {
+    await navigator.clipboard.writeText(id);
+    setCopiedOrder(id);
+    window.setTimeout(() => setCopiedOrder((value) => value === id ? null : value), 1500);
+  };
+
+  return <section className="space-y-4 w-full min-w-0">
     <div className="flex flex-col xl:flex-row xl:items-end gap-3 justify-between">
-      <div><h2 className="text-xl font-bold">Отгрузки</h2><p className="text-sm text-[#8f8782] mt-1">Рабочая таблица оплаченных заказов. Все изменения сохраняются в заказе.</p></div>
-      <button onClick={load} disabled={loading} className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl border border-[#eadfd8] bg-white font-semibold text-sm"><RefreshCw size={15} className={loading ? "animate-spin" : ""}/>{loading ? "Загрузка…" : "Обновить"}</button>
+      <div><h2 className="text-xl font-bold flex items-center gap-2">Отгрузки <span className="inline-flex min-w-7 h-7 px-2 items-center justify-center rounded-full bg-[#fff0e8] text-[#c66d48] text-xs tabular-nums">{rows.length}</span></h2><p className="text-sm text-[#8f8782] mt-1">Только оплаченные заказы. Поля сохраняются автоматически, таблица обновляется каждые 30 секунд.</p></div>
+      <button onClick={() => void load()} disabled={loading} className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl border border-[#eadfd8] bg-white font-semibold text-sm"><RefreshCw size={15} className={loading ? "animate-spin" : ""}/>{loading ? "Загрузка…" : "Обновить"}</button>
+    </div>
+    <div className="grid grid-cols-2 xl:grid-cols-5 gap-2.5">
+      {[
+        ["Заказов", String(rows.length), "За выбранные даты"],
+        ["Оплачено покупателями", money(summary.revenue), "Вся сумма, включая доставку"],
+        ["Получено за доставку", money(summary.deliveryCollected), "По всем заказам периода"],
+        ["Доставка по факту", money(summary.actualDelivery), `Заполнено: ${summary.completedCosts} из ${rows.length}`],
+      ].map(([label, value, note]) => <div key={label} className="rounded-2xl border border-[#eee4de] bg-white px-4 py-3 min-w-0"><div className="text-xs font-semibold text-[#8b817b]">{label}</div><div className="mt-1 text-xl font-extrabold tabular-nums truncate">{value}</div><div className="mt-0.5 text-[11px] text-[#aaa]">{note}</div></div>)}
+      <div className={`col-span-2 xl:col-span-1 rounded-2xl border px-4 py-3 ${summary.deliveryBalance < 0 ? "border-red-200 bg-red-50" : "border-green-200 bg-green-50"}`}>
+        <div className={`text-xs font-semibold ${summary.deliveryBalance < 0 ? "text-red-700" : "text-green-700"}`}>Разница по доставке</div>
+        <div className={`mt-1 text-xl font-extrabold tabular-nums ${summary.deliveryBalance < 0 ? "text-red-700" : "text-green-700"}`}>{summary.deliveryBalance > 0 ? "+" : ""}{money(summary.deliveryBalance)}</div>
+        <div className="mt-0.5 text-[11px] text-[#8b817b]">Только заказы с заполненным фактом</div>
+      </div>
     </div>
     <div className="bg-white border border-[#eee4de] rounded-2xl p-4 flex flex-wrap items-end gap-3">
       <label className="text-xs font-semibold text-[#756c67]">С даты<input type="date" value={from} onChange={(e) => setFrom(e.target.value)} className="block mt-1 border border-[#e8ddd7] rounded-lg px-3 py-2 text-sm"/></label>
@@ -137,27 +227,30 @@ export default function ShipmentsWorkspace({ password }: { password: string }) {
     </div>
     {error && <p className="rounded-xl bg-red-50 text-red-600 px-4 py-3 text-sm">{error}</p>}
     {statusMessage && <p className="rounded-xl bg-green-50 text-green-700 px-4 py-3 text-sm">{statusMessage}</p>}
-    <div className="border border-[#eadfd8] rounded-2xl bg-white overflow-auto max-h-[68vh]">
-      <table className="min-w-[2100px] w-full text-[13px] border-collapse">
+    <div ref={tableRef} onScroll={rememberView} className="border border-[#eadfd8] rounded-2xl bg-white overflow-auto max-h-[72vh] [scrollbar-gutter:stable]">
+      <table className="min-w-[1770px] w-full text-[12px] border-collapse table-fixed">
         <thead className="sticky top-0 z-20 bg-[#faf6f3] text-[#706762]"><tr>
-          {['Дата / заказ','Покупатель','Товары','Доставка / адрес','Доставка клиенту','Доставка факт','ПВЗ отправки',...checks.map(([,label]) => label),'Статус заказа','Комментарий','Последнее изменение'].map((label) => <th key={label} className="text-left px-3 py-3 border-b border-r border-[#eadfd8] whitespace-nowrap font-semibold">{label}</th>)}
+          <th className="sticky left-0 z-30 bg-[#faf6f3] w-11 text-center px-2 py-3 border-b border-r border-[#eadfd8] font-semibold">№</th>
+          {['Дата / заказ','Покупатель','Товары','Сумма заказа','Доставка / адрес','Доставка клиенту','Доставка факт','ПВЗ отправки',...checks.map(([,label]) => label),'Статус заказа','Комментарий','Последнее изменение'].map((label) => <th key={label} className="text-left px-2.5 py-3 border-b border-r border-[#eadfd8] whitespace-nowrap font-semibold">{label}</th>)}
         </tr></thead>
-        <tbody>{visible.map((row) => <tr key={row.id} className="align-top hover:bg-[#fffdfb]">
-          <td className="px-3 py-3 border-b border-r border-[#eee7e2] w-[175px]"><div>{new Date(row.createdAt).toLocaleDateString("ru-RU")}</div><button onClick={() => navigator.clipboard.writeText(row.id)} className="mt-1 inline-flex items-center gap-1 font-mono text-xs font-bold text-[#c66d48]"><Clipboard size={12}/>{row.id}</button></td>
-          <td className="px-3 py-3 border-b border-r border-[#eee7e2] w-[190px]"><b>{row.customerName}</b><div className="text-[#837a75] mt-1">{row.phone}</div><div className="text-[#aaa] break-all">{row.email}</div></td>
-          <td className="px-3 py-3 border-b border-r border-[#eee7e2] w-[240px]">{row.items.map((item) => <div key={item.id} className="mb-1">{item.name} <b>×{item.quantity}</b></div>)}</td>
-          <td className="px-3 py-3 border-b border-r border-[#eee7e2] w-[300px]"><b>{row.deliveryMethod}</b><button onClick={() => navigator.clipboard.writeText(row.deliveryAddress)} className="block text-left mt-1 text-[#756c67] hover:text-[#c66d48]">{row.deliveryAddress || "Адрес не указан"}</button>{row.trackNumber && <div className="mt-1 font-mono">{row.trackNumber}</div>}</td>
+        <tbody>{visible.map((row, index) => <tr key={row.id} className="group align-top hover:bg-[#fffdfb]">
+          <td className="sticky left-0 z-10 bg-white group-hover:bg-[#fffdfb] px-2 py-3 border-b border-r border-[#eee7e2] text-center font-bold tabular-nums text-[#8f8782]">{index + 1}</td>
+          <td className="px-2.5 py-3 border-b border-r border-[#eee7e2] w-[175px]"><div>{new Date(row.createdAt).toLocaleDateString("ru-RU")}</div><button onClick={() => void copyOrder(row.id)} title="Скопировать номер заказа" className="mt-1 w-full inline-flex items-center gap-1.5 font-mono text-[11px] font-bold text-[#c66d48] hover:bg-[#fff0e8] rounded-md py-1 transition-colors"><Clipboard size={12}/><span className="whitespace-nowrap">{copiedOrder === row.id ? "Скопировано" : row.id}</span></button></td>
+          <td className="px-2.5 py-3 border-b border-r border-[#eee7e2] w-[180px]"><b>{row.customerName}</b><div className="text-[#837a75] mt-1 whitespace-nowrap">{row.phone}</div><div className="text-[#aaa] break-all">{row.email}</div></td>
+          <td className="px-2.5 py-3 border-b border-r border-[#eee7e2] w-[205px]">{row.items.map((item) => <div key={item.id} className="mb-1 leading-snug">{item.name} <b>×{item.quantity}</b></div>)}</td>
+          <td className="px-2.5 py-3 border-b border-r border-[#eee7e2] w-[105px] font-extrabold whitespace-nowrap tabular-nums">{money(row.total)}</td>
+          <td className="px-2.5 py-3 border-b border-r border-[#eee7e2] w-[235px]"><b>{row.deliveryMethod}</b><button onClick={() => navigator.clipboard.writeText(row.deliveryAddress)} className="block text-left mt-1 text-[#756c67] hover:text-[#c66d48] leading-snug">{row.deliveryAddress || "Адрес не указан"}</button>{row.trackNumber && <div className="mt-1 font-mono">{row.trackNumber}</div>}</td>
           <td className="px-3 py-3 border-b border-r border-[#eee7e2] font-bold whitespace-nowrap">{money(row.customerDeliveryCost)}</td>
-          <td className="px-2 py-2 border-b border-r border-[#eee7e2] w-[105px]"><input type="number" min="0" value={row.warehouse.actualDeliveryCost ?? ""} onChange={(e) => updateLocal(row.id, { actualDeliveryCost: e.target.value === "" ? null : Number(e.target.value) })} onBlur={() => save(row.id, { actualDeliveryCost: row.warehouse.actualDeliveryCost })} className="w-full border border-[#e8ddd7] rounded-lg px-2 py-2" placeholder="0"/></td>
-          <td className="px-2 py-2 border-b border-r border-[#eee7e2] w-[190px]"><input value={row.warehouse.dispatchPoint} onChange={(e) => updateLocal(row.id, { dispatchPoint: e.target.value })} onBlur={() => save(row.id, { dispatchPoint: row.warehouse.dispatchPoint })} className="w-full border border-[#e8ddd7] rounded-lg px-2 py-2" placeholder="Откуда отправили"/></td>
+          <td className="px-2 py-2 border-b border-r border-[#eee7e2] w-[95px]"><input type="number" min="0" value={row.warehouse.actualDeliveryCost ?? ""} onFocus={() => { editingRef.current = true; }} onChange={(e) => { const value = e.target.value === "" ? null : Number(e.target.value); updateLocal(row.id, { actualDeliveryCost: value }); scheduleSave(row.id, "actualDeliveryCost", value); }} onBlur={() => { editingRef.current = false; }} className="w-full border border-[#e8ddd7] rounded-lg px-2 py-2" placeholder="0"/></td>
+          <td className="px-2 py-2 border-b border-r border-[#eee7e2] w-[155px]"><input value={row.warehouse.dispatchPoint} onFocus={() => { editingRef.current = true; }} onChange={(e) => { updateLocal(row.id, { dispatchPoint: e.target.value }); scheduleSave(row.id, "dispatchPoint", e.target.value); }} onBlur={() => { editingRef.current = false; }} className="w-full border border-[#e8ddd7] rounded-lg px-2 py-2" placeholder="Откуда отправили"/></td>
           {checks.map(([key, label]) => <td key={key} className="px-3 py-3 border-b border-r border-[#eee7e2] text-center"><button title={label} onClick={() => toggle(row, key)} className={`w-7 h-7 rounded-lg inline-flex items-center justify-center border ${row.warehouse[key] ? "bg-green-100 border-green-200 text-green-700" : "bg-white border-[#dfd5cf] text-transparent"}`}><Check size={16}/></button></td>)}
           <td className="px-2 py-2 border-b border-r border-[#eee7e2] w-[185px]"><select aria-label={`Статус заказа ${row.id}`} value={row.orderStatus} disabled={statusSaving === row.id} onChange={(e) => changeOrderStatus(row, e.target.value)} className={`w-full rounded-lg border px-2 py-2 text-xs font-semibold ${STATUS_STYLE[row.orderStatus] || "bg-gray-50 text-gray-700 border-gray-200"}`}>{ORDER_STATUSES.map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select>{statusSaving === row.id && <div className="mt-1 text-[11px] text-[#999]">Сохраняем и отправляем письмо…</div>}</td>
-          <td className="px-2 py-2 border-b border-r border-[#eee7e2] w-[260px]"><textarea value={row.warehouse.internalComment} onChange={(e) => updateLocal(row.id, { internalComment: e.target.value })} onBlur={() => save(row.id, { internalComment: row.warehouse.internalComment })} rows={2} className="w-full resize-none border border-[#e8ddd7] rounded-lg px-2 py-2" placeholder="Внутренний комментарий"/></td>
+          <td className="px-2 py-2 border-b border-r border-[#eee7e2] w-[210px]"><textarea value={row.warehouse.internalComment} onFocus={() => { editingRef.current = true; }} onChange={(e) => { updateLocal(row.id, { internalComment: e.target.value }); scheduleSave(row.id, "internalComment", e.target.value, 850); }} onBlur={() => { editingRef.current = false; }} rows={2} className="w-full resize-none border border-[#e8ddd7] rounded-lg px-2 py-2" placeholder="Внутренний комментарий"/></td>
           <td className="px-3 py-3 border-b border-[#eee7e2] w-[90px] text-center">{saving === row.id ? <span className="text-[#aaa]">Сохраняем…</span> : saved === row.id ? <span className="text-green-600 font-semibold">Сохранено</span> : row.warehouse.updatedAt ? <span className="text-[#aaa]">{new Date(row.warehouse.updatedAt).toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" })}</span> : "—"}</td>
         </tr>)}</tbody>
       </table>
       {!loading && !visible.length && <div className="p-10 text-center text-[#999]">За выбранный период оплаченных заказов нет.</div>}
     </div>
-    <p className="text-xs text-[#999]">Показано: {visible.length}. Горизонтальная прокрутка открывает все рабочие столбцы.</p>
+    <p className="text-xs text-[#999]">Показано: {visible.length} из {rows.length}. Номер заказа копируется одним нажатием. Положение таблицы и выбранные даты сохраняются при переходе между вкладками.</p>
   </section>;
 }

@@ -106,22 +106,27 @@ export async function PATCH(request: NextRequest) {
   }
   if (!Object.keys(normalized).length) return NextResponse.json({ error: "no_valid_changes" }, { status: 400 });
 
-  const { data: current, error: readError } = await db
-    .from("payment_orders").select("id,delivery").eq("id", body.orderId).maybeSingle();
-  if (readError || !current) return NextResponse.json({ error: "order_not_found" }, { status: 404 });
-  const delivery = (current.delivery ?? {}) as Record<string, unknown>;
-  const warehouse = (delivery.warehouse ?? {}) as WarehouseData;
-  const now = new Date().toISOString();
-  const historyChanges = Object.fromEntries(Object.entries(normalized).map(([key, value]) => [key, {
-    from: warehouse[key as keyof WarehouseData] ?? null,
-    to: value,
-  }]));
-  const history = [...(Array.isArray(warehouse.history) ? warehouse.history : []), { at: now, changes: historyChanges }].slice(-100);
-  const nextWarehouse = { ...warehouse, ...normalized, updatedAt: now, history };
-  const { error } = await db.from("payment_orders").update({
-    delivery: { ...delivery, warehouse: nextWarehouse },
-    updated_at: now,
-  }).eq("id", body.orderId);
-  if (error) return NextResponse.json({ error: "save_failed" }, { status: 500 });
-  return NextResponse.json({ ok: true, warehouse: nextWarehouse });
+  // Оптимистическая блокировка не даёт двум сотрудникам затереть изменения
+  // друг друга, если они одновременно редактируют разные ячейки одного заказа.
+  for (let attempt = 0; attempt < 4; attempt += 1) {
+    const { data: current, error: readError } = await db
+      .from("payment_orders").select("id,delivery,updated_at").eq("id", body.orderId).maybeSingle();
+    if (readError || !current) return NextResponse.json({ error: "order_not_found" }, { status: 404 });
+    const delivery = (current.delivery ?? {}) as Record<string, unknown>;
+    const warehouse = (delivery.warehouse ?? {}) as WarehouseData;
+    const now = new Date().toISOString();
+    const historyChanges = Object.fromEntries(Object.entries(normalized).map(([key, value]) => [key, {
+      from: warehouse[key as keyof WarehouseData] ?? null,
+      to: value,
+    }]));
+    const history = [...(Array.isArray(warehouse.history) ? warehouse.history : []), { at: now, changes: historyChanges }].slice(-100);
+    const nextWarehouse = { ...warehouse, ...normalized, updatedAt: now, history };
+    const { data: updated, error } = await db.from("payment_orders").update({
+      delivery: { ...delivery, warehouse: nextWarehouse },
+      updated_at: now,
+    }).eq("id", body.orderId).eq("updated_at", current.updated_at).select("id").maybeSingle();
+    if (error) return NextResponse.json({ error: "save_failed" }, { status: 500 });
+    if (updated) return NextResponse.json({ ok: true, warehouse: nextWarehouse });
+  }
+  return NextResponse.json({ error: "concurrent_update" }, { status: 409 });
 }
