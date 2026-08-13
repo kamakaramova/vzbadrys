@@ -48,7 +48,7 @@ const DELIVERY_PRICES: Record<DeliveryMethod, number> = {
   pickup: 0,
   sdek_pvz: 300,
   yandex_pvz: 300,
-  ozon_pvz: 225,
+  ozon_pvz: 250,
   pochta: 250,
 };
 
