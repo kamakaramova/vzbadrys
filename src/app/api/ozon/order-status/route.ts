@@ -3,8 +3,11 @@ import { NextRequest, NextResponse } from "next/server";
 import { getOzonConfig, getOzonOrderStatus, verifyPaymentReturnToken } from "@/lib/ozonAcquiring";
 import { applyOzonPaymentStatus } from "@/lib/ozonPaymentStatus";
 import { getServerSupabase } from "@/lib/supabaseServer";
+import { rateLimit } from "@/lib/rateLimit";
 
 export async function GET(request: NextRequest) {
+  const limit = rateLimit(request, "order-status", 60, 60 * 1000);
+  if (!limit.allowed) return NextResponse.json({ error: "too_many_requests" }, { status: 429, headers: { "retry-after": String(limit.retryAfter) } });
   const orderId = request.nextUrl.searchParams.get("order") || "";
   if (!/^VZB-\d{8}-[A-F0-9]{8}$/.test(orderId)) {
     return NextResponse.json({ error: "bad_order" }, { status: 400 });

@@ -519,6 +519,20 @@ export default function AdminPage() {
   };
 
   useEffect(() => {
+    if (!mounted || authed) return;
+    void fetch("/api/admin/login", { cache: "no-store" }).then(async (response) => {
+      if (!response.ok) return;
+      setPw("session");
+      setAdminPassword("session");
+      setAuthed(true);
+      await Promise.all([
+        loadAdminOrders("session"), loadPromos("session"),
+        loadLoyaltyStats("session"), loadFeedback("session"),
+      ]);
+    }).catch(() => undefined);
+  }, [mounted, authed]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
     if (authed && tab === "emails") {
       const timer = window.setTimeout(() => {
         void loadEmailLogs();
@@ -556,11 +570,12 @@ export default function AdminPage() {
       });
       if (res.ok) {
         setAuthed(true);
-        setAdminPassword(pw);
-        await loadAdminOrders(pw);
-        await loadPromos(pw);
-        await loadLoyaltyStats(pw);
-        await loadFeedback(pw);
+        setPw("session");
+        setAdminPassword("session");
+        await loadAdminOrders("session");
+        await loadPromos("session");
+        await loadLoyaltyStats("session");
+        await loadFeedback("session");
       } else {
         setPwError(true);
       }
@@ -900,7 +915,7 @@ export default function AdminPage() {
             <p className="text-xs text-[#aaa]">Панель управления</p>
           </div>
         </div>
-        <button onClick={() => setAuthed(false)} className="text-xs text-[#aaa] hover:text-[#E8845A]">Выйти</button>
+        <button onClick={() => { void fetch("/api/admin/login", { method: "DELETE" }); setAuthed(false); setPw(""); setAdminPassword(null); }} className="text-xs text-[#aaa] hover:text-[#E8845A]">Выйти</button>
       </div>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">

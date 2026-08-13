@@ -1,14 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 
 import { getServerSupabase } from "@/lib/supabaseServer";
-
-const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD;
-const allowed = (request: NextRequest) => Boolean(ADMIN_PASSWORD && request.headers.get("x-admin-password") === ADMIN_PASSWORD);
+import { isAdminAuthorized } from "@/lib/adminAuth";
 
 export const runtime = "nodejs";
 
 export async function GET(request: NextRequest) {
-  if (!allowed(request)) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+  if (!isAdminAuthorized(request)) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   const db = getServerSupabase();
   if (!db) return NextResponse.json({ error: "not_configured" }, { status: 503 });
 
@@ -32,7 +30,7 @@ export async function GET(request: NextRequest) {
 }
 
 export async function PATCH(request: NextRequest) {
-  if (!allowed(request)) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+  if (!isAdminAuthorized(request)) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   const db = getServerSupabase();
   if (!db) return NextResponse.json({ error: "not_configured" }, { status: 503 });
 
@@ -66,7 +64,7 @@ export async function PATCH(request: NextRequest) {
 }
 
 export async function DELETE(request: NextRequest) {
-  if (!allowed(request)) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+  if (!isAdminAuthorized(request)) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   const db = getServerSupabase();
   if (!db) return NextResponse.json({ error: "not_configured" }, { status: 503 });
   const type = request.nextUrl.searchParams.get("type");

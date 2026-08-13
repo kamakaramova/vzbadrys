@@ -3,6 +3,8 @@ import { NextRequest, NextResponse } from "next/server";
 
 import { getAuthenticatedUser } from "@/lib/loyalty";
 import { getServerSupabase } from "@/lib/supabaseServer";
+import { decodeSafeImage } from "@/lib/imageSecurity";
+import { rateLimit } from "@/lib/rateLimit";
 
 export const runtime = "nodejs";
 
@@ -19,6 +21,8 @@ function ownedAvatarPath(userId: string, value: unknown) {
 }
 
 export async function POST(request: NextRequest) {
+  const limit = rateLimit(request, "avatar-upload", 10, 60 * 60 * 1000);
+  if (!limit.allowed) return NextResponse.json({ error: "Слишком много попыток. Попробуйте позже" }, { status: 429, headers: { "retry-after": String(limit.retryAfter) } });
   const db = getServerSupabase();
   if (!db) return NextResponse.json({ error: "База данных не настроена" }, { status: 503 });
 
@@ -26,19 +30,16 @@ export async function POST(request: NextRequest) {
   if (!user) return NextResponse.json({ error: "Необходимо войти в аккаунт" }, { status: 401 });
 
   const body = await request.json().catch(() => ({}));
-  const imageData = typeof body.imageData === "string" ? body.imageData : "";
-  const match = imageData.match(/^data:(image\/(?:jpeg|png|webp));base64,([A-Za-z0-9+/=]+)$/);
-  if (!match) return NextResponse.json({ error: "Можно загрузить JPG, PNG или WebP" }, { status: 400 });
-
-  const bytes = Buffer.from(match[2], "base64");
-  if (!bytes.length || bytes.length > MAX_FILE_SIZE) {
+  const image = decodeSafeImage(body.imageData, MAX_FILE_SIZE);
+  if (!image) {
     return NextResponse.json({ error: "Фото должно быть не больше 5 МБ" }, { status: 400 });
   }
 
-  const extension = match[1] === "image/jpeg" ? "jpg" : match[1].split("/")[1];
+  const { bytes, mime } = image;
+  const extension = mime === "image/jpeg" ? "jpg" : mime.split("/")[1];
   const path = `avatars/${user.id}/${randomUUID()}.${extension}`;
   const upload = await db.storage.from(BUCKET).upload(path, bytes, {
-    contentType: match[1],
+    contentType: mime,
     cacheControl: "31536000",
     upsert: false,
   });

@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 
 import { getServerSupabase } from "@/lib/supabaseServer";
-
-const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD;
+import { isAdminAuthorized } from "@/lib/adminAuth";
 
 type MarketingContact = {
   email: string;
@@ -12,16 +11,12 @@ type MarketingContact = {
   source: "registration" | "order" | "registration_and_order";
 };
 
-function isAuthorized(request: NextRequest) {
-  return Boolean(ADMIN_PASSWORD && request.headers.get("x-admin-password") === ADMIN_PASSWORD);
-}
-
 function asRecord(value: unknown): Record<string, unknown> {
   return value && typeof value === "object" ? value as Record<string, unknown> : {};
 }
 
 export async function GET(request: NextRequest) {
-  if (!isAuthorized(request)) {
+  if (!isAdminAuthorized(request)) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
 

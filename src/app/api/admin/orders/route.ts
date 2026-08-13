@@ -6,13 +6,9 @@ import { sendEmail, type EmailKind } from "@/lib/email/send";
 import { orderEmail, type OrderEmailStatus } from "@/lib/email/templates";
 import { deliveryMethodLabel, paymentMethodLabel } from "@/lib/orderLabels";
 import { getBonusBalance } from "@/lib/loyalty";
+import { isAdminAuthorized } from "@/lib/adminAuth";
 
-const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD;
 const ORDER_STATUSES = new Set(["processing", "confirmed", "shipped", "delivered", "cancelled"]);
-
-function isAuthorized(request: NextRequest) {
-  return Boolean(ADMIN_PASSWORD && request.headers.get("x-admin-password") === ADMIN_PASSWORD);
-}
 
 function mapOrder(row: Record<string, unknown>) {
   const customer = (row.customer ?? {}) as Record<string, string>;
@@ -72,7 +68,7 @@ function mapOrder(row: Record<string, unknown>) {
 }
 
 export async function GET(request: NextRequest) {
-  if (!isAuthorized(request)) {
+  if (!isAdminAuthorized(request)) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
   const db = getServerSupabase();
@@ -88,7 +84,7 @@ export async function GET(request: NextRequest) {
 }
 
 export async function PATCH(request: NextRequest) {
-  if (!isAuthorized(request)) {
+  if (!isAdminAuthorized(request)) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
   const db = getServerSupabase();
@@ -253,7 +249,7 @@ export async function PATCH(request: NextRequest) {
 // Администратор может убрать только неоплаченный, отменённый или ошибочный заказ.
 // Подтверждение требуется и в интерфейсе, и в самом API.
 export async function DELETE(request: NextRequest) {
-  if (!isAuthorized(request)) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+  if (!isAdminAuthorized(request)) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   const db = getServerSupabase();
   if (!db) return NextResponse.json({ error: "not_configured" }, { status: 503 });
 

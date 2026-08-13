@@ -3,19 +3,14 @@ import { NextRequest, NextResponse } from "next/server";
 import { sendEmail } from "@/lib/email/send";
 import { manualEmail, testEmail } from "@/lib/email/templates";
 import { getServerSupabase } from "@/lib/supabaseServer";
-
-const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD;
-
-function isAuthorized(request: NextRequest) {
-  return Boolean(ADMIN_PASSWORD && request.headers.get("x-admin-password") === ADMIN_PASSWORD);
-}
+import { isAdminAuthorized } from "@/lib/adminAuth";
 
 function validEmail(value: string) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(value);
 }
 
 export async function GET(request: NextRequest) {
-  if (!isAuthorized(request)) {
+  if (!isAdminAuthorized(request)) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
   const db = getServerSupabase();
@@ -40,7 +35,7 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
-  if (!isAuthorized(request)) {
+  if (!isAdminAuthorized(request)) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
   const db = getServerSupabase();

@@ -2,8 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 
 import { deliveryMethodLabel } from "@/lib/orderLabels";
 import { getServerSupabase } from "@/lib/supabaseServer";
-
-const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD;
+import { isAdminAuthorized } from "@/lib/adminAuth";
 
 type WarehouseData = {
   actualDeliveryCost?: number | null;
@@ -24,10 +23,6 @@ const BOOLEAN_FIELDS = new Set([
   "batchesAssigned", "handedToDelivery",
 ]);
 const TEXT_FIELDS = new Set(["dispatchPoint", "internalComment"]);
-
-function isAuthorized(request: NextRequest) {
-  return Boolean(ADMIN_PASSWORD && request.headers.get("x-admin-password") === ADMIN_PASSWORD);
-}
 
 function mapShipment(row: Record<string, unknown>) {
   const customer = (row.customer ?? {}) as Record<string, string>;
@@ -70,7 +65,7 @@ function mapShipment(row: Record<string, unknown>) {
 }
 
 export async function GET(request: NextRequest) {
-  if (!isAuthorized(request)) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+  if (!isAdminAuthorized(request)) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   const db = getServerSupabase();
   if (!db) return NextResponse.json({ error: "not_configured" }, { status: 503 });
 
@@ -90,7 +85,7 @@ export async function GET(request: NextRequest) {
 }
 
 export async function PATCH(request: NextRequest) {
-  if (!isAuthorized(request)) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+  if (!isAdminAuthorized(request)) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   const db = getServerSupabase();
   if (!db) return NextResponse.json({ error: "not_configured" }, { status: 503 });
 

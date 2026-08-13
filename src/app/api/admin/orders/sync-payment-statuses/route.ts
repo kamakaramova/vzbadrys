@@ -3,8 +3,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { getOzonOrderStatus } from "@/lib/ozonAcquiring";
 import { applyOzonPaymentStatus } from "@/lib/ozonPaymentStatus";
 import { getServerSupabase } from "@/lib/supabaseServer";
+import { isAdminAuthorized } from "@/lib/adminAuth";
 
-const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD;
 const PENDING_STATUSES = ["creating", "awaiting_payment", "authorized", "processing_payment"];
 
 function safeOzonError(error: unknown) {
@@ -12,12 +12,8 @@ function safeOzonError(error: unknown) {
   return message.replace(/[a-f0-9]{32,}/gi, "[скрыто]").slice(0, 240);
 }
 
-function isAuthorized(request: NextRequest) {
-  return Boolean(ADMIN_PASSWORD && request.headers.get("x-admin-password") === ADMIN_PASSWORD);
-}
-
 export async function POST(request: NextRequest) {
-  if (!isAuthorized(request)) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+  if (!isAdminAuthorized(request)) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   const db = getServerSupabase();
   if (!db) return NextResponse.json({ error: "not_configured" }, { status: 503 });
 

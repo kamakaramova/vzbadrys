@@ -3,10 +3,13 @@ import { NextRequest, NextResponse } from "next/server";
 import { sendEmail } from "@/lib/email/send";
 import { confirmationEmail } from "@/lib/email/templates";
 import { getServerSupabase } from "@/lib/supabaseServer";
+import { rateLimit } from "@/lib/rateLimit";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 
 export async function POST(request: NextRequest) {
+  const limit = rateLimit(request, "auth-register", 10, 60 * 60 * 1000);
+  if (!limit.allowed) return NextResponse.json({ error: "Слишком много попыток регистрации. Попробуйте позже" }, { status: 429, headers: { "retry-after": String(limit.retryAfter) } });
   let body: {
     name?: string;
     email?: string;

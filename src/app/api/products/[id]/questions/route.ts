@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 
 import { getAuthenticatedUser } from "@/lib/loyalty";
 import { getServerSupabase } from "@/lib/supabaseServer";
+import { rateLimit } from "@/lib/rateLimit";
 
 export const runtime = "nodejs";
 
@@ -17,6 +18,8 @@ export async function GET(_request: NextRequest, { params }: { params: Promise<{
 }
 
 export async function POST(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const limit = rateLimit(request, "product-question", 10, 60 * 60 * 1000);
+  if (!limit.allowed) return NextResponse.json({ error: "Слишком много вопросов. Попробуйте позже" }, { status: 429, headers: { "retry-after": String(limit.retryAfter) } });
   const db = getServerSupabase();
   if (!db) return NextResponse.json({ error: "База данных не настроена" }, { status: 503 });
   const token = request.headers.get("authorization")?.replace(/^Bearer\s+/i, "") || null;

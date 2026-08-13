@@ -12,6 +12,7 @@ import {
 import { findReferralOwner, getAuthenticatedUser, getBonusBalance, normalizeCode, REFERRAL_DISCOUNT_PERCENT } from "@/lib/loyalty";
 import { getServerSupabase } from "@/lib/supabaseServer";
 import { getDeliverySettings } from "@/lib/deliverySettings";
+import { rateLimit } from "@/lib/rateLimit";
 
 export const runtime = "nodejs";
 
@@ -86,6 +87,8 @@ function distributeProductTotal(
 }
 
 export async function POST(request: NextRequest) {
+  const limit = rateLimit(request, "create-order", 10, 10 * 60 * 1000);
+  if (!limit.allowed) return NextResponse.json({ error: "Слишком много попыток оформления. Подождите несколько минут" }, { status: 429, headers: { "retry-after": String(limit.retryAfter) } });
   const db = getServerSupabase();
   if (!db) return NextResponse.json({ error: "База данных не настроена" }, { status: 503 });
 

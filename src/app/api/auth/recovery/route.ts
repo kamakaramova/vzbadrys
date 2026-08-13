@@ -3,10 +3,13 @@ import { NextRequest, NextResponse } from "next/server";
 import { sendEmail } from "@/lib/email/send";
 import { recoveryEmail } from "@/lib/email/templates";
 import { getServerSupabase } from "@/lib/supabaseServer";
+import { rateLimit } from "@/lib/rateLimit";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 
 export async function POST(request: NextRequest) {
+  const limit = rateLimit(request, "auth-recovery", 5, 60 * 60 * 1000);
+  if (!limit.allowed) return NextResponse.json({ ok: true }, { headers: { "retry-after": String(limit.retryAfter) } });
   let body: { email?: string };
   try {
     body = await request.json();
