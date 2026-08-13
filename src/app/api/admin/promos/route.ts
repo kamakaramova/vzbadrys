@@ -2,12 +2,10 @@ import { NextRequest, NextResponse } from "next/server";
 
 import { normalizeCode } from "@/lib/loyalty";
 import { getServerSupabase } from "@/lib/supabaseServer";
-
-const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD;
-const allowed = (request: NextRequest) => Boolean(ADMIN_PASSWORD && request.headers.get("x-admin-password") === ADMIN_PASSWORD);
+import { isAdminAuthorized } from "@/lib/adminAuth";
 
 export async function GET(request: NextRequest) {
-  if (!allowed(request)) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+  if (!isAdminAuthorized(request)) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   const db = getServerSupabase();
   if (!db) return NextResponse.json({ error: "not_configured" }, { status: 503 });
   const { data, error } = await db.from("promo_codes").select("id, code, owner_name, discount_percent, active, usage_count, max_uses, expires_at, created_at").order("created_at", { ascending: false });
@@ -16,7 +14,7 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
-  if (!allowed(request)) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+  if (!isAdminAuthorized(request)) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   const db = getServerSupabase();
   if (!db) return NextResponse.json({ error: "not_configured" }, { status: 503 });
   const body = await request.json().catch(() => ({}));
@@ -33,7 +31,7 @@ export async function POST(request: NextRequest) {
 }
 
 export async function PATCH(request: NextRequest) {
-  if (!allowed(request)) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+  if (!isAdminAuthorized(request)) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   const db = getServerSupabase();
   if (!db) return NextResponse.json({ error: "not_configured" }, { status: 503 });
   const body = await request.json().catch(() => ({}));
@@ -44,7 +42,7 @@ export async function PATCH(request: NextRequest) {
 }
 
 export async function DELETE(request: NextRequest) {
-  if (!allowed(request)) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+  if (!isAdminAuthorized(request)) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   const db = getServerSupabase();
   if (!db) return NextResponse.json({ error: "not_configured" }, { status: 503 });
   const id = new URL(request.url).searchParams.get("id");

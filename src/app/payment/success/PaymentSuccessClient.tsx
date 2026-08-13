@@ -70,9 +70,9 @@ export default function PaymentSuccessClient({ orderId }: { orderId: string }) {
               <div className="w-16 h-16 rounded-full bg-green-100 flex items-center justify-center mx-auto mb-5">
                 <Check className="text-green-600" size={32} />
               </div>
-              <h1 className="text-2xl font-bold mb-3">Заказ оплачен</h1>
-              <p className="text-[#6b6b6b] mb-2">Заказ <strong className="text-[#1a1a1a]">{orderId}</strong> принят и передан в сборку.</p>
-              <p className="text-sm text-[#6b6b6b] mb-7">После отправки мы сообщим трек-номер. Чек поступит на указанный при оформлении email.</p>
+              <h1 className="text-2xl font-bold mb-3">Заказ получен</h1>
+              <p className="text-[#6b6b6b] mb-2">Оплата заказа <strong className="text-[#1a1a1a]">{orderId}</strong> прошла успешно.</p>
+              <p className="text-sm text-[#6b6b6b] mb-7">Как только мы передадим заказ на сборку, а затем в доставку, о каждом шаге Вам будет приходить уведомление на электронную почту. Чек также поступит на указанный при оформлении email.</p>
               {isTest && <p className="text-xs font-semibold text-[#8b4513] bg-[#fff8f5] rounded-xl p-3 mb-6">Это тестовый заказ, деньги не списаны.</p>}
               <Link href="/catalog" className="inline-flex bg-[#E8845A] text-white font-semibold px-7 py-3 rounded-full hover:bg-[#d4703f] transition-colors">
                 Вернуться в каталог

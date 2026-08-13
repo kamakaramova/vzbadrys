@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSupabase } from "@/lib/supabaseServer";
-
-const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD;
+import { isAdminAuthorized } from "@/lib/adminAuth";
 
 // Публичное чтение всех товаров (используется сайтом как запасной путь).
 export async function GET() {
@@ -14,19 +13,19 @@ export async function GET() {
 
 // Запись из админки: требует пароль. op = upsert | delete | seed
 export async function POST(req: NextRequest) {
-  const db = getServerSupabase();
-  if (!db) return NextResponse.json({ error: "not_configured" }, { status: 503 });
-
-  let body: { password?: string; op?: string; product?: unknown; id?: string; products?: unknown[] };
+  let body: { op?: string; product?: unknown; id?: string; products?: unknown[] };
   try {
     body = await req.json();
   } catch {
     return NextResponse.json({ error: "bad_json" }, { status: 400 });
   }
 
-  if (!ADMIN_PASSWORD || body.password !== ADMIN_PASSWORD) {
+  if (!isAdminAuthorized(req)) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
+
+  const db = getServerSupabase();
+  if (!db) return NextResponse.json({ error: "not_configured" }, { status: 503 });
 
   const now = new Date().toISOString();
 

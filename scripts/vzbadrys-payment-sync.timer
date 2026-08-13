@@ -1,0 +1,12 @@
+[Unit]
+Description=Sync pending Ozon payment statuses every 30 minutes
+
+[Timer]
+OnBootSec=5min
+OnUnitActiveSec=30min
+RandomizedDelaySec=60s
+Persistent=true
+Unit=vzbadrys-payment-sync.service
+
+[Install]
+WantedBy=timers.target

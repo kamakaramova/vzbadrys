@@ -8,11 +8,14 @@ export const runtime = "nodejs";
 
 interface OzonNotification {
   orderID?: string;
+  orderId?: string;
   extOrderID?: string;
-  transactionID?: number | null;
+  extOrderId?: string;
+  transactionID?: number | string | null;
+  transactionId?: number | string | null;
   transactionUid?: string;
   transactionUID?: string;
-  amount?: number;
+  amount?: number | string;
   currencyCode?: string;
   testMode?: number;
   status?: "Completed" | "Rejected" | "Authorized" | string;
@@ -42,16 +45,18 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "bad_json" }, { status: 400 });
   }
 
-  const orderId = body.orderID || "";
-  const extOrderId = body.extOrderID || "";
-  const transactionId = body.transactionID != null
-    ? String(body.transactionID)
+  const orderId = body.orderID || body.orderId || "";
+  const extOrderId = body.extOrderID || body.extOrderId || "";
+  const transactionValue = body.transactionID ?? body.transactionId;
+  const transactionId = transactionValue != null
+    ? String(transactionValue)
     : body.transactionUid || body.transactionUID || "";
-  const amount = body.amount;
+  const amount = Number(body.amount);
   const currencyCode = body.currencyCode || "";
   const receivedSign = body.requestSign || "";
 
   if (!orderId || !Number.isInteger(amount)) {
+    console.warn("Ozon payment notification rejected: invalid payload shape");
     return NextResponse.json({ error: "invalid_notification" }, { status: 400 });
   }
   const signatureIsValid = verifyNotificationSignature({
@@ -65,6 +70,7 @@ export async function POST(request: NextRequest) {
     notificationSecret: config.notificationSecret,
   });
   if (!signatureIsValid) {
+    console.warn("Ozon payment notification rejected: invalid signature");
     return NextResponse.json({ error: "invalid_signature" }, { status: 401 });
   }
 
@@ -79,6 +85,10 @@ export async function POST(request: NextRequest) {
     expectedAmount: amount,
     expectedCurrency: currencyCode,
   });
-  if (!result.ok) return NextResponse.json({ error: result.error }, { status: 409 });
+  if (!result.ok) {
+    console.warn(`Ozon payment notification could not be applied: ${result.error}`);
+    return NextResponse.json({ error: result.error }, { status: 409 });
+  }
+  console.info(`Ozon payment notification applied: status=${String(body.status || "unknown")}, changed=${result.changed}`);
   return NextResponse.json(result);
 }

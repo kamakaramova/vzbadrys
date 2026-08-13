@@ -57,6 +57,7 @@ export default function AccountPage() {
   const [editMode, setEditMode] = useState(false);
   const [profileForm, setProfileForm] = useState({ name: "", email: "", phone: "" });
   const [profileMsg, setProfileMsg] = useState<{ ok: boolean; text: string } | null>(null);
+  const [avatarSaving, setAvatarSaving] = useState(false);
 
   // Пароль
   const [passForm, setPassForm] = useState({ current: "", next: "", confirm: "" });
@@ -127,16 +128,60 @@ export default function AccountPage() {
   const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    e.target.value = "";
+    if (!/^image\/(jpeg|png|webp)$/.test(file.type)) {
+      setProfileMsg({ ok: false, text: "Можно загрузить JPG, PNG или WebP" });
+      return;
+    }
     if (file.size > 5 * 1024 * 1024) {
-      setProfileMsg({ ok: false, text: "Файл слишком большой (макс. 5 МБ)" });
+      setProfileMsg({ ok: false, text: "Фото должно быть не больше 5 МБ" });
       return;
     }
     const reader = new FileReader();
-    reader.onload = (ev) => {
-      const result = ev.target?.result as string;
-      updateProfile({ avatar: result });
+    reader.onerror = () => setProfileMsg({ ok: false, text: "Не удалось прочитать файл" });
+    reader.onload = async (ev) => {
+      if (!supabase) return;
+      setAvatarSaving(true);
+      setProfileMsg(null);
+      const { data } = await supabase.auth.getSession();
+      const token = data.session?.access_token;
+      const response = await fetch("/api/account/avatar", {
+        method: "POST",
+        headers: { "content-type": "application/json", ...(token ? { authorization: `Bearer ${token}` } : {}) },
+        body: JSON.stringify({ imageData: String(ev.target?.result || "") }),
+      });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        setAvatarSaving(false);
+        setProfileMsg({ ok: false, text: payload.error || "Не удалось загрузить фото" });
+        return;
+      }
+      const saved = await updateProfile({ avatar: String(payload.avatarUrl || "") });
+      setAvatarSaving(false);
+      setProfileMsg({ ok: saved.ok, text: saved.ok ? "Фото профиля обновлено" : (saved.error || "Не удалось обновить фото") });
     };
     reader.readAsDataURL(file);
+  };
+
+  const handleAvatarDelete = async () => {
+    if (!supabase || avatarSaving) return;
+    setAvatarSaving(true);
+    setProfileMsg(null);
+    const { data } = await supabase.auth.getSession();
+    const token = data.session?.access_token;
+    const response = await fetch("/api/account/avatar", {
+      method: "DELETE",
+      headers: token ? { authorization: `Bearer ${token}` } : {},
+    });
+    const payload = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      setAvatarSaving(false);
+      setProfileMsg({ ok: false, text: payload.error || "Не удалось удалить фото" });
+      return;
+    }
+    const saved = await updateProfile({ avatar: "" });
+    setAvatarSaving(false);
+    setProfileMsg({ ok: saved.ok, text: saved.ok ? "Фото профиля удалено" : (saved.error || "Не удалось удалить фото") });
   };
 
   const handleProfileSave = async () => {
@@ -205,17 +250,23 @@ export default function AccountPage() {
               </div>
               <button
                 onClick={() => avatarRef.current?.click()}
+                disabled={avatarSaving}
                 className="absolute -bottom-1 -right-1 w-6 h-6 bg-[#E8845A] rounded-full flex items-center justify-center shadow hover:bg-[#d4703f] transition-colors"
                 title="Сменить фото"
               >
                 <Camera size={12} className="text-white" />
               </button>
-              <input ref={avatarRef} type="file" accept="image/*" className="hidden" onChange={handleAvatarChange} />
+              <input ref={avatarRef} type="file" accept="image/jpeg,image/png,image/webp" className="hidden" onChange={handleAvatarChange} />
             </div>
             <div className="flex-1">
               <h1 className="text-xl font-bold">{user.name}</h1>
               <p className="text-sm text-[#6b6b6b]">{user.email}</p>
               <p className="text-sm text-[#aaa]">{user.phone}</p>
+              {profileMsg && (
+                <p className={`text-xs mt-2 ${profileMsg.ok ? "text-green-600" : "text-red-500"}`}>
+                  {profileMsg.text}
+                </p>
+              )}
             </div>
             <div className="flex items-center gap-3">
               <div className="text-right hidden sm:block">
@@ -448,13 +499,14 @@ export default function AccountPage() {
                       <div>
                         <button
                           onClick={() => avatarRef.current?.click()}
-                          className="flex items-center gap-2 text-sm font-semibold text-white bg-[#E8845A] hover:bg-[#d4703f] px-4 py-2 rounded-full transition-all mb-2"
+                          disabled={avatarSaving}
+                          className="flex items-center gap-2 text-sm font-semibold text-white bg-[#E8845A] hover:bg-[#d4703f] px-4 py-2 rounded-full transition-all mb-2 disabled:opacity-60"
                         >
-                          <Camera size={15} /> Загрузить фото
+                          <Camera size={15} /> {avatarSaving ? "Сохраняем…" : "Загрузить фото"}
                         </button>
                         <p className="text-xs text-[#aaa]">JPG, PNG или WebP, до 5 МБ</p>
                         {user.avatar && (
-                          <button onClick={() => updateProfile({ avatar: "" })} className="text-xs text-red-400 hover:underline mt-1 block">
+                          <button onClick={() => void handleAvatarDelete()} disabled={avatarSaving} className="text-xs text-red-400 hover:underline mt-1 block disabled:opacity-50">
                             Удалить фото
                           </button>
                         )}

@@ -185,10 +185,11 @@ function AuthContent() {
                 <InputField
                   label="Email"
                   icon={<Mail size={16} />}
-                  type="text"
+                  type="email"
                   value={form.emailOrPhone}
                   onChange={(v) => set("emailOrPhone", v)}
                   placeholder="email@mail.ru"
+                  autoComplete="email"
                 />
                 <InputField
                   label="Пароль"
@@ -197,6 +198,7 @@ function AuthContent() {
                   value={form.password}
                   onChange={(v) => set("password", v)}
                   placeholder="Ваш пароль"
+                  autoComplete="current-password"
                   suffix={
                     <button type="button" onClick={() => setShowPass(!showPass)} className="text-[#aaa] hover:text-[#1a1a1a]">
                       {showPass ? <EyeOff size={16} /> : <Eye size={16} />}
@@ -243,6 +245,7 @@ function AuthContent() {
                   value={form.email}
                   onChange={(v) => set("email", v)}
                   placeholder="email@mail.ru"
+                  autoComplete="email"
                 />
                 <InputField
                   label="Телефон"
@@ -258,7 +261,7 @@ function AuthContent() {
                   type={showPass ? "text" : "password"}
                   value={form.password}
                   onChange={(v) => set("password", v)}
-                  placeholder="Минимум 6 символов"
+                  placeholder="Минимум 8 символов"
                   suffix={
                     <button type="button" onClick={() => setShowPass(!showPass)} className="text-[#aaa] hover:text-[#1a1a1a]">
                       {showPass ? <EyeOff size={16} /> : <Eye size={16} />}
@@ -397,7 +400,7 @@ export default function AuthPage() {
 }
 
 function InputField({
-  label, icon, type, value, onChange, placeholder, suffix,
+  label, icon, type, value, onChange, placeholder, suffix, autoComplete,
 }: {
   label: string;
   icon: React.ReactNode;
@@ -406,6 +409,7 @@ function InputField({
   onChange: (v: string) => void;
   placeholder?: string;
   suffix?: React.ReactNode;
+  autoComplete?: string;
 }) {
   return (
     <div>
@@ -417,6 +421,7 @@ function InputField({
           value={value}
           onChange={(e) => onChange(e.target.value)}
           placeholder={placeholder}
+          autoComplete={autoComplete}
           className="w-full pl-10 pr-10 py-3 border border-[#f0e8e0] rounded-2xl text-sm outline-none focus:border-[#E8845A] transition-colors bg-[#fdfcfb]"
         />
         {suffix && <span className="absolute right-4 top-1/2 -translate-y-1/2">{suffix}</span>}

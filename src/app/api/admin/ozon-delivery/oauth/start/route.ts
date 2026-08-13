@@ -1,11 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 
 import { getOzonDeliveryGatewayAuthorizeUrl } from "@/lib/ozonDeliveryGateway";
-
-const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD;
+import { isAdminAuthorized } from "@/lib/adminAuth";
 
 export async function POST(request: NextRequest) {
-  if (!ADMIN_PASSWORD || request.headers.get("x-admin-password") !== ADMIN_PASSWORD) {
+  if (!isAdminAuthorized(request)) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
   try {

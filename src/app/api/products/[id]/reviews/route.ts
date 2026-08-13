@@ -3,6 +3,8 @@ import { NextRequest, NextResponse } from "next/server";
 
 import { getAuthenticatedUser, productIdFromCartId, REVIEW_BONUS } from "@/lib/loyalty";
 import { getServerSupabase } from "@/lib/supabaseServer";
+import { decodeSafeImage } from "@/lib/imageSecurity";
+import { rateLimit } from "@/lib/rateLimit";
 
 export const runtime = "nodejs";
 
@@ -23,6 +25,8 @@ export async function GET(_request: NextRequest, { params }: { params: Promise<{
 }
 
 export async function POST(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const limit = rateLimit(request, "product-review", 10, 60 * 60 * 1000);
+  if (!limit.allowed) return NextResponse.json({ error: "Слишком много попыток. Попробуйте позже" }, { status: 429, headers: { "retry-after": String(limit.retryAfter) } });
   const db = getServerSupabase();
   if (!db) return NextResponse.json({ error: "База данных не настроена" }, { status: 503 });
   const token = request.headers.get("authorization")?.replace(/^Bearer\s+/i, "") || null;
@@ -45,13 +49,12 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
   let imageUrl: string | null = null;
   const imageData = typeof body.imageData === "string" ? body.imageData : "";
   if (imageData) {
-    const match = imageData.match(/^data:(image\/(?:jpeg|png|webp));base64,([A-Za-z0-9+/=]+)$/);
-    if (!match) return NextResponse.json({ error: "Можно прикрепить JPG, PNG или WEBP" }, { status: 400 });
-    const bytes = Buffer.from(match[2], "base64");
-    if (bytes.length > 5 * 1024 * 1024) return NextResponse.json({ error: "Фото должно быть не больше 5 МБ" }, { status: 400 });
-    const ext = match[1].split("/")[1] === "jpeg" ? "jpg" : match[1].split("/")[1];
+    const image = decodeSafeImage(imageData);
+    if (!image) return NextResponse.json({ error: "Можно прикрепить JPG, PNG или WEBP до 5 МБ" }, { status: 400 });
+    const { bytes, mime } = image;
+    const ext = mime.split("/")[1] === "jpeg" ? "jpg" : mime.split("/")[1];
     const path = `${productId}/${user.id}/${randomUUID()}.${ext}`;
-    const upload = await db.storage.from("review-media").upload(path, bytes, { contentType: match[1], upsert: false });
+    const upload = await db.storage.from("review-media").upload(path, bytes, { contentType: mime, upsert: false });
     if (upload.error) return NextResponse.json({ error: "Не удалось загрузить фото" }, { status: 500 });
     imageUrl = db.storage.from("review-media").getPublicUrl(path).data.publicUrl;
   }

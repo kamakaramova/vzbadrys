@@ -31,7 +31,7 @@ async function persist(product: Product, password: string | null): Promise<SaveR
     const response = await fetch("/api/products", {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ password, op: "upsert", product }),
+      body: JSON.stringify({ op: "upsert", product }),
     });
     const data = await response.json().catch(() => ({}));
     return response.ok ? { ok: true } : { ok: false, error: data.error || "Не удалось сохранить изменения" };
@@ -113,7 +113,7 @@ export const useProductStore = create<ProductStore>((set, get) => ({
       const response = await fetch("/api/products", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ password: pw, op: "delete", id }),
+        body: JSON.stringify({ op: "delete", id }),
       });
       const data = await response.json().catch(() => ({}));
       return response.ok ? { ok: true } : { ok: false, error: data.error || "Не удалось удалить товар" };
@@ -150,7 +150,7 @@ export const useProductStore = create<ProductStore>((set, get) => ({
       const res = await fetch("/api/products", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ password: pw, op: "seed", products: get().products.length ? get().products : defaultProducts }),
+        body: JSON.stringify({ op: "seed", products: get().products.length ? get().products : defaultProducts }),
       });
       const json = await res.json();
       if (!res.ok) return { ok: false, error: json.error || "Ошибка" };

@@ -1,0 +1,343 @@
+import Link from "next/link";
+import Image from "next/image";
+import Header from "@/components/Header";
+import Footer from "@/components/Footer";
+import { products } from "@/lib/products";
+import {
+  ArrowUpRight,
+  ClipboardCheck,
+  Eye,
+  FileText,
+  FlaskConical,
+  PackageCheck,
+  PlayCircle,
+  ShieldCheck,
+} from "lucide-react";
+import type { Metadata } from "next";
+
+export const metadata: Metadata = {
+  title: "О компании — взБАДрись",
+  description:
+    "Как Кама Карамова и Полина Абдулкина создают добавки «взБАДрись»: личная проверка производства, контроль сырья и открытая видеоэкскурсия.",
+};
+
+const productionChecks = [
+  {
+    icon: PackageCheck,
+    title: "Сырьё до фасовки",
+    description:
+      "На складе всё промаркировано и хранится на стеллажах. Сырьё, которое не прошло входной контроль или не имеет достаточного запаса срока годности, отправляют на возврат.",
+  },
+  {
+    icon: ClipboardCheck,
+    title: "Контрольные экземпляры",
+    description:
+      "Несколько запечатанных баночек из каждой партии остаются на производстве в течение всего срока годности — с той же датой фасовки, что и у покупателей.",
+  },
+  {
+    icon: ShieldCheck,
+    title: "Безопасная упаковка",
+    description:
+      "Пластиковые баночки проверены лабораторно. Безопасность упаковки подтверждается анализами, а не только маркировкой производителя пластика.",
+  },
+];
+
+const qualityChecks = [
+  {
+    title: "Входной контроль сырья",
+    description:
+      "Помимо документов поставщика, производство дополнительно проверяет поступающие партии сырья, в том числе проводит микробиологические исследования.",
+  },
+  {
+    title: "Ежедневный контроль чистоты",
+    description:
+      "В помещениях берут смывы с поверхностей и контролируют воздух на чашках Петри, чтобы следить за условиями в зонах фасовки.",
+  },
+  {
+    title: "Допуск в производственные зоны",
+    description:
+      "Перед посещением у нас проверили медицинские книжки. Внутри обязательны халаты, шапочки и бахилы, а между зонами лежат дезинфицирующие коврики.",
+  },
+];
+
+export default function AboutPage() {
+  const supplements = products.filter((product) => product.category === "bads");
+
+  return (
+    <>
+      <Header />
+      <main className="min-h-screen overflow-hidden">
+        <section className="border-b border-[#f0e8e0] bg-[#fdf8f5] py-10 md:py-16">
+          <div className="mx-auto grid max-w-6xl items-center gap-10 px-4 sm:px-6 lg:grid-cols-[0.92fr_1.08fr] lg:px-8">
+            <div className="order-2 lg:order-1">
+              <p className="mb-4 text-xs font-semibold uppercase tracking-[0.22em] text-[#E8845A]">
+                О компании
+              </p>
+              <h1 className="mb-5 text-3xl font-bold leading-[1.12] md:text-5xl">
+                Мы знаем, где и как сделаны наши добавки
+              </h1>
+              <p className="max-w-xl text-base leading-relaxed text-[#6b6b6b] md:text-lg">
+                Первую линейку «взБАДрись» мы выпускаем на производстве «Мегафарм».
+                До запуска мы лично прошли весь путь сырья: от склада и лаборатории
+                до помещений, где наполняют и упаковывают баночки.
+              </p>
+              <div className="mt-7 flex flex-wrap gap-3 text-sm font-medium text-[#454545]">
+                <span className="rounded-full border border-[#efd9cc] bg-white px-4 py-2">Личный визит</span>
+                <span className="rounded-full border border-[#efd9cc] bg-white px-4 py-2">Проверка документов</span>
+                <span className="rounded-full border border-[#efd9cc] bg-white px-4 py-2">Открытое производство</span>
+              </div>
+            </div>
+
+            <div className="order-1 lg:order-2">
+              <div className="relative overflow-hidden rounded-[28px] border border-[#eadfd8] bg-white shadow-[0_24px_70px_rgba(91,62,45,0.13)]">
+                <Image
+                  src="/about/production-choice.jpg"
+                  alt="Кама Карамова и Полина Абдулкина на производстве Мегафарм"
+                  width={1800}
+                  height={1350}
+                  sizes="(min-width: 1024px) 54vw, 100vw"
+                  priority
+                  className="aspect-[4/3] h-full w-full object-cover"
+                />
+                <div className="absolute bottom-4 left-4 rounded-full bg-white/95 px-4 py-2 text-xs font-bold text-[#454545] shadow-lg backdrop-blur">
+                  Первый визит на производство
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section className="py-14 md:py-20">
+          <div className="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8">
+            <div className="mx-auto mb-10 max-w-3xl text-center">
+              <p className="mb-4 text-xs font-semibold uppercase tracking-[0.22em] text-[#E8845A]">
+                Почему мы выбрали это производство
+              </p>
+              <h2 className="mb-4 text-2xl font-bold leading-tight md:text-4xl">
+                Решение появилось ещё до того, как мы поднялись в цех
+              </h2>
+              <p className="leading-relaxed text-[#6b6b6b]">
+                Сначала нам показали склад и входной контроль. Мы увидели порядок,
+                понятную маркировку и сырьё, которое производство отказалось фасовать
+                и подготовило к возврату. Такая принципиальность для нас важнее красивых обещаний.
+              </p>
+            </div>
+
+            <div className="grid gap-5 md:grid-cols-3">
+              {productionChecks.map((check) => (
+                <article
+                  key={check.title}
+                  className="rounded-3xl border border-[#f0e8e0] bg-[#fdf8f5] p-6"
+                >
+                  <div className="mb-5 flex h-11 w-11 items-center justify-center rounded-2xl bg-[#FDDCCA] text-[#c8643c]">
+                    <check.icon size={22} />
+                  </div>
+                  <h3 className="mb-2 font-bold">{check.title}</h3>
+                  <p className="text-sm leading-relaxed text-[#6b6b6b]">{check.description}</p>
+                </article>
+              ))}
+            </div>
+
+            <p className="mx-auto mt-8 max-w-3xl text-center text-sm leading-relaxed text-[#8b817a]">
+              Мы спокойно называем производство и показываем его изнутри. Нам важно,
+              чтобы вы могли увидеть те же детали, на которые смотрели мы сами.
+            </p>
+          </div>
+        </section>
+
+        <section className="border-y border-[#f0e8e0] bg-[#fdf8f5] py-14 md:py-20">
+          <div className="mx-auto grid max-w-6xl items-center gap-10 px-4 sm:px-6 lg:grid-cols-2 lg:px-8">
+            <div className="relative overflow-hidden rounded-[28px] border border-[#eadfd8] bg-white shadow-[0_20px_60px_rgba(91,62,45,0.1)]">
+              <Image
+                src="/about/production-lab.jpg"
+                alt="Кама Карамова в лаборатории контроля сырья на производстве"
+                width={1800}
+                height={1350}
+                sizes="(min-width: 1024px) 50vw, 100vw"
+                className="aspect-[4/3] h-full w-full object-cover"
+              />
+              <div className="absolute bottom-4 left-4 rounded-full bg-white/95 px-4 py-2 text-xs font-bold text-[#454545] shadow-lg backdrop-blur">
+                В лаборатории контроля сырья
+              </div>
+            </div>
+
+            <div>
+              <p className="mb-4 text-xs font-semibold uppercase tracking-[0.22em] text-[#E8845A]">
+                Контроль качества
+              </p>
+              <h2 className="mb-5 text-2xl font-bold leading-tight md:text-4xl">
+                Проверка начинается до фасовки
+              </h2>
+              <p className="mb-7 leading-relaxed text-[#6b6b6b]">
+                Нам показали лабораторию, журналы контроля и то, как следят за чистотой
+                производства каждый день. Именно такие детали помогают понять, как правила
+                работают в реальности.
+              </p>
+              <div className="space-y-4">
+                {qualityChecks.map((check) => (
+                  <div key={check.title} className="flex gap-4 rounded-2xl border border-[#eadfd8] bg-white p-4">
+                    <div className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#FDDCCA] text-[#c8643c]">
+                      <FlaskConical size={16} />
+                    </div>
+                    <div>
+                      <h3 className="mb-1 text-sm font-bold">{check.title}</h3>
+                      <p className="text-sm leading-relaxed text-[#6b6b6b]">{check.description}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section className="py-14 md:py-20">
+          <div className="mx-auto grid max-w-6xl items-center gap-10 px-4 sm:px-6 lg:grid-cols-[1fr_390px] lg:px-8">
+            <div className="max-w-2xl">
+              <div className="mb-5 flex h-12 w-12 items-center justify-center rounded-2xl bg-[#FDDCCA] text-[#c8643c]">
+                <PlayCircle size={25} />
+              </div>
+              <p className="mb-4 text-xs font-semibold uppercase tracking-[0.22em] text-[#E8845A]">
+                Видеоэкскурсия · 2 минуты 38 секунд
+              </p>
+              <h2 className="mb-5 text-2xl font-bold leading-tight md:text-4xl">
+                Пройдите производство вместе с нами
+              </h2>
+              <p className="mb-5 leading-relaxed text-[#6b6b6b]">
+                Видео начинается у входа и проходит через помещения производства глазами
+                посетителя. Можно увидеть, где хранится сырьё, как устроены рабочие зоны
+                и где фасуют готовые добавки.
+              </p>
+              <p className="mb-7 leading-relaxed text-[#6b6b6b]">
+                Мы показываем этот маршрут целиком, потому что гордимся выбором первого
+                производства «взБАДрись» и хотим дать вам возможность посмотреть всё самостоятельно.
+              </p>
+              <a
+                href="https://kinescope.io/0QExahU3gD4JoaFv4Lyna5"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-2 rounded-full border border-[#E8845A] px-6 py-3 text-sm font-semibold text-[#E8845A] transition-colors hover:bg-[#E8845A] hover:text-white"
+              >
+                Открыть видео отдельно
+                <ArrowUpRight size={17} />
+              </a>
+            </div>
+
+            <div className="mx-auto w-full max-w-[390px]">
+              <div className="overflow-hidden rounded-[30px] border-[6px] border-[#2f2b29] bg-[#2f2b29] shadow-[0_24px_70px_rgba(47,43,41,0.22)]">
+                <div className="relative aspect-[9/16] w-full overflow-hidden rounded-[22px] bg-black">
+                  <iframe
+                    src="https://kinescope.io/embed/06cb734c-29a2-410c-92ea-dfaac642be62"
+                    title="Видеоэкскурсия по производству Мегафарм"
+                    allow="autoplay; fullscreen; picture-in-picture; encrypted-media; gyroscope; accelerometer; clipboard-write; screen-wake-lock"
+                    allowFullScreen
+                    loading="lazy"
+                    className="absolute inset-0 h-full w-full border-0"
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section className="border-y border-[#f0e8e0] bg-[#fdf8f5] py-14 md:py-20">
+          <div className="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8">
+            <div className="mb-10 text-center">
+              <p className="mb-4 text-xs font-semibold uppercase tracking-[0.22em] text-[#E8845A]">
+                Кто отвечает за продукт
+              </p>
+              <h2 className="mb-3 text-2xl font-bold md:text-4xl">Кама и Полина — основатели «взБАДрись»</h2>
+              <p className="mx-auto max-w-2xl leading-relaxed text-[#6b6b6b]">
+                Мы познакомились в научной лаборатории. Биологическое образование и годы
+                исследовательской работы приучили нас смотреть на составы, процессы и документы внимательно.
+              </p>
+            </div>
+
+            <div className="grid gap-5 md:grid-cols-2">
+              <article className="rounded-3xl border border-[#eadfd8] bg-white p-6 md:p-8">
+                <span className="mb-4 inline-flex rounded-full bg-[#FDDCCA] px-3 py-1 text-xs font-bold text-[#8b4513]">Составы</span>
+                <h3 className="mb-3 text-xl font-bold">Кама Карамова</h3>
+                <p className="text-sm leading-relaxed text-[#6b6b6b]">
+                  Нутрициолог с практикой более 5 лет. Шесть лет работала в эколого-биотехнологической
+                  лаборатории и писала диссертацию по устойчивости к антибиотикам. Отвечает за формы,
+                  дозировки и сочетаемость компонентов.
+                </p>
+              </article>
+              <article className="rounded-3xl border border-[#eadfd8] bg-white p-6 md:p-8">
+                <span className="mb-4 inline-flex rounded-full bg-[#FDDCCA] px-3 py-1 text-xs font-bold text-[#8b4513]">Качество и документы</span>
+                <h3 className="mb-3 text-xl font-bold">Полина Абдулкина</h3>
+                <p className="text-sm leading-relaxed text-[#6b6b6b]">
+                  Биолог по образованию, шесть лет работала в лаборатории. Участвовала в запуске
+                  производства с нуля и подготовке лаборатории к аккредитации. Проверяет документацию,
+                  сырьё и соответствие процессов требованиям качества.
+                </p>
+              </article>
+            </div>
+          </div>
+        </section>
+
+        <section className="py-14 md:py-20">
+          <div className="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8">
+            <div className="mb-10 text-center">
+              <p className="mb-4 text-xs font-semibold uppercase tracking-[0.22em] text-[#E8845A]">
+                Проверить самостоятельно
+              </p>
+              <h2 className="mb-3 text-2xl font-bold md:text-4xl">Документы по каждому БАДу</h2>
+              <p className="mx-auto max-w-2xl leading-relaxed text-[#6b6b6b]">
+                В карточках добавок доступны свидетельства о государственной регистрации
+                и сертификаты системы менеджмента качества производства.
+              </p>
+            </div>
+
+            <div className="grid gap-5 md:grid-cols-3">
+              {supplements.map((product) => (
+                <article key={product.id} className="rounded-3xl border border-[#f0e8e0] bg-[#fdf8f5] p-5">
+                  <Link
+                    href={`/product/${product.id}`}
+                    className="mb-4 block font-bold leading-snug hover:text-[#E8845A]"
+                  >
+                    {product.name}
+                  </Link>
+                  <div className="flex flex-col gap-2">
+                    {product.documents.map((document) => (
+                      <a
+                        key={document.url}
+                        href={document.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center gap-2 rounded-xl bg-white px-3 py-2.5 text-sm font-medium text-[#454545] transition-colors hover:bg-[#FDDCCA]/40"
+                      >
+                        <FileText size={16} className="shrink-0 text-[#E8845A]" />
+                        <span className="min-w-0 flex-1">{document.name}</span>
+                        <span className="text-xs text-[#E8845A]">PDF</span>
+                      </a>
+                    ))}
+                  </div>
+                </article>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        <section className="pb-16 md:pb-20">
+          <div className="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8">
+            <div className="rounded-[32px] bg-[#2f2b29] px-6 py-10 text-center text-white md:px-12 md:py-14">
+              <Eye className="mx-auto mb-5 text-[#F5A47F]" size={28} />
+              <h2 className="mb-3 text-2xl font-bold md:text-3xl">Изучите составы и документы сами</h2>
+              <p className="mx-auto mb-7 max-w-2xl leading-relaxed text-white/70">
+                В каталоге можно посмотреть состав, дозировки, способ приёма и документы каждой добавки.
+              </p>
+              <Link
+                href="/catalog"
+                className="inline-flex items-center gap-2 rounded-full bg-[#E8845A] px-7 py-3.5 font-semibold transition-colors hover:bg-[#f1936d]"
+              >
+                Перейти к добавкам
+                <ArrowUpRight size={18} />
+              </Link>
+            </div>
+          </div>
+        </section>
+      </main>
+      <Footer />
+    </>
+  );
+}

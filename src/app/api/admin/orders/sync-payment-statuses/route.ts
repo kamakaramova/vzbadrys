@@ -3,16 +3,17 @@ import { NextRequest, NextResponse } from "next/server";
 import { getOzonOrderStatus } from "@/lib/ozonAcquiring";
 import { applyOzonPaymentStatus } from "@/lib/ozonPaymentStatus";
 import { getServerSupabase } from "@/lib/supabaseServer";
+import { isAdminAuthorized } from "@/lib/adminAuth";
 
-const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD;
 const PENDING_STATUSES = ["creating", "awaiting_payment", "authorized", "processing_payment"];
 
-function isAuthorized(request: NextRequest) {
-  return Boolean(ADMIN_PASSWORD && request.headers.get("x-admin-password") === ADMIN_PASSWORD);
+function safeOzonError(error: unknown) {
+  const message = error instanceof Error ? error.message : "Ozon не дал статус";
+  return message.replace(/[a-f0-9]{32,}/gi, "[скрыто]").slice(0, 240);
 }
 
 export async function POST(request: NextRequest) {
-  if (!isAuthorized(request)) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+  if (!isAdminAuthorized(request)) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   const db = getServerSupabase();
   if (!db) return NextResponse.json({ error: "not_configured" }, { status: 503 });
 
@@ -44,8 +45,10 @@ export async function POST(request: NextRequest) {
       checked += 1;
       if (!result.ok) problems.push(`${order.id}: ${result.error}`);
       else if (result.changed) changed += 1;
-    } catch {
-      problems.push(`${order.id}: Ozon не дал статус`);
+    } catch (error) {
+      const message = safeOzonError(error);
+      console.warn(`Ozon payment status sync failed: ${message}`);
+      problems.push(`${order.id}: ${message}`);
     }
   }
 

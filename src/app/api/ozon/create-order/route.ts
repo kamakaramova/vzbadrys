@@ -5,12 +5,14 @@ import type { Product } from "@/lib/products";
 import {
   CURRENCY_CODE,
   createOrderSignature,
+  createPaymentReturnToken,
   getOzonConfig,
   postToOzon,
 } from "@/lib/ozonAcquiring";
 import { findReferralOwner, getAuthenticatedUser, getBonusBalance, normalizeCode, REFERRAL_DISCOUNT_PERCENT } from "@/lib/loyalty";
 import { getServerSupabase } from "@/lib/supabaseServer";
 import { getDeliverySettings } from "@/lib/deliverySettings";
+import { rateLimit } from "@/lib/rateLimit";
 
 export const runtime = "nodejs";
 
@@ -85,6 +87,8 @@ function distributeProductTotal(
 }
 
 export async function POST(request: NextRequest) {
+  const limit = rateLimit(request, "create-order", 10, 10 * 60 * 1000);
+  if (!limit.allowed) return NextResponse.json({ error: "Слишком много попыток оформления. Подождите несколько минут" }, { status: 429, headers: { "retry-after": String(limit.retryAfter) } });
   const db = getServerSupabase();
   if (!db) return NextResponse.json({ error: "База данных не настроена" }, { status: 503 });
 
@@ -232,7 +236,7 @@ export async function POST(request: NextRequest) {
   )) {
     return badRequest("Выберите отделение Почты России, чтобы рассчитать доставку");
   }
-  const deliveryPriceKopecks = discountedSubtotal >= 3000 && deliveryMethod !== "ozon_pvz"
+  const deliveryPriceKopecks = discountedSubtotal >= 3000
     ? 0
     : deliveryMethod === "pochta"
       ? requestedPochtaPriceKopecks
@@ -360,6 +364,7 @@ export async function POST(request: NextRequest) {
   }
 
   try {
+    const failToken = createPaymentReturnToken(extId, config.secretKey);
     const ozonResponse = await postToOzon<OzonCreateOrderResponse>("/v1/createOrder", {
       accessKey: config.accessKey,
       amount: { currencyCode: CURRENCY_CODE, value: amountValue },
@@ -368,7 +373,7 @@ export async function POST(request: NextRequest) {
       enableFiscalization: true,
       expiresAt,
       extId,
-      failUrl: `${config.siteUrl}/payment/fail?order=${encodeURIComponent(extId)}`,
+      failUrl: `${config.siteUrl}/payment/fail?order=${encodeURIComponent(extId)}&token=${failToken}`,
       fiscalizationPhone: customerPhone.replace(/\D/g, ""),
       fiscalizationType: config.fiscalizationType,
       items: ozonItems,

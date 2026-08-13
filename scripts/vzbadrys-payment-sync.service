@@ -1,0 +1,11 @@
+[Unit]
+Description=Sync pending VzBADris payment statuses with Ozon
+After=network-online.target vzbadrys.service
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+EnvironmentFile=/etc/vzbadrys/vzbadrys.env
+WorkingDirectory=/opt/vzbadrys
+ExecStart=/usr/bin/node /opt/vzbadrys/scripts/sync-ozon-payment-statuses.mjs
+User=root
