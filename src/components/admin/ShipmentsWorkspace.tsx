@@ -189,12 +189,11 @@ export default function ShipmentsWorkspace({ password }: { password: string }) {
     const deliveryCollected = rows.reduce((sum, row) => sum + row.customerDeliveryCost, 0);
     const completedCosts = rows.filter((row) => row.warehouse.actualDeliveryCost !== null);
     const actualDelivery = completedCosts.reduce((sum, row) => sum + Number(row.warehouse.actualDeliveryCost), 0);
-    const comparableCollected = completedCosts.reduce((sum, row) => sum + row.customerDeliveryCost, 0);
     const statusCounts = rows.reduce<Record<string, number>>((counts, row) => {
       counts[row.orderStatus] = (counts[row.orderStatus] || 0) + 1;
       return counts;
     }, {});
-    return { revenue, deliveryCollected, actualDelivery, deliveryBalance: comparableCollected - actualDelivery, completedCosts: completedCosts.length, statusCounts };
+    return { revenue, deliveryCollected, actualDelivery, deliveryBalance: deliveryCollected - actualDelivery, completedCosts: completedCosts.length, statusCounts };
   }, [rows]);
 
   const copyOrder = async (id: string) => {
