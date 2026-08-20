@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Check, Clipboard, RefreshCw, Search } from "lucide-react";
+import { ArrowDown, ArrowUp, ArrowUpDown, Check, Clipboard, RefreshCw, Search } from "lucide-react";
 
 type Warehouse = {
   actualDeliveryCost: number | null;
@@ -36,6 +36,7 @@ const STATUS_STYLE: Record<string, string> = {
   delivered: "bg-green-50 text-green-700 border-green-200",
   cancelled: "bg-red-50 text-red-700 border-red-200",
 };
+const STATUS_ORDER: Record<string, number> = Object.fromEntries(ORDER_STATUSES.map(([value], index) => [value, index]));
 
 const today = () => new Date().toLocaleDateString("sv-SE", { timeZone: "Europe/Moscow" });
 const money = (value: number) => `${value.toLocaleString("ru-RU", { maximumFractionDigits: 2 })} ₽`;
@@ -45,7 +46,7 @@ function savedView() {
   if (typeof window === "undefined") return null;
   try {
     return JSON.parse(sessionStorage.getItem(STORAGE_KEY) || "null") as null | {
-      from?: string; to?: string; search?: string; onlyIncomplete?: boolean; scrollLeft?: number; scrollTop?: number;
+      from?: string; to?: string; search?: string; onlyIncomplete?: boolean; statusSort?: "none" | "asc" | "desc"; scrollLeft?: number; scrollTop?: number;
     };
   } catch { return null; }
 }
@@ -56,6 +57,7 @@ export default function ShipmentsWorkspace({ password }: { password: string }) {
   const [to, setTo] = useState(today);
   const [search, setSearch] = useState("");
   const [onlyIncomplete, setOnlyIncomplete] = useState(false);
+  const [statusSort, setStatusSort] = useState<"none" | "asc" | "desc">("none");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [saving, setSaving] = useState<string | null>(null);
@@ -98,6 +100,7 @@ export default function ShipmentsWorkspace({ password }: { password: string }) {
       if (view.to) setTo(view.to);
       setSearch(view.search || "");
       setOnlyIncomplete(Boolean(view.onlyIncomplete));
+      setStatusSort(view.statusSort || "none");
       requestAnimationFrame(() => {
         if (!tableRef.current) return;
         tableRef.current.scrollLeft = view.scrollLeft || 0;
@@ -110,22 +113,29 @@ export default function ShipmentsWorkspace({ password }: { password: string }) {
   const rememberView = () => {
     const table = tableRef.current;
     sessionStorage.setItem(STORAGE_KEY, JSON.stringify({
-      from, to, search, onlyIncomplete, scrollLeft: table?.scrollLeft || 0, scrollTop: table?.scrollTop || 0,
+      from, to, search, onlyIncomplete, statusSort, scrollLeft: table?.scrollLeft || 0, scrollTop: table?.scrollTop || 0,
     }));
   };
   useEffect(() => {
     if (!restoredViewRef.current) return;
     rememberView();
-  }, [from, to, search, onlyIncomplete]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [from, to, search, onlyIncomplete, statusSort]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const visible = useMemo(() => rows.filter((row) => {
-    const q = search.trim().toLowerCase();
-    const matches = !q || [row.id, row.customerName, row.email, row.phone, row.deliveryAddress]
-      .some((value) => value.toLowerCase().includes(q));
-    const w = row.warehouse;
-    const incomplete = !w.orderChecked || !w.assembled || !w.fiscalReceiptDone || !w.honestSignDone;
-    return matches && (!onlyIncomplete || incomplete);
-  }), [rows, search, onlyIncomplete]);
+  const visible = useMemo(() => {
+    const filtered = rows.filter((row) => {
+      const q = search.trim().toLowerCase();
+      const matches = !q || [row.id, row.customerName, row.email, row.phone, row.deliveryAddress]
+        .some((value) => value.toLowerCase().includes(q));
+      const w = row.warehouse;
+      const incomplete = !w.orderChecked || !w.assembled || !w.fiscalReceiptDone || !w.honestSignDone;
+      return matches && (!onlyIncomplete || incomplete);
+    });
+    if (statusSort === "none") return filtered;
+    const direction = statusSort === "asc" ? 1 : -1;
+    return [...filtered].sort((a, b) => direction * ((STATUS_ORDER[a.orderStatus] ?? 99) - (STATUS_ORDER[b.orderStatus] ?? 99)));
+  }, [rows, search, onlyIncomplete, statusSort]);
+
+  const toggleStatusSort = () => setStatusSort((current) => current === "none" ? "asc" : current === "asc" ? "desc" : "none");
 
   const updateLocal = (id: string, changes: Partial<Warehouse>) => setRows((current) => current.map((row) =>
     row.id === id ? { ...row, warehouse: { ...row.warehouse, ...changes } } : row));
@@ -261,7 +271,11 @@ export default function ShipmentsWorkspace({ password }: { password: string }) {
         </colgroup>
         <thead className="sticky top-0 z-20 bg-[#faf6f3] text-[#706762]"><tr>
           <th className="sticky left-0 z-30 bg-[#faf6f3] w-11 text-center px-2 py-3 border-b border-r border-[#eadfd8] font-semibold">№</th>
-          {['Дата / заказ','Покупатель','Товары','Сумма заказа','Доставка / адрес','Доставка клиенту','Доставка факт','ПВЗ отправки',...checks.map(([,label]) => label),'Статус заказа','Комментарий','Последнее изменение'].map((label, index) => <th key={label} className={`${index >= 8 && index <= 11 ? "text-center px-1" : "text-left px-2.5"} py-3 border-b border-r border-[#eadfd8] leading-tight font-semibold`}>{label}</th>)}
+          {['Дата / заказ','Покупатель','Товары','Сумма заказа','Доставка / адрес','Доставка клиенту','Доставка факт','ПВЗ отправки',...checks.map(([,label]) => label),'Статус заказа','Комментарий','Последнее изменение'].map((label, index) => <th key={label} className={`${index >= 8 && index <= 11 ? "text-center px-1" : "text-left px-2.5"} py-3 border-b border-r border-[#eadfd8] leading-tight font-semibold`}>
+            {label === "Статус заказа" ? <button type="button" onClick={toggleStatusSort} title="Сортировать по статусу" className="inline-flex items-center gap-1.5 hover:text-[#c66d48] transition-colors">
+              <span>{label}</span>{statusSort === "asc" ? <ArrowUp size={14}/> : statusSort === "desc" ? <ArrowDown size={14}/> : <ArrowUpDown size={14}/>}
+            </button> : label}
+          </th>)}
         </tr></thead>
         <tbody>{visible.map((row, index) => <tr key={row.id} className="group align-top hover:bg-[#fffdfb]">
           <td className="sticky left-0 z-10 bg-white group-hover:bg-[#fffdfb] px-2 py-3 border-b border-r border-[#eee7e2] text-center font-bold tabular-nums text-[#8f8782]">{index + 1}</td>
