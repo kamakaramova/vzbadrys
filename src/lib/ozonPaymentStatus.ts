@@ -1,6 +1,6 @@
 import "server-only";
 
-import { decrementProductStock } from "@/lib/stock";
+import { allocateOrderStock } from "@/lib/stock";
 import { emailAddressFromOrder, toEmailOrder, type PaymentOrderRow } from "@/lib/email/order";
 import { sendEmail } from "@/lib/email/send";
 import { orderEmail } from "@/lib/email/templates";
@@ -69,7 +69,11 @@ export async function applyOzonPaymentStatus({
     try {
       if (!order.stock_written_off) {
         const lines = (order.items ?? []) as { productId?: string; stockAmount?: number }[];
-        await decrementProductStock(db, lines.map((line) => ({ id: line.productId || "", amount: Number(line.stockAmount) })));
+        await allocateOrderStock(
+          db,
+          String(order.id),
+          lines.map((line) => ({ id: line.productId || "", amount: Number(line.stockAmount) })),
+        );
       }
       const { error: paidError } = await db.from("payment_orders").update({
         status: "paid",

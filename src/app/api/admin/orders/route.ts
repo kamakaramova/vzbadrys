@@ -7,6 +7,7 @@ import { orderEmail, type OrderEmailStatus } from "@/lib/email/templates";
 import { deliveryMethodLabel, paymentMethodLabel } from "@/lib/orderLabels";
 import { getBonusBalance } from "@/lib/loyalty";
 import { isAdminAuthorized } from "@/lib/adminAuth";
+import { allocateOrderStock, returnOrderStock } from "@/lib/stock";
 
 const ORDER_STATUSES = new Set(["processing", "confirmed", "shipped", "delivered", "cancelled"]);
 
@@ -169,7 +170,7 @@ export async function PATCH(request: NextRequest) {
 
   const { data: current, error: readError } = await db
     .from("payment_orders")
-    .select("id,status,amount_kopecks,customer,items,delivery,user_id")
+    .select("id,status,amount_kopecks,customer,items,delivery,user_id,stock_written_off")
     .eq("id", body.orderId)
     .maybeSingle();
   if (readError || !current) {
@@ -190,8 +191,29 @@ export async function PATCH(request: NextRequest) {
     .eq("id", body.orderId);
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
-  let emailResult: "sent" | "skipped" | "failed" = "skipped";
   const previousOrderStatus = String(delivery.orderStatus ?? "processing");
+  if (current.status === "paid" && body.status !== previousOrderStatus) {
+    try {
+      if (body.status === "cancelled" && previousOrderStatus !== "cancelled") {
+        await returnOrderStock(db, body.orderId, "Отмена заказа администратором");
+      } else if (previousOrderStatus === "cancelled" && body.status !== "cancelled") {
+        const lines = (current.items ?? []) as { productId?: string; stockAmount?: number }[];
+        await allocateOrderStock(
+          db,
+          body.orderId,
+          lines.map((line) => ({ id: line.productId || "", amount: Number(line.stockAmount) })),
+        );
+      }
+    } catch {
+      await db.from("payment_orders").update({
+        delivery,
+        updated_at: new Date().toISOString(),
+      }).eq("id", body.orderId);
+      return NextResponse.json({ error: "Статус не изменён: не удалось обновить складские остатки" }, { status: 500 });
+    }
+  }
+
+  let emailResult: "sent" | "skipped" | "failed" = "skipped";
   const previousTrackNumber = String(delivery.trackNumber ?? "").trim();
   const nextTrackNumber = body.trackNumber?.trim() || "";
   const emailStatuses = new Set(["confirmed", "shipped", "delivered", "cancelled"]);
@@ -259,12 +281,19 @@ export async function DELETE(request: NextRequest) {
     return NextResponse.json({ error: "Требуется подтверждение удаления" }, { status: 400 });
   }
   if (!/^VZB-\d{8}-[A-F0-9]{8}$/.test(orderId)) return NextResponse.json({ error: "invalid_order" }, { status: 400 });
-  const { data: order, error: readError } = await db.from("payment_orders").select("id, status, delivery").eq("id", orderId).maybeSingle();
+  const { data: order, error: readError } = await db.from("payment_orders").select("id, status, delivery, stock_written_off").eq("id", orderId).maybeSingle();
   if (readError || !order) return NextResponse.json({ error: "Заказ не найден" }, { status: 404 });
   const delivery = (order.delivery ?? {}) as Record<string, unknown>;
   const isCancelled = delivery.orderStatus === "cancelled";
   if (order.status === "paid" && !isCancelled) {
     return NextResponse.json({ error: "Оплаченный активный заказ удалить нельзя" }, { status: 403 });
+  }
+  if (order.status === "paid" && isCancelled && order.stock_written_off) {
+    try {
+      await returnOrderStock(db, orderId, "Удаление отменённого заказа");
+    } catch {
+      return NextResponse.json({ error: "Заказ не удалён: не удалось вернуть товар на склад" }, { status: 500 });
+    }
   }
   const { error } = await db.from("payment_orders").delete().eq("id", orderId);
   if (error) return NextResponse.json({ error: "Не удалось удалить заказ" }, { status: 500 });

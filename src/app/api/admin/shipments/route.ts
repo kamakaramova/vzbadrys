@@ -24,14 +24,23 @@ const BOOLEAN_FIELDS = new Set([
 ]);
 const TEXT_FIELDS = new Set(["dispatchPoint", "internalComment"]);
 
-function mapShipment(row: Record<string, unknown>) {
+type BatchAllocation = { product_id: string; batch_id: string | null; quantity: number };
+
+function mapShipment(row: Record<string, unknown>, allocations: BatchAllocation[] = [], lotByBatch = new Map<string, string>()) {
   const customer = (row.customer ?? {}) as Record<string, string>;
   const delivery = (row.delivery ?? {}) as Record<string, unknown>;
   const warehouse = (delivery.warehouse ?? {}) as WarehouseData;
   const items = ((row.items ?? []) as Record<string, unknown>[]).map((item) => ({
     id: String(item.cartId ?? item.productId ?? ""),
+    productId: String(item.productId ?? ""),
     name: String(item.name ?? "Товар"),
     quantity: Number(item.quantity ?? 1),
+    stockAmount: Number(item.stockAmount ?? 0),
+    allocations: allocations.filter((allocation) => allocation.product_id === String(item.productId ?? "")).map((allocation) => ({
+      batchId: allocation.batch_id,
+      lotNumber: allocation.batch_id ? lotByBatch.get(allocation.batch_id) || "Партия" : null,
+      quantity: Number(allocation.quantity),
+    })),
   }));
   return {
     id: String(row.id),
@@ -81,7 +90,26 @@ export async function GET(request: NextRequest) {
   if (to && /^\d{4}-\d{2}-\d{2}$/.test(to)) query = query.lt("created_at", `${to}T23:59:59.999+03:00`);
   const { data, error } = await query;
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-  return NextResponse.json({ shipments: (data ?? []).map((row) => mapShipment(row)) });
+  const ids = (data ?? []).map((row) => String(row.id));
+  let allocations: Array<BatchAllocation & { order_id: string }> = [];
+  const lotByBatch = new Map<string, string>();
+  if (ids.length) {
+    const allocationResult = await db.from("order_batch_allocations")
+      .select("order_id,product_id,batch_id,quantity").in("order_id", ids).eq("status", "written_off");
+    if (!allocationResult.error) {
+      allocations = (allocationResult.data ?? []) as Array<BatchAllocation & { order_id: string }>;
+      const batchIds = [...new Set(allocations.map((allocation) => allocation.batch_id).filter((id): id is string => Boolean(id)))];
+      if (batchIds.length) {
+        const batchResult = await db.from("inventory_batches").select("id,lot_number").in("id", batchIds);
+        if (!batchResult.error) for (const batch of batchResult.data ?? []) lotByBatch.set(String(batch.id), String(batch.lot_number));
+      }
+    }
+  }
+  return NextResponse.json({ shipments: (data ?? []).map((row) => mapShipment(
+    row,
+    allocations.filter((allocation) => allocation.order_id === String(row.id)),
+    lotByBatch,
+  )) });
 }
 
 export async function PATCH(request: NextRequest) {

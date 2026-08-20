@@ -17,7 +17,7 @@ type Warehouse = {
 };
 type Shipment = {
   id: string; createdAt: string; orderStatus: string; customerName: string; email: string; phone: string;
-  items: Array<{ id: string; name: string; quantity: number }>; itemsCount: number; total: number;
+  items: Array<{ id: string; productId: string; name: string; quantity: number; stockAmount: number; allocations: Array<{ batchId: string | null; lotNumber: string | null; quantity: number }> }>; itemsCount: number; total: number;
   deliveryMethod: string; deliveryAddress: string; customerDeliveryCost: number; trackNumber: string; warehouse: Warehouse;
 };
 
@@ -199,11 +199,12 @@ export default function ShipmentsWorkspace({ password }: { password: string }) {
     const deliveryCollected = rows.reduce((sum, row) => sum + row.customerDeliveryCost, 0);
     const completedCosts = rows.filter((row) => row.warehouse.actualDeliveryCost !== null);
     const actualDelivery = completedCosts.reduce((sum, row) => sum + Number(row.warehouse.actualDeliveryCost), 0);
+    const completedDeliveryCollected = completedCosts.reduce((sum, row) => sum + row.customerDeliveryCost, 0);
     const statusCounts = rows.reduce<Record<string, number>>((counts, row) => {
       counts[row.orderStatus] = (counts[row.orderStatus] || 0) + 1;
       return counts;
     }, {});
-    return { revenue, deliveryCollected, actualDelivery, deliveryBalance: deliveryCollected - actualDelivery, completedCosts: completedCosts.length, statusCounts };
+    return { revenue, deliveryCollected, actualDelivery, deliveryBalance: completedDeliveryCollected - actualDelivery, completedCosts: completedCosts.length, statusCounts };
   }, [rows]);
 
   const copyOrder = async (id: string) => {
@@ -291,7 +292,7 @@ export default function ShipmentsWorkspace({ password }: { password: string }) {
             </div>
           </td>
           <td className="px-2.5 py-3 border-b border-r border-[#eee7e2] w-[180px]"><b>{row.customerName}</b><div className="text-[#837a75] mt-1 whitespace-nowrap">{row.phone}</div><div className="text-[#aaa] break-all">{row.email}</div></td>
-          <td className="px-2.5 py-3 border-b border-r border-[#eee7e2] w-[205px]">{row.items.map((item) => <div key={item.id} className="mb-1 leading-snug">{item.name} <b>×{item.quantity}</b></div>)}</td>
+          <td className="px-2.5 py-3 border-b border-r border-[#eee7e2] w-[205px]">{row.items.map((item) => <div key={item.id} className="mb-2 leading-snug"><div>{item.name} <b>×{item.quantity}</b></div>{item.allocations.map((allocation, allocationIndex) => <div key={`${allocation.batchId || "none"}:${allocationIndex}`} className={`mt-0.5 text-[10px] font-semibold ${allocation.batchId ? "text-[#7d746f]" : "text-red-600"}`}>{allocation.batchId ? `Партия ${allocation.lotNumber}: ${allocation.quantity}` : `Не распределено: ${allocation.quantity}`}</div>)}</div>)}</td>
           <td className="px-2.5 py-3 border-b border-r border-[#eee7e2] w-[105px] font-extrabold whitespace-nowrap tabular-nums">{money(row.total)}</td>
           <td className="px-2.5 py-3 border-b border-r border-[#eee7e2] w-[235px]"><b>{row.deliveryMethod}</b><button onClick={() => navigator.clipboard.writeText(row.deliveryAddress)} className="block text-left mt-1 text-[#756c67] hover:text-[#c66d48] leading-snug">{row.deliveryAddress || "Адрес не указан"}</button>{row.trackNumber && <div className="mt-1 font-mono">{row.trackNumber}</div>}</td>
           <td className="px-3 py-3 border-b border-r border-[#eee7e2] font-bold whitespace-nowrap">{money(row.customerDeliveryCost)}</td>

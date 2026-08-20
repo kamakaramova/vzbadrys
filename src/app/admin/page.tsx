@@ -5,15 +5,16 @@ import {
   BarChart2, Users, ShoppingBag, TrendingUp,
   Search, Download, ChevronUp, ChevronDown,
   X, Check, Package, Eye, Tag, Trash2, ToggleLeft, ToggleRight,
-  Plus, Edit2, ImageIcon, Mail, Send, UserPlus, RefreshCw, Link2, MessageCircle,
+  Edit2, ImageIcon, Mail, Send, UserPlus, RefreshCw, Link2, MessageCircle,
 } from "lucide-react";
 import { useProductStore } from "@/store/productStore";
 import { Product, WeightVariant } from "@/lib/products";
 import type { CellObject, SheetData } from "write-excel-file/browser";
 import SalesDynamicsChart from "@/components/admin/SalesDynamicsChart";
 import ShipmentsWorkspace from "@/components/admin/ShipmentsWorkspace";
+import InventoryWorkspace from "@/components/admin/InventoryWorkspace";
 
-type Tab = "dashboard" | "orders" | "shipments" | "customers" | "feedback" | "promos" | "products" | "emails" | "integrations";
+type Tab = "dashboard" | "orders" | "shipments" | "inventory" | "customers" | "feedback" | "promos" | "products" | "emails" | "integrations";
 type SortField = "name" | "email" | "totalSpent" | "ordersCount" | "avgCheck" | "lastOrder" | "createdAt";
 type SortDir = "asc" | "desc";
 type OrderSortField = "date" | "total" | "status" | "userName";
@@ -224,9 +225,6 @@ export default function AdminPage() {
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [productSearch, setProductSearch] = useState("");
   const [productSaved, setProductSaved] = useState(false);
-  const [showAddProduct, setShowAddProduct] = useState(false);
-  const [receiveQtys, setReceiveQtys] = useState<Record<string, string>>({});
-  const [receiveSaved, setReceiveSaved] = useState<Record<string, boolean>>({});
   const [productsSaving, setProductsSaving] = useState(false);
   const [productsMessage, setProductsMessage] = useState("");
 
@@ -263,7 +261,7 @@ export default function AdminPage() {
   const orders = mounted ? dbOrders : [];
   const promos = mounted ? dbPromos : [];
   const allProducts = mounted ? productStore.products : [];
-  const { updateProduct, deleteProduct, toggleStock, resetToDefault, receiveStock, setStockQty, setAdminPassword, seedDatabase } = productStore;
+  const { updateProduct, deleteProduct, toggleStock, resetToDefault, setAdminPassword, seedDatabase } = productStore;
 
   const openOrderDetails = (order: Order) => {
     setSelectedOrder(order);
@@ -918,15 +916,16 @@ export default function AdminPage() {
         <button onClick={() => { void fetch("/api/admin/login", { method: "DELETE" }); setAuthed(false); setPw(""); setAdminPassword(null); }} className="text-xs text-[#aaa] hover:text-[#E8845A]">Выйти</button>
       </div>
 
-      <div className={`${tab === "shipments" ? "max-w-[1920px] px-3 sm:px-4 lg:px-5" : "max-w-7xl px-4 sm:px-6 lg:px-8"} mx-auto py-8`}>
+      <div className={`${tab === "shipments" || tab === "inventory" ? "max-w-[1920px] px-3 sm:px-4 lg:px-5" : "max-w-7xl px-4 sm:px-6 lg:px-8"} mx-auto py-8`}>
         {/* Табы */}
         <div className="flex gap-1.5 sm:gap-2 mb-6 sm:mb-8 bg-[#f5f0ec] p-1.5 rounded-2xl w-full overflow-x-auto">
-          {(["dashboard", "orders", "shipments", "customers", "feedback", "promos", "products", "emails", "integrations"] as const).map((id) => {
-            const labels: Record<typeof id, string> = { dashboard: "Дашборд", orders: "Заказы", shipments: "Отгрузки", customers: "Покупатели", feedback: "Отзывы и вопросы", promos: "Промокоды", products: "Товары", emails: "Письма", integrations: "Интеграции" };
+          {(["dashboard", "orders", "shipments", "inventory", "customers", "feedback", "promos", "products", "emails", "integrations"] as const).map((id) => {
+            const labels: Record<typeof id, string> = { dashboard: "Дашборд", orders: "Заказы", shipments: "Отгрузки", inventory: "Склад", customers: "Покупатели", feedback: "Отзывы и вопросы", promos: "Промокоды", products: "Товары", emails: "Письма", integrations: "Интеграции" };
             const icons: Record<typeof id, React.ReactNode> = {
               dashboard: <BarChart2 size={15} />,
               orders: <ShoppingBag size={15} />,
               shipments: <Package size={15} />,
+              inventory: <Package size={15} />,
               customers: <Users size={15} />,
               feedback: <MessageCircle size={15} />,
               promos: <Tag size={15} />,
@@ -1209,6 +1208,8 @@ export default function AdminPage() {
         )}
 
         {tab === "shipments" && <ShipmentsWorkspace password={pw} />}
+
+        {tab === "inventory" && <InventoryWorkspace password={pw} />}
 
         {/* ПОКУПАТЕЛИ */}
         {tab === "customers" && (
@@ -1947,88 +1948,9 @@ export default function AdminPage() {
               </p>
             )}
 
-            {/* ПРИЁМКА ТОВАРА */}
-            <div className="bg-white rounded-3xl border border-[#f0e8e0] overflow-hidden">
-              <div className="px-6 py-4 border-b border-[#f0e8e0]">
-                <h2 className="font-bold flex items-center gap-2"><Plus size={16} className="text-[#E8845A]" /> Приёмка товара</h2>
-                <p className="text-xs text-[#aaa] mt-1">БАДы принимаем в штуках, семена — в граммах. Остаток обновляется автоматически. Когда остаток = 0, карточка уходит в «нет в наличии».</p>
-              </div>
-              <div className="divide-y divide-[#f0e8e0]">
-                {allProducts.filter((p) => p.name.toLowerCase().includes(productSearch.toLowerCase())).map((p) => {
-                  const isSeed = p.category === "seeds";
-                  const unit = isSeed ? "г" : "шт.";
-                  // порог «мало»: для семян 500 г, для БАДов 5 шт.
-                  const lowThreshold = isSeed ? 500 : 5;
-                  const stockColor = p.stockQty === undefined ? "text-[#aaa]" : p.stockQty === 0 ? "text-red-500 font-bold" : p.stockQty <= lowThreshold ? "text-orange-500 font-bold" : "text-green-600 font-bold";
-                  const fmtStock = (g: number) => isSeed
-                    ? (g >= 1000 ? `${g.toLocaleString("ru-RU")} г (${(g / 1000).toLocaleString("ru-RU")} кг)` : `${g} г`)
-                    : `${g} шт.`;
-                  return (
-                    <div key={p.id} className="flex items-center gap-4 px-6 py-3">
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-semibold truncate">{p.name} {isSeed && <span className="text-[10px] font-normal text-[#aaa]">· семена</span>}</p>
-                        <p className="text-xs mt-0.5">
-                          Остаток: <span className={stockColor}>
-                            {p.stockQty === undefined ? "не отслеживается" : fmtStock(p.stockQty)}
-                          </span>
-                          {p.stockQty !== undefined && !p.inStock && p.stockQty === 0 && (
-                            <span className="ml-2 text-red-400 font-semibold">· Нет в наличии на сайте</span>
-                          )}
-                        </p>
-                      </div>
-                      {/* Поле приёмки */}
-                      <div className="flex items-center gap-2 flex-shrink-0">
-                        <span className="text-xs text-[#aaa] hidden sm:block">Принять:</span>
-                        <input
-                          type="number"
-                          min="1"
-                          value={receiveQtys[p.id] || ""}
-                          onChange={(e) => setReceiveQtys({ ...receiveQtys, [p.id]: e.target.value })}
-                          placeholder={unit}
-                          className="w-24 px-3 py-2 rounded-xl border border-[#f0e8e0] text-sm outline-none focus:border-[#E8845A] text-center"
-                        />
-                        <span className="text-xs text-[#aaa] w-6">{unit}</span>
-                        <button
-                          onClick={async () => {
-                            const qty = parseInt(receiveQtys[p.id] || "0");
-                            if (!qty || qty < 1) return;
-                            const result = await receiveStock(p.id, qty);
-                            if (!result.ok) {
-                              setProductsMessage(`Не удалось сохранить остаток: ${result.error}`);
-                              return;
-                            }
-                            setReceiveQtys({ ...receiveQtys, [p.id]: "" });
-                            setReceiveSaved({ ...receiveSaved, [p.id]: true });
-                            setTimeout(() => setReceiveSaved((prev) => ({ ...prev, [p.id]: false })), 1500);
-                          }}
-                          className="px-4 py-2 rounded-xl bg-[#E8845A] hover:bg-[#d4703f] text-white text-xs font-bold transition-all whitespace-nowrap"
-                        >
-                          {receiveSaved[p.id] ? <Check size={14} /> : "+ Принять"}
-                        </button>
-                        {/* Установить точный остаток */}
-                        <button
-                          onClick={async () => {
-                            const qty = prompt(`Установить точный остаток для «${p.name}» (в ${isSeed ? "граммах" : "штуках"}):\nТекущий остаток: ${p.stockQty ?? "не задан"}`);
-                            if (qty === null) return;
-                            const num = parseInt(qty);
-                            if (!isNaN(num) && num >= 0) {
-                              const result = await setStockQty(p.id, num);
-                              setProductsMessage(result.ok
-                                ? `Остаток «${p.name}» сохранён: ${num} ${unit}`
-                                : `Не удалось сохранить остаток: ${result.error}`,
-                              );
-                            }
-                          }}
-                          title="Установить точный остаток"
-                          className="p-2 rounded-xl border border-[#f0e8e0] text-[#aaa] hover:text-[#E8845A] hover:border-[#E8845A] transition-all text-xs"
-                        >
-                          <Edit2 size={14} />
-                        </button>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
+            <div className="rounded-2xl border border-[#f0e8e0] bg-[#fff8f4] px-5 py-4 text-sm text-[#756c67] flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <span>Остатки, приёмка и инвентаризация теперь ведутся по партиям во вкладке «Склад».</span>
+              <button onClick={() => setTab("inventory")} className="shrink-0 px-4 py-2 rounded-xl bg-white border border-[#eadfd8] text-[#c66d48] font-bold">Открыть склад</button>
             </div>
 
             {/* Список товаров */}
@@ -2122,7 +2044,7 @@ export default function AdminPage() {
               </div>
             </div>
 
-            <p className="text-xs text-[#aaa] text-center">После изменения остатка или наличия нажмите «Сохранить все изменения». Товары с остатком 0 не показываются в каталоге.</p>
+            <p className="text-xs text-[#aaa] text-center">Здесь редактируются карточки и видимость товара. Остатки меняются только через партии во вкладке «Склад».</p>
           </div>
         )}
       </div>{/* /max-w-7xl */}

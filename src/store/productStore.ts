@@ -19,9 +19,6 @@ interface ProductStore {
   resetToDefault: () => Promise<SaveResult>;
   seedDatabase: () => Promise<{ ok: boolean; error?: string }>;
   getProducts: () => Product[];
-  receiveStock: (id: string, qty: number) => Promise<SaveResult>;
-  writeOffStock: (id: string, qty: number) => Promise<SaveResult>;
-  setStockQty: (id: string, qty: number) => Promise<SaveResult>;
 }
 
 // Отправка изменённого товара в базу (только из админки, где задан пароль).
@@ -123,15 +120,22 @@ export const useProductStore = create<ProductStore>((set, get) => ({
   },
 
   toggleStock: async (id) => {
-    let changed: Product | undefined;
-    set((s) => ({
-      products: s.products.map((p) => {
-        if (p.id !== id) return p;
-        changed = { ...p, inStock: !p.inStock };
-        return changed;
-      }),
-    }));
-    return changed ? persist(changed, get().adminPassword) : { ok: false, error: "Товар не найден" };
+    const existing = get().products.find((product) => product.id === id);
+    if (!existing) return { ok: false, error: "Товар не найден" };
+    const password = get().adminPassword;
+    if (!password) return { ok: false, error: "Сессия администратора закончилась. Войдите заново." };
+    try {
+      const response = await fetch("/api/products", {
+        method: "POST", headers: { "content-type": "application/json" },
+        body: JSON.stringify({ op: "toggleStock", id }),
+      });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) return { ok: false, error: payload.error || "Не удалось изменить наличие" };
+      set((state) => ({ products: state.products.map((product) => product.id === id ? { ...product, inStock: Boolean(payload.inStock) } : product) }));
+      return { ok: true };
+    } catch {
+      return { ok: false, error: "Не удалось связаться с базой. Повторите попытку." };
+    }
   },
 
   resetToDefault: async () => {
@@ -161,45 +165,6 @@ export const useProductStore = create<ProductStore>((set, get) => ({
   },
 
   getProducts: () => get().products,
-
-  receiveStock: async (id, qty) => {
-    let changed: Product | undefined;
-    set((s) => ({
-      products: s.products.map((p) => {
-        if (p.id !== id) return p;
-        const newQty = (p.stockQty ?? 0) + qty;
-        changed = { ...p, stockQty: newQty, inStock: newQty > 0 };
-        return changed;
-      }),
-    }));
-    return changed ? persist(changed, get().adminPassword) : { ok: false, error: "Товар не найден" };
-  },
-
-  writeOffStock: async (id, qty) => {
-    let changed: Product | undefined;
-    set((s) => ({
-      products: s.products.map((p) => {
-        if (p.id !== id) return p;
-        const newQty = Math.max(0, (p.stockQty ?? 0) - qty);
-        changed = { ...p, stockQty: newQty, inStock: newQty > 0 };
-        return changed;
-      }),
-    }));
-    return changed ? persist(changed, get().adminPassword) : { ok: false, error: "Товар не найден" };
-  },
-
-  setStockQty: async (id, qty) => {
-    let changed: Product | undefined;
-    set((s) => ({
-      products: s.products.map((p) => {
-        if (p.id !== id) return p;
-        const newQty = Math.max(0, qty);
-        changed = { ...p, stockQty: newQty, inStock: newQty > 0 };
-        return changed;
-      }),
-    }));
-    return changed ? persist(changed, get().adminPassword) : { ok: false, error: "Товар не найден" };
-  },
 }));
 
 // Удобный хук: сам инициализирует данные и отдаёт актуальный список товаров.
