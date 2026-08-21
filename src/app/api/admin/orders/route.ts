@@ -219,11 +219,10 @@ export async function PATCH(request: NextRequest) {
   const emailStatuses = new Set(["confirmed", "shipped", "delivered", "cancelled"]);
   const shouldNotify = body.status !== previousOrderStatus
     || (body.status === "shipped" && Boolean(nextTrackNumber) && nextTrackNumber !== previousTrackNumber);
-  if (
-    current.status === "paid" &&
-    shouldNotify &&
-    emailStatuses.has(body.status)
-  ) {
+  // Об отмене сообщаем всегда — в том числе когда покупатель не успел оплатить.
+  // Остальные письма о движении заказа имеют смысл только после оплаты.
+  const canSendStatusEmail = body.status === "cancelled" || current.status === "paid";
+  if (canSendStatusEmail && shouldNotify && emailStatuses.has(body.status)) {
     const updatedOrder = {
       ...current,
       delivery: {
