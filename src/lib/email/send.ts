@@ -3,6 +3,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 
 export type EmailKind =
   | "payment_paid"
+  | "payment_failed"
   | "order_confirmed"
   | "order_shipped"
   | "order_delivered"

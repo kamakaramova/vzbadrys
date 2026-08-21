@@ -147,7 +147,23 @@ export async function applyOzonPaymentStatus({
       is_test: Boolean(isTest),
       updated_at: now,
     }).eq("id", order.id).neq("status", "paid");
-    return error ? { ok: false, error: "update_failed" } : { ok: true, changed: true };
+    if (error) return { ok: false, error: "update_failed" };
+
+    const emailOrder = toEmailOrder(order as PaymentOrderRow);
+    const recipient = emailAddressFromOrder(order as PaymentOrderRow);
+    if (recipient) {
+      const message = orderEmail("payment_failed", emailOrder);
+      await sendEmail({
+        db,
+        to: recipient,
+        subject: message.subject,
+        html: message.html,
+        kind: "payment_failed",
+        orderId: order.id,
+        dedupeKey: `${order.id}:payment_failed`,
+      }).catch(() => undefined);
+    }
+    return { ok: true, changed: true };
   }
 
   if (["authorized", "authorised"].includes(normalizedStatus)) {

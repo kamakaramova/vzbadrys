@@ -1,5 +1,6 @@
 export type OrderEmailStatus =
   | "paid"
+  | "payment_failed"
   | "confirmed"
   | "shipped"
   | "delivered"
@@ -90,6 +91,7 @@ export function orderEmail(
   const name = order.customerName || "Здравствуйте";
   const escapedName = escapeHtml(name);
   const accountUrl = "https://xn--80abckmj9cj3h.xn--p1ai/account";
+  const cartUrl = "https://xn--80abckmj9cj3h.xn--p1ai/cart";
   const deliveryCode = order.deliveryMethodCode || "";
   const trackBlock = order.trackNumber
     ? `<div style="background:#fff3ec;border-radius:14px;padding:16px;margin-bottom:20px">
@@ -150,6 +152,12 @@ export function orderEmail(
       lead: `${name}, спасибо за заказ во «взБАДрись»! Он уже передан на сборку. Мы проверим товары и аккуратно их упакуем. Когда заказ будет готов к выдаче или отправится в доставку, Вам придёт отдельное письмо.`,
       extra: actionButton("Посмотреть заказ", accountUrl),
     },
+    payment_failed: {
+      subject: `Заказ ${order.id} отменён`,
+      title: "Заказ не удалось завершить",
+      lead: `${name}, к сожалению, оформить заказ до конца не получилось, поэтому он был отменён.`,
+      extra: `<div style="background:#fff3ec;border-radius:16px;padding:18px;margin-bottom:20px"><p style="margin:0;font-size:15px;line-height:1.65;color:#5f5752">Иногда причина бывает временной: ошибка платёжного сервиса, банка или оформления. Пожалуйста, проверьте данные и попробуйте собрать заказ ещё раз.</p></div>${actionButton("Вернуться в корзину", cartUrl)}<p style="font-size:14px;line-height:1.6;margin:0;color:#806f65">Если с карты уже списались деньги или Вы не понимаете причину отмены, просто ответьте на это письмо — мы всё проверим и поможем.</p>`,
+    },
     confirmed: {
       subject: `Мы уже собираем Ваш заказ ${order.id}`,
       title: "Ваш заказ уже у нас в работе",
@@ -165,7 +173,8 @@ export function orderEmail(
     cancelled: {
       subject: `Заказ ${order.id} отменён`,
       title: "Заказ не удалось завершить",
-      lead: `${name}, заказ отменён. Если это произошло по ошибке или Вы захотите повторить заказ, ответьте на письмо — мы поможем.`,
+      lead: `${name}, к сожалению, оформить заказ до конца не получилось, поэтому он был отменён.`,
+      extra: `<div style="background:#fff3ec;border-radius:16px;padding:18px;margin-bottom:20px"><p style="margin:0;font-size:15px;line-height:1.65;color:#5f5752">Иногда причина бывает временной: ошибка платёжного сервиса, банка или оформления. Пожалуйста, проверьте данные и попробуйте собрать заказ ещё раз.</p></div>${actionButton("Вернуться в корзину", cartUrl)}<p style="font-size:14px;line-height:1.6;margin:0;color:#806f65">Если с карты уже списались деньги или Вы не понимаете причину отмены, просто ответьте на это письмо — мы всё проверим и поможем.</p>`,
     },
   };
   const content = statusContent[status];
