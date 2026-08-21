@@ -217,7 +217,10 @@ export async function PATCH(request: NextRequest) {
   const previousTrackNumber = String(delivery.trackNumber ?? "").trim();
   const nextTrackNumber = body.trackNumber?.trim() || "";
   const emailStatuses = new Set(["confirmed", "shipped", "delivered", "cancelled"]);
-  const shouldNotify = body.status !== previousOrderStatus
+  // Отмену можно безопасно сохранить повторно: sendEmail защитит от дубля,
+  // а заказ, отменённый до появления функции, всё же получит уведомление.
+  const shouldNotify = body.status === "cancelled"
+    || body.status !== previousOrderStatus
     || (body.status === "shipped" && Boolean(nextTrackNumber) && nextTrackNumber !== previousTrackNumber);
   // Об отмене сообщаем всегда — в том числе когда покупатель не успел оплатить.
   // Остальные письма о движении заказа имеют смысл только после оплаты.
