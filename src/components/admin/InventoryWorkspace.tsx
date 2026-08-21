@@ -3,12 +3,12 @@
 import { useEffect, useMemo, useState } from "react";
 import {
   AlertTriangle, Boxes, Check, ChevronDown, ChevronRight,
-  ClipboardCheck, History, LoaderCircle, Plus, RefreshCw, Search, ShieldAlert, X,
+  ClipboardCheck, History, LoaderCircle, Pencil, Plus, RefreshCw, Search, ShieldAlert, X,
 } from "lucide-react";
 
 type Product = { id: string; name: string; category: string; stockQty: number | null; inStock: boolean };
 type Batch = {
-  id: string; product_id: string; lot_number: string; manufactured_at: string | null; expires_at: string | null;
+  id: string; product_id: string; lot_number: string; manufactured_at: string | null; received_at: string; expires_at: string | null;
   received_quantity: number; remaining_quantity: number; status: "active" | "quarantined" | "depleted";
   notes: string | null; created_at: string; updated_at: string;
 };
@@ -30,6 +30,7 @@ type InventoryPayload = {
 };
 type InventoryTab = "batches" | "orders" | "movements";
 type AllocationDraft = { batchId: string; quantity: string };
+type BatchForm = { lotNumber: string; manufacturedAt: string; receivedAt: string; expiresAt: string; notes: string };
 
 const MOVEMENT_LABELS: Record<string, string> = {
   opening: "Стартовый остаток", receipt: "Приёмка", sale: "Продажа",
@@ -47,6 +48,7 @@ const date = (value: string | null) => value ? new Date(`${value}T00:00:00`).toL
 const dateTime = (value: string) => new Date(value).toLocaleString("ru-RU", { dateStyle: "short", timeStyle: "short" });
 const number = (value: number) => value.toLocaleString("ru-RU");
 const unit = (product?: Product) => product?.category === "seeds" ? "г" : "шт.";
+const today = () => new Date().toLocaleDateString("sv-SE");
 
 export default function InventoryWorkspace({ password }: { password: string }) {
   const [data, setData] = useState<InventoryPayload>({ products: [], batches: [], movements: [], allocations: [], orders: [] });
@@ -58,7 +60,9 @@ export default function InventoryWorkspace({ password }: { password: string }) {
   const [search, setSearch] = useState("");
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const [showReceipt, setShowReceipt] = useState(false);
-  const [receipt, setReceipt] = useState({ productId: "", lotNumber: "", quantity: "", manufacturedAt: "", expiresAt: "", notes: "" });
+  const [receipt, setReceipt] = useState({ productId: "", lotNumber: "", quantity: "", manufacturedAt: "", receivedAt: today(), expiresAt: "", notes: "" });
+  const [editing, setEditing] = useState<Batch | null>(null);
+  const [batchForm, setBatchForm] = useState<BatchForm>({ lotNumber: "", manufacturedAt: "", receivedAt: today(), expiresAt: "", notes: "" });
   const [adjusting, setAdjusting] = useState<Batch | null>(null);
   const [adjustment, setAdjustment] = useState({ remaining: "", reason: "" });
   const [reassigning, setReassigning] = useState<{ order: InventoryOrder; productId: string; required: number } | null>(null);
@@ -122,12 +126,31 @@ export default function InventoryWorkspace({ password }: { password: string }) {
     const ok = await post({
       action: "receive", productId: receipt.productId, lotNumber: receipt.lotNumber,
       quantity: Number(receipt.quantity), manufacturedAt: receipt.manufacturedAt || null,
-      expiresAt: receipt.expiresAt || null, notes: receipt.notes,
+      receivedAt: receipt.receivedAt, expiresAt: receipt.expiresAt || null, notes: receipt.notes,
     }, "Партия принята, остаток товара обновлён.");
     if (ok) {
       setShowReceipt(false);
-      setReceipt({ productId: "", lotNumber: "", quantity: "", manufacturedAt: "", expiresAt: "", notes: "" });
+      setReceipt({ productId: "", lotNumber: "", quantity: "", manufacturedAt: "", receivedAt: today(), expiresAt: "", notes: "" });
     }
+  };
+  const openEdit = (batch: Batch) => {
+    setEditing(batch);
+    setBatchForm({
+      lotNumber: batch.lot_number,
+      manufacturedAt: batch.manufactured_at || "",
+      receivedAt: batch.received_at || batch.created_at.slice(0, 10),
+      expiresAt: batch.expires_at || "",
+      notes: batch.notes || "",
+    });
+  };
+  const saveBatch = async () => {
+    if (!editing) return;
+    const ok = await post({
+      action: "editBatch", batchId: editing.id, lotNumber: batchForm.lotNumber,
+      manufacturedAt: batchForm.manufacturedAt || null, receivedAt: batchForm.receivedAt,
+      expiresAt: batchForm.expiresAt || null, notes: batchForm.notes,
+    }, "Данные партии сохранены.");
+    if (ok) setEditing(null);
   };
   const adjust = async () => {
     if (!adjusting) return;
@@ -211,10 +234,10 @@ export default function InventoryWorkspace({ password }: { password: string }) {
               {warning && <span title="Мало товара" className="text-amber-600"><AlertTriangle size={16}/></span>}
               <span className={`font-extrabold tabular-nums whitespace-nowrap ${warning ? "text-amber-700" : "text-green-700"}`}>{product.stockQty === null ? "Не задан" : `${number(product.stockQty)} ${unit(product)}`}</span>
             </button>
-            {isExpanded && <div className="overflow-x-auto bg-[#fffdfb]"><table className="w-full min-w-[920px] text-xs"><thead className="text-[#756c67]"><tr>{["Партия","Произведено","Годен до","Принято","Остаток","Статус","Примечание","Действия"].map((label) => <th key={label} className="text-left px-4 py-2 border-t border-b border-[#eee7e2] bg-[#faf6f3]">{label}</th>)}</tr></thead>
+            {isExpanded && <div className="overflow-x-auto bg-[#fffdfb]"><table className="w-full min-w-[1040px] text-xs"><thead className="text-[#756c67]"><tr>{["Партия","Произведено","Принята","Годен до","Количество","Остаток","Статус","Примечание","Действия"].map((label) => <th key={label} className="text-left px-4 py-2 border-t border-b border-[#eee7e2] bg-[#faf6f3]">{label}</th>)}</tr></thead>
               <tbody>{batches.map((batch) => {
                 const expiresSoon = Boolean(batch.expires_at && new Date(`${batch.expires_at}T23:59:59`).getTime() <= expiringLimit && batch.remaining_quantity > 0);
-                return <tr key={batch.id}><td className="px-4 py-3 font-mono font-bold">{batch.lot_number}</td><td className="px-4 py-3">{date(batch.manufactured_at)}</td><td className={`px-4 py-3 ${expiresSoon ? "font-bold text-amber-700" : ""}`}>{date(batch.expires_at)}</td><td className="px-4 py-3 tabular-nums">{number(batch.received_quantity)}</td><td className="px-4 py-3 font-extrabold tabular-nums">{number(batch.remaining_quantity)} {unit(product)}</td><td className="px-4 py-3"><span className={`px-2 py-1 rounded-lg font-semibold ${batch.status === "active" ? "bg-green-50 text-green-700" : batch.status === "quarantined" ? "bg-red-50 text-red-700" : "bg-gray-100 text-gray-600"}`}>{STATUS_LABELS[batch.status]}</span></td><td className="px-4 py-3 max-w-[260px] text-[#837a75]">{batch.notes || ""}</td><td className="px-4 py-3"><div className="flex gap-1.5"><button onClick={() => { setAdjusting(batch); setAdjustment({ remaining: String(batch.remaining_quantity), reason: "" }); }} className="px-2.5 py-1.5 rounded-lg border border-[#eadfd8] bg-white font-semibold">Инвентаризация</button><button onClick={() => void setBatchStatus(batch, batch.status === "quarantined" ? "active" : "quarantined")} className={`p-1.5 rounded-lg border ${batch.status === "quarantined" ? "border-green-200 text-green-700" : "border-red-200 text-red-600"}`} title={batch.status === "quarantined" ? "Вернуть в активные" : "Поместить в карантин"}>{batch.status === "quarantined" ? <Check size={15}/> : <ShieldAlert size={15}/>}</button></div></td></tr>;
+                return <tr key={batch.id}><td className="px-4 py-3 font-mono font-bold">{batch.lot_number}</td><td className="px-4 py-3">{date(batch.manufactured_at)}</td><td className="px-4 py-3">{date(batch.received_at)}</td><td className={`px-4 py-3 ${expiresSoon ? "font-bold text-amber-700" : ""}`}>{date(batch.expires_at)}</td><td className="px-4 py-3 tabular-nums">{number(batch.received_quantity)} {unit(product)}</td><td className="px-4 py-3 font-extrabold tabular-nums">{number(batch.remaining_quantity)} {unit(product)}</td><td className="px-4 py-3"><span className={`px-2 py-1 rounded-lg font-semibold ${batch.status === "active" ? "bg-green-50 text-green-700" : batch.status === "quarantined" ? "bg-red-50 text-red-700" : "bg-gray-100 text-gray-600"}`}>{STATUS_LABELS[batch.status]}</span></td><td className="px-4 py-3 max-w-[260px] text-[#837a75]">{batch.notes || ""}</td><td className="px-4 py-3"><div className="flex gap-1.5"><button onClick={() => openEdit(batch)} className="p-1.5 rounded-lg border border-[#eadfd8] bg-white text-[#756c67]" title="Редактировать данные партии"><Pencil size={15}/></button><button onClick={() => { setAdjusting(batch); setAdjustment({ remaining: String(batch.remaining_quantity), reason: "" }); }} className="px-2.5 py-1.5 rounded-lg border border-[#eadfd8] bg-white font-semibold">Инвентаризация</button><button onClick={() => void setBatchStatus(batch, batch.status === "quarantined" ? "active" : "quarantined")} className={`p-1.5 rounded-lg border ${batch.status === "quarantined" ? "border-green-200 text-green-700" : "border-red-200 text-red-600"}`} title={batch.status === "quarantined" ? "Вернуть в активные" : "Поместить в карантин"}>{batch.status === "quarantined" ? <Check size={15}/> : <ShieldAlert size={15}/>}</button></div></td></tr>;
               })}</tbody></table>{!batches.length && <div className="px-12 py-6 text-sm text-[#999]">Добавьте первую партию через кнопку «Принять партию».</div>}</div>}
           </div>;
         })}
@@ -234,9 +257,18 @@ export default function InventoryWorkspace({ password }: { password: string }) {
       <label className="text-xs font-semibold text-[#756c67]">Номер партии<input value={receipt.lotNumber} onChange={(event) => setReceipt({ ...receipt, lotNumber: event.target.value })} className="block w-full mt-1 rounded-xl border border-[#eadfd8] px-3 py-2.5 text-sm"/></label>
       <label className="text-xs font-semibold text-[#756c67]">Количество<input type="number" min="1" value={receipt.quantity} onChange={(event) => setReceipt({ ...receipt, quantity: event.target.value })} className="block w-full mt-1 rounded-xl border border-[#eadfd8] px-3 py-2.5 text-sm"/></label>
       <label className="text-xs font-semibold text-[#756c67]">Дата производства<input type="date" value={receipt.manufacturedAt} onChange={(event) => setReceipt({ ...receipt, manufacturedAt: event.target.value })} className="block w-full mt-1 rounded-xl border border-[#eadfd8] px-3 py-2.5 text-sm"/></label>
+      <label className="text-xs font-semibold text-[#756c67]">Дата приёмки<input type="date" value={receipt.receivedAt} onChange={(event) => setReceipt({ ...receipt, receivedAt: event.target.value })} className="block w-full mt-1 rounded-xl border border-[#eadfd8] px-3 py-2.5 text-sm"/></label>
       <label className="text-xs font-semibold text-[#756c67]">Годен до<input type="date" value={receipt.expiresAt} onChange={(event) => setReceipt({ ...receipt, expiresAt: event.target.value })} className="block w-full mt-1 rounded-xl border border-[#eadfd8] px-3 py-2.5 text-sm"/></label>
       <label className="sm:col-span-2 text-xs font-semibold text-[#756c67]">Комментарий<textarea value={receipt.notes} onChange={(event) => setReceipt({ ...receipt, notes: event.target.value })} rows={3} className="block w-full mt-1 rounded-xl border border-[#eadfd8] px-3 py-2.5 text-sm resize-none"/></label>
     </div><div className="px-6 py-4 border-t border-[#eee7e2] flex justify-end gap-2"><button onClick={() => setShowReceipt(false)} className="px-4 py-2 rounded-xl border border-[#eadfd8]">Отмена</button><button onClick={() => void receive()} disabled={saving} className="px-4 py-2 rounded-xl bg-[#E8845A] text-white font-bold disabled:opacity-50 inline-flex items-center gap-2">{saving && <LoaderCircle size={15} className="animate-spin"/>}Принять</button></div></div></div>}
+
+    {editing && <div className="fixed inset-0 z-50 bg-black/35 flex items-center justify-center p-4" onMouseDown={(event) => { if (event.currentTarget === event.target) setEditing(null); }}><div className="w-full max-w-xl bg-white rounded-3xl shadow-2xl overflow-hidden"><div className="px-6 py-4 border-b border-[#eee7e2] flex justify-between gap-3"><div><h3 className="font-extrabold">Редактировать партию</h3><p className="text-xs text-[#999] mt-1">Количество и остаток меняются отдельно через инвентаризацию.</p></div><button onClick={() => setEditing(null)} aria-label="Закрыть"><X size={20}/></button></div><div className="p-6 grid sm:grid-cols-2 gap-4">
+      <label className="sm:col-span-2 text-xs font-semibold text-[#756c67]">Номер партии<input value={batchForm.lotNumber} onChange={(event) => setBatchForm({ ...batchForm, lotNumber: event.target.value })} className="block w-full mt-1 rounded-xl border border-[#eadfd8] px-3 py-2.5 text-sm"/></label>
+      <label className="text-xs font-semibold text-[#756c67]">Дата производства<input type="date" value={batchForm.manufacturedAt} onChange={(event) => setBatchForm({ ...batchForm, manufacturedAt: event.target.value })} className="block w-full mt-1 rounded-xl border border-[#eadfd8] px-3 py-2.5 text-sm"/></label>
+      <label className="text-xs font-semibold text-[#756c67]">Дата приёмки<input type="date" value={batchForm.receivedAt} onChange={(event) => setBatchForm({ ...batchForm, receivedAt: event.target.value })} className="block w-full mt-1 rounded-xl border border-[#eadfd8] px-3 py-2.5 text-sm"/></label>
+      <label className="text-xs font-semibold text-[#756c67]">Годен до<input type="date" value={batchForm.expiresAt} onChange={(event) => setBatchForm({ ...batchForm, expiresAt: event.target.value })} className="block w-full mt-1 rounded-xl border border-[#eadfd8] px-3 py-2.5 text-sm"/></label>
+      <label className="sm:col-span-2 text-xs font-semibold text-[#756c67]">Комментарий<textarea value={batchForm.notes} onChange={(event) => setBatchForm({ ...batchForm, notes: event.target.value })} rows={3} placeholder="Например: документы проверены" className="block w-full mt-1 rounded-xl border border-[#eadfd8] px-3 py-2.5 text-sm resize-none"/></label>
+    </div><div className="px-6 py-4 border-t border-[#eee7e2] flex justify-end gap-2"><button onClick={() => setEditing(null)} className="px-4 py-2 rounded-xl border border-[#eadfd8]">Отмена</button><button onClick={() => void saveBatch()} disabled={saving || !batchForm.lotNumber.trim() || !batchForm.receivedAt} className="px-4 py-2 rounded-xl bg-[#E8845A] text-white font-bold disabled:opacity-50 inline-flex items-center gap-2">{saving && <LoaderCircle size={15} className="animate-spin"/>}Сохранить изменения</button></div></div></div>}
 
     {adjusting && <div className="fixed inset-0 z-50 bg-black/35 flex items-center justify-center p-4"><div className="w-full max-w-md bg-white rounded-3xl shadow-2xl p-6"><div className="flex justify-between gap-3"><div><h3 className="font-extrabold">Инвентаризация партии</h3><p className="text-sm text-[#756c67] mt-1">{adjusting.lot_number}</p></div><button onClick={() => setAdjusting(null)}><X size={20}/></button></div><label className="block mt-5 text-xs font-semibold text-[#756c67]">Фактический остаток<input type="number" min="0" value={adjustment.remaining} onChange={(event) => setAdjustment({ ...adjustment, remaining: event.target.value })} className="block w-full mt-1 rounded-xl border border-[#eadfd8] px-3 py-2.5 text-sm"/></label><label className="block mt-4 text-xs font-semibold text-[#756c67]">Причина корректировки<textarea value={adjustment.reason} onChange={(event) => setAdjustment({ ...adjustment, reason: event.target.value })} rows={3} placeholder="Например: пересчёт 20 августа" className="block w-full mt-1 rounded-xl border border-[#eadfd8] px-3 py-2.5 text-sm resize-none"/></label><div className="flex justify-end gap-2 mt-5"><button onClick={() => setAdjusting(null)} className="px-4 py-2 rounded-xl border border-[#eadfd8]">Отмена</button><button onClick={() => void adjust()} disabled={saving} className="px-4 py-2 rounded-xl bg-[#E8845A] text-white font-bold disabled:opacity-50">Сохранить</button></div></div></div>}
 

@@ -6,6 +6,7 @@ create table if not exists public.inventory_batches (
   product_id text not null references public.products(id) on delete restrict,
   lot_number text not null,
   manufactured_at date,
+  received_at date not null default current_date,
   expires_at date,
   received_quantity bigint not null check (received_quantity >= 0),
   remaining_quantity bigint not null check (remaining_quantity >= 0),

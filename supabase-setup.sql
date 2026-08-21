@@ -225,5 +225,6 @@ insert into public.promo_codes (code, discount_percent)
 values ('ВЗБАДРИСЬ10', 10), ('ВЗБАДРИСЬ15', 15), ('KAMA10', 10)
 on conflict (code) do nothing;
 
--- Партионный склад вынесен в отдельный идемпотентный скрипт:
+-- Партионный склад вынесен в отдельные идемпотентные скрипты. Выполните по порядку:
 -- infrastructure/inventory-phase-2.sql
+-- infrastructure/inventory-batch-edit.sql
