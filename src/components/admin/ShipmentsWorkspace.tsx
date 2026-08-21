@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { ArrowDown, ArrowUp, ArrowUpDown, Check, Clipboard, RefreshCw, Search } from "lucide-react";
+import { ArrowDown, ArrowUp, ArrowUpDown, Check, Clipboard, ListChecks, Printer, RefreshCw, Search, Send, SquareCheckBig } from "lucide-react";
 
 type Warehouse = {
   actualDeliveryCost: number | null;
@@ -65,6 +65,9 @@ export default function ShipmentsWorkspace({ password }: { password: string }) {
   const [statusSaving, setStatusSaving] = useState<string | null>(null);
   const [statusMessage, setStatusMessage] = useState("");
   const [copiedOrder, setCopiedOrder] = useState<string | null>(null);
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [batchStatus, setBatchStatus] = useState("confirmed");
+  const [batchSaving, setBatchSaving] = useState(false);
   const tableRef = useRef<HTMLDivElement>(null);
   const editingRef = useRef(false);
   const savingRef = useRef(false);
@@ -135,6 +138,8 @@ export default function ShipmentsWorkspace({ password }: { password: string }) {
     return [...filtered].sort((a, b) => direction * ((STATUS_ORDER[a.orderStatus] ?? 99) - (STATUS_ORDER[b.orderStatus] ?? 99)));
   }, [rows, search, onlyIncomplete, statusSort]);
 
+  const selectedRows = useMemo(() => rows.filter((row) => selectedIds.includes(row.id)), [rows, selectedIds]);
+
   const toggleStatusSort = () => setStatusSort((current) => current === "none" ? "asc" : current === "asc" ? "desc" : "none");
 
   const updateLocal = (id: string, changes: Partial<Warehouse>) => setRows((current) => current.map((row) =>
@@ -164,7 +169,7 @@ export default function ShipmentsWorkspace({ password }: { password: string }) {
   const toggle = (row: Shipment, key: keyof Warehouse) => {
     const value = !Boolean(row.warehouse[key]); updateLocal(row.id, { [key]: value }); save(row.id, { [key]: value });
   };
-  const changeOrderStatus = async (row: Shipment, orderStatus: string) => {
+  const updateOrderStatus = async (row: Shipment, orderStatus: string) => {
     const previousStatus = row.orderStatus;
     setRows((current) => current.map((item) => item.id === row.id ? { ...item, orderStatus } : item));
     setStatusSaving(row.id); setStatusMessage(""); setError("");
@@ -176,13 +181,19 @@ export default function ShipmentsWorkspace({ password }: { password: string }) {
       });
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || "Не удалось изменить статус");
-      if (data.email === "failed") setStatusMessage(`Статус заказа ${row.id} сохранён, но письмо покупателю не отправилось.`);
-      else if (data.email === "sent") setStatusMessage(`Статус заказа ${row.id} сохранён, письмо покупателю отправлено.`);
-      else setStatusMessage(`Статус заказа ${row.id} сохранён.`);
+      return data.email as "sent" | "skipped" | "failed";
     } catch (e) {
       setRows((current) => current.map((item) => item.id === row.id ? { ...item, orderStatus: previousStatus } : item));
-      setError(e instanceof Error ? e.message : "Не удалось изменить статус");
+      throw new Error(e instanceof Error ? e.message : "Не удалось изменить статус");
     } finally { setStatusSaving(null); }
+  };
+  const changeOrderStatus = async (row: Shipment, orderStatus: string) => {
+    try {
+      const email = await updateOrderStatus(row, orderStatus);
+      if (email === "failed") setStatusMessage(`Статус заказа ${row.id} сохранён, но письмо покупателю не отправилось.`);
+      else if (email === "sent") setStatusMessage(`Статус заказа ${row.id} сохранён, письмо покупателю отправлено.`);
+      else setStatusMessage(`Статус заказа ${row.id} сохранён.`);
+    } catch (e) { setError(e instanceof Error ? e.message : "Не удалось изменить статус"); }
   };
   const quickRange = (days: number) => {
     const end = new Date(); const start = new Date(); start.setDate(end.getDate() - days + 1);
@@ -211,6 +222,50 @@ export default function ShipmentsWorkspace({ password }: { password: string }) {
     await navigator.clipboard.writeText(id);
     setCopiedOrder(id);
     window.setTimeout(() => setCopiedOrder((value) => value === id ? null : value), 1500);
+  };
+
+  const toggleSelected = (id: string) => setSelectedIds((current) => current.includes(id) ? current.filter((value) => value !== id) : [...current, id]);
+  const toggleAllVisible = () => setSelectedIds((current) => {
+    const visibleIds = visible.map((row) => row.id);
+    const allSelected = visibleIds.length > 0 && visibleIds.every((id) => current.includes(id));
+    return allSelected ? current.filter((id) => !visibleIds.includes(id)) : [...new Set([...current, ...visibleIds])];
+  });
+  const changeSelectedStatus = async () => {
+    if (!selectedRows.length) return;
+    setBatchSaving(true); setStatusMessage(""); setError("");
+    let sent = 0; let failed = 0;
+    try {
+      for (const row of selectedRows) {
+        const email = await updateOrderStatus(row, batchStatus);
+        if (email === "sent") sent += 1;
+        if (email === "failed") failed += 1;
+      }
+      const label = ORDER_STATUSES.find(([value]) => value === batchStatus)?.[1] || "выбран";
+      setStatusMessage(`${selectedRows.length} ${selectedRows.length === 1 ? "заказ переведён" : "заказа переведены"} в статус «${label}»${sent ? `, писем отправлено: ${sent}` : ""}${failed ? `, не отправились: ${failed}` : ""}.`);
+      setSelectedIds([]);
+    } catch (e) { setError(e instanceof Error ? e.message : "Не удалось изменить часть заказов"); }
+    finally { setBatchSaving(false); }
+  };
+  const printDocument = (kind: "assembly" | "register") => {
+    const documentRows = selectedRows.length ? selectedRows : visible;
+    if (!documentRows.length) { setError("Нет заказов для печати"); return; }
+    const escape = (value: string) => value.replace(/[&<>\"']/g, (char) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "\"": "&quot;", "'": "&#039;" })[char] || char);
+    const title = kind === "assembly" ? "Лист сборки" : "Реестр отправлений";
+    const period = `${from.split("-").reverse().join(".")} — ${to.split("-").reverse().join(".")}`;
+    const body = kind === "assembly"
+      ? Object.values(documentRows.flatMap((row) => row.items.map((item) => ({ ...item, orderId: row.id }))).reduce<Record<string, { name: string; quantity: number; orders: string[]; lots: string[] }>>((result, item) => {
+          const key = item.productId || item.name;
+          const entry = result[key] || { name: item.name, quantity: 0, orders: [], lots: [] };
+          entry.quantity += item.quantity; entry.orders.push(item.orderId);
+          item.allocations.forEach((allocation) => { if (allocation.lotNumber) entry.lots.push(`${allocation.lotNumber} × ${allocation.quantity}`); });
+          result[key] = entry; return result;
+        }, {})).map((item, index) => `<tr><td>${index + 1}</td><td><b>${escape(item.name)}</b></td><td class="num">${item.quantity}</td><td>${escape([...new Set(item.lots)].join(", ") || "Партия не указана")}</td><td>${escape(item.orders.join(", "))}</td></tr>`).join("")
+      : documentRows.map((row, index) => `<tr><td>${index + 1}</td><td><b>${escape(row.id)}</b><br><small>${new Date(row.createdAt).toLocaleDateString("ru-RU")}</small></td><td>${escape(row.customerName)}<br><small>${escape(row.phone)} · ${escape(row.email)}</small></td><td>${escape(row.deliveryMethod)}<br>${escape(row.deliveryAddress)}</td><td class="num">${escape(money(row.total))}<br><small>доставка: ${escape(money(row.customerDeliveryCost))}</small></td><td>${escape(row.trackNumber || "—")}</td></tr>`).join("");
+    const headings = kind === "assembly" ? ["№", "Товар", "Кол-во", "Партия", "Заказы"] : ["№", "Заказ", "Покупатель", "Доставка / адрес", "Сумма", "Трек"];
+    const printWindow = window.open("", "_blank", "noopener,noreferrer");
+    if (!printWindow) { setError("Разрешите всплывающие окна, чтобы открыть печать"); return; }
+    printWindow.document.write(`<!doctype html><html lang="ru"><head><meta charset="utf-8"><title>${title}</title><style>body{font-family:Arial,sans-serif;color:#211f1e;padding:28px}h1{margin:0 0 6px;font-size:25px}p{margin:0 0 20px;color:#6f6863}table{border-collapse:collapse;width:100%;font-size:12px}th{background:#faefe9;text-align:left}th,td{border:1px solid #dcd3ce;padding:9px;vertical-align:top}.num{white-space:nowrap;font-weight:700}small{color:#746d68}@media print{body{padding:0}}</style></head><body><h1>${title}</h1><p>Период: ${period}. Заказов: ${documentRows.length}${selectedRows.length ? " (выбрано вручную)" : ""}.</p><table><thead><tr>${headings.map((heading) => `<th>${heading}</th>`).join("")}</tr></thead><tbody>${body}</tbody></table><script>window.onload=()=>window.print()</script></body></html>`);
+    printWindow.document.close();
   };
 
   return <section className="space-y-4 w-full min-w-0">
@@ -243,6 +298,16 @@ export default function ShipmentsWorkspace({ password }: { password: string }) {
         <div className="mt-0.5 text-[11px] text-[#8b817b]">{note}</div>
       </div>)}
     </div>
+    <div className="rounded-2xl border border-[#eadfd8] bg-[#fffaf7] p-3 sm:p-4 flex flex-col lg:flex-row lg:items-center gap-3">
+      <div className="flex items-center gap-2 min-w-0"><SquareCheckBig size={18} className="shrink-0 text-[#c66d48]"/><div><div className="text-sm font-bold">Работа с выбранными</div><div className="text-xs text-[#8f8782]">Выбрано: {selectedRows.length || "—"}. Если ничего не выделять, в печать попадёт весь текущий список.</div></div></div>
+      <div className="lg:ml-auto flex flex-wrap gap-2 items-center">
+        <select value={batchStatus} onChange={(e) => setBatchStatus(e.target.value)} disabled={batchSaving || !selectedRows.length} className="rounded-xl border border-[#e8ddd7] bg-white px-3 py-2 text-sm font-semibold disabled:opacity-50">{ORDER_STATUSES.map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select>
+        <button onClick={() => void changeSelectedStatus()} disabled={batchSaving || !selectedRows.length} className="inline-flex items-center gap-2 rounded-xl bg-[#e8845a] px-3.5 py-2 text-sm font-bold text-white disabled:cursor-not-allowed disabled:opacity-45"><Send size={15}/>{batchSaving ? "Сохраняем…" : "Изменить статус"}</button>
+        <span className="hidden sm:block h-7 w-px bg-[#eadfd8]"/>
+        <button onClick={() => printDocument("assembly")} className="inline-flex items-center gap-2 rounded-xl border border-[#e2c7b9] bg-white px-3.5 py-2 text-sm font-semibold text-[#9d5638]"><ListChecks size={16}/>Лист сборки</button>
+        <button onClick={() => printDocument("register")} className="inline-flex items-center gap-2 rounded-xl border border-[#e2c7b9] bg-white px-3.5 py-2 text-sm font-semibold text-[#9d5638]"><Printer size={16}/>Реестр</button>
+      </div>
+    </div>
     <div className="bg-white border border-[#eee4de] rounded-2xl p-4 flex flex-wrap items-end gap-3">
       <label className="text-xs font-semibold text-[#756c67]">С даты<input type="date" value={from} onChange={(e) => setFrom(e.target.value)} className="block mt-1 border border-[#e8ddd7] rounded-lg px-3 py-2 text-sm"/></label>
       <label className="text-xs font-semibold text-[#756c67]">По дату<input type="date" value={to} onChange={(e) => setTo(e.target.value)} className="block mt-1 border border-[#e8ddd7] rounded-lg px-3 py-2 text-sm"/></label>
@@ -254,8 +319,9 @@ export default function ShipmentsWorkspace({ password }: { password: string }) {
     {error && <p className="rounded-xl bg-red-50 text-red-600 px-4 py-3 text-sm">{error}</p>}
     {statusMessage && <p className="rounded-xl bg-green-50 text-green-700 px-4 py-3 text-sm">{statusMessage}</p>}
     <div ref={tableRef} onScroll={rememberView} className="border border-[#eadfd8] rounded-2xl bg-white overflow-auto max-h-[72vh] [scrollbar-gutter:stable]">
-      <table className="min-w-[1808px] w-full text-[12px] border-collapse table-fixed">
+      <table className="min-w-[1855px] w-full text-[12px] border-collapse table-fixed">
         <colgroup>
+          <col style={{ width: 38 }}/>
           <col style={{ width: 44 }}/>
           <col style={{ width: 150 }}/>
           <col style={{ width: 165 }}/>
@@ -271,7 +337,8 @@ export default function ShipmentsWorkspace({ password }: { password: string }) {
           <col style={{ width: 90 }}/>
         </colgroup>
         <thead className="sticky top-0 z-20 bg-[#faf6f3] text-[#706762]"><tr>
-          <th className="sticky left-0 z-30 bg-[#faf6f3] w-11 text-center px-2 py-3 border-b border-r border-[#eadfd8] font-semibold">№</th>
+          <th className="sticky left-0 z-30 bg-[#faf6f3] w-10 text-center px-1 py-3 border-b border-r border-[#eadfd8]"><input type="checkbox" aria-label="Выбрать все показанные заказы" checked={visible.length > 0 && visible.every((row) => selectedIds.includes(row.id))} onChange={toggleAllVisible} className="accent-[#E8845A]"/></th>
+          <th className="sticky left-[38px] z-30 bg-[#faf6f3] w-11 text-center px-2 py-3 border-b border-r border-[#eadfd8] font-semibold">№</th>
           {['Дата / заказ','Покупатель','Товары','Сумма заказа','Доставка / адрес','Доставка клиенту','Доставка факт','ПВЗ отправки',...checks.map(([,label]) => label),'Статус заказа','Комментарий','Последнее изменение'].map((label, index) => <th key={label} className={`${index >= 8 && index <= 11 ? "text-center px-1" : "text-left px-2.5"} py-3 border-b border-r border-[#eadfd8] leading-tight font-semibold`}>
             {label === "Статус заказа" ? <button type="button" onClick={toggleStatusSort} title="Сортировать по статусу" className="inline-flex items-center gap-1.5 hover:text-[#c66d48] transition-colors">
               <span>{label}</span>{statusSort === "asc" ? <ArrowUp size={14}/> : statusSort === "desc" ? <ArrowDown size={14}/> : <ArrowUpDown size={14}/>}
@@ -279,7 +346,8 @@ export default function ShipmentsWorkspace({ password }: { password: string }) {
           </th>)}
         </tr></thead>
         <tbody>{visible.map((row, index) => <tr key={row.id} className="group align-top hover:bg-[#fffdfb]">
-          <td className="sticky left-0 z-10 bg-white group-hover:bg-[#fffdfb] px-2 py-3 border-b border-r border-[#eee7e2] text-center font-bold tabular-nums text-[#8f8782]">{index + 1}</td>
+          <td className="sticky left-0 z-10 bg-white group-hover:bg-[#fffdfb] px-1 py-3 border-b border-r border-[#eee7e2] text-center"><input type="checkbox" aria-label={`Выбрать заказ ${row.id}`} checked={selectedIds.includes(row.id)} onChange={() => toggleSelected(row.id)} className="accent-[#E8845A]"/></td>
+          <td className="sticky left-[38px] z-10 bg-white group-hover:bg-[#fffdfb] px-2 py-3 border-b border-r border-[#eee7e2] text-center font-bold tabular-nums text-[#8f8782]">{index + 1}</td>
           <td className="px-2.5 py-3 border-b border-r border-[#eee7e2] w-[175px]">
             <div>{new Date(row.createdAt).toLocaleDateString("ru-RU")}</div>
             <div className="mt-1.5 flex items-start gap-1.5">
