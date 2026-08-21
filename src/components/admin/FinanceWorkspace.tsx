@@ -1,0 +1,123 @@
+"use client";
+
+import { useEffect, useMemo, useState } from "react";
+import { BarChart3, Calculator, Check, ChevronDown, LoaderCircle, Pencil, Plus, RefreshCw, Trash2, WalletCards, X } from "lucide-react";
+
+type Expense = { id: string; occurred_on: string; period_from: string | null; period_to: string | null; amount_kopecks: number; category: string; description: string | null; batch_id: string | null; batch: { id: string; lotNumber: string } | null };
+type Batch = { id: string; product_id: string; lot_number: string; received_quantity: number; remaining_quantity: number; production_cost_kopecks: number; extraCosts: number; totalCost: number };
+type Daily = { date: string; revenue: number; deliveryActual: number; cogs: number; operating: number; profitBeforeTax: number };
+type Payload = { from: string; to: string; settings: { usnRateBps: number }; summary: { paidOrders: number; revenue: number; deliveryCollected: number; deliveryActual: number; deliveryDifference: number; cogs: number; operatingExpenses: number; profitBeforeTax: number; estimatedTax: number; actualTax: number; estimatedNetProfit: number; uncostedUnits: number }; daily: Daily[]; expenses: Expense[]; batches: Batch[] };
+type ExpenseDraft = { id?: string; occurredOn: string; amount: string; category: string; batchId: string; periodFrom: string; periodTo: string; description: string };
+
+const categories: Record<string, string> = {
+  production: "Производство", raw_materials: "Сырьё", packaging: "Упаковка", laboratory: "Лаборатория", design: "Дизайн", server: "Сервер", software: "Сервисы", marketing: "Маркетинг", payment_fee: "Комиссия", tax: "Налог (факт)", refund: "Возврат", other: "Другое",
+};
+const money = (kopecks: number) => `${Math.round(kopecks / 100).toLocaleString("ru-RU")} ₽`;
+const today = () => new Date().toLocaleDateString("sv-SE");
+const monthStart = () => { const d = new Date(); return new Date(d.getFullYear(), d.getMonth(), 1).toLocaleDateString("sv-SE"); };
+const formatDate = (value: string) => new Date(`${value}T12:00:00`).toLocaleDateString("ru-RU", { day: "numeric", month: "short" });
+
+function EmptyPayload(): Payload {
+  return { from: monthStart(), to: today(), settings: { usnRateBps: 600 }, summary: { paidOrders: 0, revenue: 0, deliveryCollected: 0, deliveryActual: 0, deliveryDifference: 0, cogs: 0, operatingExpenses: 0, profitBeforeTax: 0, estimatedTax: 0, actualTax: 0, estimatedNetProfit: 0, uncostedUnits: 0 }, daily: [], expenses: [], batches: [] };
+}
+
+function FinanceChart({ points }: { points: Daily[] }) {
+  const values = points.flatMap((point) => [point.revenue, point.profitBeforeTax]);
+  const max = Math.max(1, ...values);
+  const width = 760, height = 190, pad = 18;
+  const line = (key: "revenue" | "profitBeforeTax") => points.map((point, index) => {
+    const x = pad + index * ((width - pad * 2) / Math.max(1, points.length - 1));
+    const y = height - pad - point[key] / max * (height - pad * 2);
+    return `${x},${y}`;
+  }).join(" ");
+  if (!points.length) return <div className="h-[220px] grid place-items-center text-sm text-[#aaa]">За этот период пока нет оплаченных заказов.</div>;
+  return <div className="overflow-x-auto"><div className="min-w-[520px]"><svg viewBox={`0 0 ${width} ${height}`} className="w-full h-[190px]" role="img" aria-label="Динамика выручки и прибыли">
+    {[0.25, 0.5, 0.75].map((part) => <line key={part} x1={pad} x2={width - pad} y1={height - pad - (height - pad * 2) * part} y2={height - pad - (height - pad * 2) * part} stroke="#f0e6df" strokeDasharray="4 5" />)}
+    <polyline points={line("revenue")} fill="none" stroke="#E8845A" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
+    <polyline points={line("profitBeforeTax")} fill="none" stroke="#30a869" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
+    {points.map((point, index) => { const x = pad + index * ((width - pad * 2) / Math.max(1, points.length - 1)); return <g key={point.date}><circle cx={x} cy={height - pad - point.revenue / max * (height - pad * 2)} r="3.5" fill="#E8845A"/><text x={x} y={height - 1} textAnchor="middle" className="fill-[#978d87] text-[10px]">{formatDate(point.date)}</text></g>; })}
+  </svg><div className="flex items-center gap-4 px-3 text-xs text-[#756c67]"><span className="inline-flex items-center gap-1.5"><i className="w-2 h-2 rounded-full bg-[#E8845A]"/>Выручка</span><span className="inline-flex items-center gap-1.5"><i className="w-2 h-2 rounded-full bg-[#30a869]"/>Прибыль до налога</span></div></div></div>;
+}
+
+export default function FinanceWorkspace({ password }: { password: string }) {
+  const [data, setData] = useState<Payload>(EmptyPayload());
+  const [from, setFrom] = useState(monthStart());
+  const [to, setTo] = useState(today());
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+  const [notice, setNotice] = useState("");
+  const [showForm, setShowForm] = useState(false);
+  const [draft, setDraft] = useState<ExpenseDraft>({ occurredOn: today(), amount: "", category: "other", batchId: "", periodFrom: "", periodTo: "", description: "" });
+  const [rate, setRate] = useState("6");
+
+  const load = async (quiet = false, periodFrom = from, periodTo = to) => {
+    if (!quiet) setLoading(true); setError("");
+    try {
+      const response = await fetch(`/api/admin/finance?from=${periodFrom}&to=${periodTo}`, { headers: { "x-admin-password": password }, cache: "no-store" });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(payload.error || "Не удалось загрузить финансы");
+      setData(payload as Payload); setRate(String(Number(payload.settings?.usnRateBps || 600) / 100));
+    } catch (cause) { setError(cause instanceof Error ? cause.message : "Не удалось загрузить финансы"); }
+    finally { if (!quiet) setLoading(false); }
+  };
+  useEffect(() => { void load(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const setRange = (nextFrom: string, nextTo: string) => { setFrom(nextFrom); setTo(nextTo); void load(false, nextFrom, nextTo); };
+  const post = async (body: Record<string, unknown>, success: string) => {
+    setSaving(true); setError(""); setNotice("");
+    try {
+      const response = await fetch("/api/admin/finance", { method: "POST", headers: { "content-type": "application/json", "x-admin-password": password }, body: JSON.stringify(body) });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(payload.error || "Не удалось сохранить");
+      setNotice(success); await load(true); return true;
+    } catch (cause) { setError(cause instanceof Error ? cause.message : "Не удалось сохранить"); return false; }
+    finally { setSaving(false); }
+  };
+  const openNew = () => { setDraft({ occurredOn: today(), amount: "", category: "other", batchId: "", periodFrom: "", periodTo: "", description: "" }); setShowForm(true); };
+  const openEdit = (expense: Expense) => { setDraft({ id: expense.id, occurredOn: expense.occurred_on, amount: String(expense.amount_kopecks / 100), category: expense.category, batchId: expense.batch_id || "", periodFrom: expense.period_from || "", periodTo: expense.period_to || "", description: expense.description || "" }); setShowForm(true); };
+  const saveExpense = async () => {
+    const ok = await post({ action: "saveExpense", id: draft.id, occurredOn: draft.occurredOn, amountKopecks: Math.round(Number(draft.amount) * 100), category: draft.category, batchId: draft.batchId || null, periodFrom: draft.periodFrom || null, periodTo: draft.periodTo || null, description: draft.description }, draft.id ? "Расход обновлён." : "Расход добавлен в учёт.");
+    if (ok) setShowForm(false);
+  };
+  const saveRate = async () => { await post({ action: "saveSettings", usnRateBps: Math.round(Number(rate) * 100) }, "Ставка для расчёта обновлена."); };
+  const allBatchExpenses = useMemo(() => data.expenses.filter((expense) => expense.batch_id), [data.expenses]);
+  const metrics = [
+    ["Оплачено покупателями", money(data.summary.revenue), "Вся сумма заказов, включая доставку", "text-[#222]"],
+    ["Доставка: получено / факт", `${money(data.summary.deliveryCollected)} / ${money(data.summary.deliveryActual)}`, `Разница ${data.summary.deliveryDifference >= 0 ? "+" : ""}${money(data.summary.deliveryDifference)}`, data.summary.deliveryDifference < 0 ? "text-red-600" : "text-green-700"],
+    ["Себестоимость проданного", money(data.summary.cogs), data.summary.uncostedUnits ? `Не распределено по партиям: ${data.summary.uncostedUnits} шт.` : "По распределённым партиям", data.summary.uncostedUnits ? "text-amber-700" : "text-[#222]"],
+    ["Расходы периода", money(data.summary.operatingExpenses), "Сервер, дизайн, сервисы, реклама и другое", "text-[#222]"],
+    ["Прибыль до налога", money(data.summary.profitBeforeTax), "До расчётного УСН", data.summary.profitBeforeTax < 0 ? "text-red-600" : "text-green-700"],
+    ["Оценка чистой прибыли", money(data.summary.estimatedNetProfit), `УСН ${rate || "0"}%: ${money(data.summary.estimatedTax)}`, data.summary.estimatedNetProfit < 0 ? "text-red-600" : "text-green-700"],
+  ];
+
+  return <section className="space-y-5 min-w-0">
+    <div className="flex flex-col xl:flex-row xl:items-end justify-between gap-3">
+      <div><h2 className="text-2xl font-extrabold flex items-center gap-2"><WalletCards size={23} className="text-[#E8845A]"/>Финансы</h2><p className="text-sm text-[#8f8782] mt-1">Управленческий учёт: заказы, отгрузки, партии и расходы в одной картине.</p></div>
+      <div className="flex gap-2"><button onClick={() => void load()} disabled={loading} className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl border border-[#eadfd8] bg-white text-sm font-semibold"><RefreshCw size={15} className={loading ? "animate-spin" : ""}/>Обновить</button><button onClick={openNew} className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#E8845A] text-white text-sm font-bold"><Plus size={16}/>Добавить расход</button></div>
+    </div>
+    <div className="rounded-2xl border border-[#eadfd8] bg-white p-3 flex flex-wrap items-end gap-3">
+      <label className="text-xs font-semibold text-[#756c67]">С даты<input type="date" value={from} onChange={(event) => setFrom(event.target.value)} className="block mt-1 rounded-xl border border-[#eadfd8] px-3 py-2 text-sm"/></label>
+      <label className="text-xs font-semibold text-[#756c67]">По дату<input type="date" value={to} onChange={(event) => setTo(event.target.value)} className="block mt-1 rounded-xl border border-[#eadfd8] px-3 py-2 text-sm"/></label>
+      <button onClick={() => void load(false)} className="px-4 py-2 rounded-xl bg-[#fff3ed] text-[#c66d48] font-bold text-sm">Показать</button>
+      <button onClick={() => setRange(today(), today())} className="px-3 py-2 text-sm font-semibold text-[#756c67]">Сегодня</button>
+      <button onClick={() => setRange(monthStart(), today())} className="px-3 py-2 text-sm font-semibold text-[#756c67]">Этот месяц</button>
+      <button onClick={() => { const end = today(); const d = new Date(); d.setDate(d.getDate() - 29); setRange(d.toLocaleDateString("sv-SE"), end); }} className="px-3 py-2 text-sm font-semibold text-[#756c67]">30 дней</button>
+      <div className="ml-auto flex items-center gap-2 rounded-xl bg-[#f8f4f1] px-3 py-2"><Calculator size={15} className="text-[#c66d48]"/><span className="text-xs text-[#756c67]">Расчётный УСН</span><input value={rate} onChange={(event) => setRate(event.target.value)} type="number" min="0" max="30" step="0.01" className="w-14 rounded-lg border border-[#eadfd8] bg-white px-2 py-1 text-sm font-bold"/><span className="text-xs">%</span><button onClick={() => void saveRate()} disabled={saving} className="text-xs font-bold text-[#c66d48]">Сохранить</button></div>
+    </div>
+    {error && <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div>}
+    {notice && <div className="rounded-2xl border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700">{notice}</div>}
+    {loading ? <div className="py-24 flex justify-center text-[#999]"><LoaderCircle className="animate-spin"/></div> : <>
+      <div className="grid grid-cols-2 xl:grid-cols-3 gap-3">{metrics.map(([title, value, note, color]) => <div key={title} className="rounded-2xl border border-[#eee4de] bg-white p-4"><div className="text-xs font-semibold text-[#8b817b]">{title}</div><div className={`mt-1 text-xl sm:text-2xl font-extrabold tabular-nums ${color}`}>{value}</div><div className="mt-1 text-[11px] text-[#aaa]">{note}</div></div>)}</div>
+      <div className="grid xl:grid-cols-[minmax(0,1.4fr)_minmax(300px,.6fr)] gap-4">
+        <div className="rounded-2xl border border-[#eadfd8] bg-white p-4"><div className="flex items-center gap-2 font-bold"><BarChart3 size={18} className="text-[#E8845A]"/>Динамика за период</div><FinanceChart points={data.daily}/></div>
+        <div className="rounded-2xl border border-[#eadfd8] bg-[#fffaf7] p-4"><div className="font-bold">Контроль данных</div><div className="mt-3 space-y-3 text-sm"><div className="flex justify-between gap-3"><span className="text-[#756c67]">Оплаченных заказов</span><b>{data.summary.paidOrders}</b></div><div className="flex justify-between gap-3"><span className="text-[#756c67]">Фактический налог</span><b>{money(data.summary.actualTax)}</b></div><div className="border-t border-[#eadfd8] pt-3 text-xs text-[#8f8782]">Расход, привязанный к партии, не вычитается второй раз: он входит в себестоимость по мере продажи товаров этой партии.</div></div></div>
+      </div>
+      <div className="grid xl:grid-cols-[minmax(0,1.35fr)_minmax(360px,.65fr)] gap-4">
+        <div className="rounded-2xl border border-[#eadfd8] bg-white overflow-hidden"><div className="flex items-center justify-between px-4 py-3 border-b border-[#eee7e2]"><div><h3 className="font-bold">Журнал расходов</h3><p className="text-xs text-[#999] mt-0.5">Все расходы периода. Нажмите на строку, чтобы изменить.</p></div><button onClick={openNew} className="text-sm font-bold text-[#c66d48]">+ Расход</button></div><div className="overflow-x-auto"><table className="w-full min-w-[690px] text-sm"><thead className="bg-[#faf6f3] text-xs text-[#756c67]"><tr><th className="text-left px-4 py-2.5">Дата</th><th className="text-left px-4 py-2.5">Категория</th><th className="text-left px-4 py-2.5">К чему относится</th><th className="text-left px-4 py-2.5">Комментарий</th><th className="text-right px-4 py-2.5">Сумма</th><th/></tr></thead><tbody>{data.expenses.map((expense) => <tr key={expense.id} className="hover:bg-[#fffdfb]"><td className="px-4 py-3 border-t border-[#f0e8e2] whitespace-nowrap">{formatDate(expense.occurred_on)}</td><td className="px-4 py-3 border-t border-[#f0e8e2]"><span className="rounded-lg bg-[#fff1e9] px-2 py-1 text-xs font-semibold text-[#b85d3b]">{categories[expense.category] || expense.category}</span></td><td className="px-4 py-3 border-t border-[#f0e8e2] text-[#756c67]">{expense.batch ? `Партия ${expense.batch.lotNumber}` : expense.period_from || expense.period_to ? `${expense.period_from || "…"} — ${expense.period_to || "…"}` : "Период"}</td><td className="px-4 py-3 border-t border-[#f0e8e2] text-[#756c67] max-w-[220px] truncate">{expense.description || "—"}</td><td className="px-4 py-3 border-t border-[#f0e8e2] text-right font-bold whitespace-nowrap">{money(expense.amount_kopecks)}</td><td className="px-3 py-3 border-t border-[#f0e8e2]"><button onClick={() => openEdit(expense)} className="p-1.5 text-[#8f8782] hover:text-[#c66d48]" title="Редактировать"><Pencil size={15}/></button></td></tr>)}{!data.expenses.length && <tr><td colSpan={6} className="px-4 py-10 text-center text-sm text-[#aaa]">За выбранный период расходов пока нет. Добавьте, например, сервер или дизайн этикеток.</td></tr>}</tbody></table></div></div>
+        <div className="rounded-2xl border border-[#eadfd8] bg-white overflow-hidden"><div className="px-4 py-3 border-b border-[#eee7e2]"><h3 className="font-bold">Себестоимость партий</h3><p className="text-xs text-[#999] mt-0.5">Указывается на складе при приёмке или редактировании партии.</p></div><div className="max-h-[440px] overflow-auto divide-y divide-[#f0e8e2]">{data.batches.map((batch) => <div key={batch.id} className="px-4 py-3"><div className="flex justify-between gap-3"><b className="font-mono text-sm">{batch.lot_number}</b><b className="tabular-nums">{money(batch.totalCost)}</b></div><div className="mt-1 flex justify-between text-xs text-[#837a75]"><span>{batch.remaining_quantity} из {batch.received_quantity} осталось</span><span>{batch.received_quantity ? `${money(Math.round(batch.totalCost / batch.received_quantity))} / ед.` : "—"}</span></div>{batch.extraCosts > 0 && <div className="mt-1 text-[11px] text-[#b85d3b]">Доп. расходы партии: {money(batch.extraCosts)}</div>}</div>)}{!data.batches.length && <div className="px-4 py-10 text-center text-sm text-[#aaa]">Партий пока нет.</div>}</div></div>
+      </div>
+    </>}
+    {showForm && <div className="fixed inset-0 z-[70] bg-black/35 p-4 grid place-items-center" onMouseDown={() => !saving && setShowForm(false)}><div onMouseDown={(event) => event.stopPropagation()} className="w-full max-w-xl rounded-3xl bg-white shadow-2xl overflow-hidden"><div className="flex items-center justify-between p-5 border-b border-[#eee7e2]"><div><h3 className="text-lg font-extrabold">{draft.id ? "Редактировать расход" : "Новый расход"}</h3><p className="mt-0.5 text-sm text-[#8f8782]">Расход периода или дополнительная себестоимость партии.</p></div><button onClick={() => setShowForm(false)} className="p-2 text-[#8f8782]"><X size={20}/></button></div><div className="p-5 grid sm:grid-cols-2 gap-3"><label className="text-xs font-semibold text-[#756c67]">Дата расхода<input type="date" value={draft.occurredOn} onChange={(event) => setDraft({ ...draft, occurredOn: event.target.value })} className="block w-full mt-1 rounded-xl border border-[#eadfd8] px-3 py-2.5 text-sm"/></label><label className="text-xs font-semibold text-[#756c67]">Сумма, ₽<input autoFocus type="number" min="0.01" step="0.01" value={draft.amount} onChange={(event) => setDraft({ ...draft, amount: event.target.value })} className="block w-full mt-1 rounded-xl border border-[#eadfd8] px-3 py-2.5 text-sm"/></label><label className="text-xs font-semibold text-[#756c67]">Категория<select value={draft.category} onChange={(event) => setDraft({ ...draft, category: event.target.value })} className="block w-full mt-1 rounded-xl border border-[#eadfd8] px-3 py-2.5 text-sm bg-white">{Object.entries(categories).map(([id, label]) => <option key={id} value={id}>{label}</option>)}</select></label><label className="text-xs font-semibold text-[#756c67]">Привязать к партии<select value={draft.batchId} onChange={(event) => setDraft({ ...draft, batchId: event.target.value })} className="block w-full mt-1 rounded-xl border border-[#eadfd8] px-3 py-2.5 text-sm bg-white"><option value="">Не привязывать — расход периода</option>{data.batches.map((batch) => <option key={batch.id} value={batch.id}>{batch.lot_number}</option>)}</select></label><label className="text-xs font-semibold text-[#756c67]">Период с <span className="font-normal text-[#aaa]">(необязательно)</span><input type="date" disabled={Boolean(draft.batchId)} value={draft.periodFrom} onChange={(event) => setDraft({ ...draft, periodFrom: event.target.value })} className="block w-full mt-1 rounded-xl border border-[#eadfd8] px-3 py-2.5 text-sm disabled:bg-[#f5f1ef]"/></label><label className="text-xs font-semibold text-[#756c67]">Период по <span className="font-normal text-[#aaa]">(необязательно)</span><input type="date" disabled={Boolean(draft.batchId)} value={draft.periodTo} onChange={(event) => setDraft({ ...draft, periodTo: event.target.value })} className="block w-full mt-1 rounded-xl border border-[#eadfd8] px-3 py-2.5 text-sm disabled:bg-[#f5f1ef]"/></label><label className="sm:col-span-2 text-xs font-semibold text-[#756c67]">Комментарий<textarea rows={3} value={draft.description} onChange={(event) => setDraft({ ...draft, description: event.target.value })} placeholder="Например: сервер за август или дизайн этикеток для партии" className="block resize-none w-full mt-1 rounded-xl border border-[#eadfd8] px-3 py-2.5 text-sm"/></label><div className="sm:col-span-2 rounded-xl bg-[#fff7f2] px-3 py-2.5 text-xs text-[#8f6f62]">{draft.batchId ? "Этот расход войдёт в себестоимость выбранной партии и будет учитываться по мере её продажи." : "Этот расход целиком попадёт в выбранный финансовый период."}</div></div><div className="flex items-center justify-between gap-3 p-5 border-t border-[#eee7e2]">{draft.id ? <button onClick={() => void post({ action: "deleteExpense", id: draft.id }, "Расход удалён.").then((ok) => ok && setShowForm(false))} disabled={saving} className="inline-flex items-center gap-2 text-sm font-semibold text-red-600"><Trash2 size={16}/>Удалить</button> : <span/>}<div className="flex gap-2"><button onClick={() => setShowForm(false)} className="px-4 py-2.5 rounded-xl border border-[#eadfd8] text-sm font-semibold">Отмена</button><button onClick={() => void saveExpense()} disabled={saving} className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#E8845A] text-white text-sm font-bold">{saving ? <LoaderCircle size={16} className="animate-spin"/> : <Check size={16}/>}Сохранить</button></div></div></div></div>}
+  </section>;
+}

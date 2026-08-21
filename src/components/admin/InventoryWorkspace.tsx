@@ -10,7 +10,7 @@ type Product = { id: string; name: string; category: string; stockQty: number | 
 type Batch = {
   id: string; product_id: string; lot_number: string; manufactured_at: string | null; received_at: string; expires_at: string | null;
   received_quantity: number; remaining_quantity: number; status: "active" | "quarantined" | "depleted";
-  notes: string | null; created_at: string; updated_at: string;
+  production_cost_kopecks: number; notes: string | null; created_at: string; updated_at: string;
 };
 type Movement = {
   id: string; batch_id: string | null; product_id: string; order_id: string | null;
@@ -30,7 +30,7 @@ type InventoryPayload = {
 };
 type InventoryTab = "batches" | "orders" | "movements";
 type AllocationDraft = { batchId: string; quantity: string };
-type BatchForm = { lotNumber: string; manufacturedAt: string; receivedAt: string; expiresAt: string; notes: string };
+type BatchForm = { lotNumber: string; manufacturedAt: string; receivedAt: string; expiresAt: string; notes: string; productionCost: string };
 
 const MOVEMENT_LABELS: Record<string, string> = {
   opening: "Стартовый остаток", receipt: "Приёмка", sale: "Продажа",
@@ -60,9 +60,9 @@ export default function InventoryWorkspace({ password }: { password: string }) {
   const [search, setSearch] = useState("");
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const [showReceipt, setShowReceipt] = useState(false);
-  const [receipt, setReceipt] = useState({ productId: "", lotNumber: "", quantity: "", manufacturedAt: "", receivedAt: today(), expiresAt: "", notes: "" });
+  const [receipt, setReceipt] = useState({ productId: "", lotNumber: "", quantity: "", manufacturedAt: "", receivedAt: today(), expiresAt: "", notes: "", productionCost: "" });
   const [editing, setEditing] = useState<Batch | null>(null);
-  const [batchForm, setBatchForm] = useState<BatchForm>({ lotNumber: "", manufacturedAt: "", receivedAt: today(), expiresAt: "", notes: "" });
+  const [batchForm, setBatchForm] = useState<BatchForm>({ lotNumber: "", manufacturedAt: "", receivedAt: today(), expiresAt: "", notes: "", productionCost: "" });
   const [adjusting, setAdjusting] = useState<Batch | null>(null);
   const [adjustment, setAdjustment] = useState({ remaining: "", reason: "" });
   const [reassigning, setReassigning] = useState<{ order: InventoryOrder; productId: string; required: number } | null>(null);
@@ -127,10 +127,11 @@ export default function InventoryWorkspace({ password }: { password: string }) {
       action: "receive", productId: receipt.productId, lotNumber: receipt.lotNumber,
       quantity: Number(receipt.quantity), manufacturedAt: receipt.manufacturedAt || null,
       receivedAt: receipt.receivedAt, expiresAt: receipt.expiresAt || null, notes: receipt.notes,
+      productionCostKopecks: Math.round(Number(receipt.productionCost || 0) * 100),
     }, "Партия принята, остаток товара обновлён.");
     if (ok) {
       setShowReceipt(false);
-      setReceipt({ productId: "", lotNumber: "", quantity: "", manufacturedAt: "", receivedAt: today(), expiresAt: "", notes: "" });
+      setReceipt({ productId: "", lotNumber: "", quantity: "", manufacturedAt: "", receivedAt: today(), expiresAt: "", notes: "", productionCost: "" });
     }
   };
   const openEdit = (batch: Batch) => {
@@ -141,6 +142,7 @@ export default function InventoryWorkspace({ password }: { password: string }) {
       receivedAt: batch.received_at || batch.created_at.slice(0, 10),
       expiresAt: batch.expires_at || "",
       notes: batch.notes || "",
+      productionCost: String(Number(batch.production_cost_kopecks || 0) / 100),
     });
   };
   const saveBatch = async () => {
@@ -149,6 +151,7 @@ export default function InventoryWorkspace({ password }: { password: string }) {
       action: "editBatch", batchId: editing.id, lotNumber: batchForm.lotNumber,
       manufacturedAt: batchForm.manufacturedAt || null, receivedAt: batchForm.receivedAt,
       expiresAt: batchForm.expiresAt || null, notes: batchForm.notes,
+      productionCostKopecks: Math.round(Number(batchForm.productionCost || 0) * 100),
     }, "Данные партии сохранены.");
     if (ok) setEditing(null);
   };
@@ -256,6 +259,7 @@ export default function InventoryWorkspace({ password }: { password: string }) {
       <label className="sm:col-span-2 text-xs font-semibold text-[#756c67]">Товар<select value={receipt.productId} onChange={(event) => setReceipt({ ...receipt, productId: event.target.value })} className="block w-full mt-1 rounded-xl border border-[#eadfd8] px-3 py-2.5 text-sm bg-white"><option value="">Выберите товар</option>{data.products.map((product) => <option key={product.id} value={product.id}>{product.name}</option>)}</select></label>
       <label className="text-xs font-semibold text-[#756c67]">Номер партии<input value={receipt.lotNumber} onChange={(event) => setReceipt({ ...receipt, lotNumber: event.target.value })} className="block w-full mt-1 rounded-xl border border-[#eadfd8] px-3 py-2.5 text-sm"/></label>
       <label className="text-xs font-semibold text-[#756c67]">Количество<input type="number" min="1" value={receipt.quantity} onChange={(event) => setReceipt({ ...receipt, quantity: event.target.value })} className="block w-full mt-1 rounded-xl border border-[#eadfd8] px-3 py-2.5 text-sm"/></label>
+      <label className="text-xs font-semibold text-[#756c67]">Стоимость партии, ₽<input type="number" min="0" step="0.01" value={receipt.productionCost} onChange={(event) => setReceipt({ ...receipt, productionCost: event.target.value })} placeholder="Например, 18500" className="block w-full mt-1 rounded-xl border border-[#eadfd8] px-3 py-2.5 text-sm"/></label>
       <label className="text-xs font-semibold text-[#756c67]">Дата производства<input type="date" value={receipt.manufacturedAt} onChange={(event) => setReceipt({ ...receipt, manufacturedAt: event.target.value })} className="block w-full mt-1 rounded-xl border border-[#eadfd8] px-3 py-2.5 text-sm"/></label>
       <label className="text-xs font-semibold text-[#756c67]">Дата приёмки<input type="date" value={receipt.receivedAt} onChange={(event) => setReceipt({ ...receipt, receivedAt: event.target.value })} className="block w-full mt-1 rounded-xl border border-[#eadfd8] px-3 py-2.5 text-sm"/></label>
       <label className="text-xs font-semibold text-[#756c67]">Годен до<input type="date" value={receipt.expiresAt} onChange={(event) => setReceipt({ ...receipt, expiresAt: event.target.value })} className="block w-full mt-1 rounded-xl border border-[#eadfd8] px-3 py-2.5 text-sm"/></label>
@@ -266,6 +270,7 @@ export default function InventoryWorkspace({ password }: { password: string }) {
       <label className="sm:col-span-2 text-xs font-semibold text-[#756c67]">Номер партии<input value={batchForm.lotNumber} onChange={(event) => setBatchForm({ ...batchForm, lotNumber: event.target.value })} className="block w-full mt-1 rounded-xl border border-[#eadfd8] px-3 py-2.5 text-sm"/></label>
       <label className="text-xs font-semibold text-[#756c67]">Дата производства<input type="date" value={batchForm.manufacturedAt} onChange={(event) => setBatchForm({ ...batchForm, manufacturedAt: event.target.value })} className="block w-full mt-1 rounded-xl border border-[#eadfd8] px-3 py-2.5 text-sm"/></label>
       <label className="text-xs font-semibold text-[#756c67]">Дата приёмки<input type="date" value={batchForm.receivedAt} onChange={(event) => setBatchForm({ ...batchForm, receivedAt: event.target.value })} className="block w-full mt-1 rounded-xl border border-[#eadfd8] px-3 py-2.5 text-sm"/></label>
+      <label className="text-xs font-semibold text-[#756c67]">Стоимость партии, ₽<input type="number" min="0" step="0.01" value={batchForm.productionCost} onChange={(event) => setBatchForm({ ...batchForm, productionCost: event.target.value })} className="block w-full mt-1 rounded-xl border border-[#eadfd8] px-3 py-2.5 text-sm"/></label>
       <label className="text-xs font-semibold text-[#756c67]">Годен до<input type="date" value={batchForm.expiresAt} onChange={(event) => setBatchForm({ ...batchForm, expiresAt: event.target.value })} className="block w-full mt-1 rounded-xl border border-[#eadfd8] px-3 py-2.5 text-sm"/></label>
       <label className="sm:col-span-2 text-xs font-semibold text-[#756c67]">Комментарий<textarea value={batchForm.notes} onChange={(event) => setBatchForm({ ...batchForm, notes: event.target.value })} rows={3} placeholder="Например: документы проверены" className="block w-full mt-1 rounded-xl border border-[#eadfd8] px-3 py-2.5 text-sm resize-none"/></label>
     </div><div className="px-6 py-4 border-t border-[#eee7e2] flex justify-end gap-2"><button onClick={() => setEditing(null)} className="px-4 py-2 rounded-xl border border-[#eadfd8]">Отмена</button><button onClick={() => void saveBatch()} disabled={saving || !batchForm.lotNumber.trim() || !batchForm.receivedAt} className="px-4 py-2 rounded-xl bg-[#E8845A] text-white font-bold disabled:opacity-50 inline-flex items-center gap-2">{saving && <LoaderCircle size={15} className="animate-spin"/>}Сохранить изменения</button></div></div></div>}

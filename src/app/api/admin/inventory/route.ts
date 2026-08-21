@@ -18,7 +18,7 @@ export async function GET(request: NextRequest) {
 
   const [productsResult, batchesResult, movementsResult, allocationsResult, ordersResult] = await Promise.all([
     db.from("products").select("id,data").order("id"),
-    db.from("inventory_batches").select("id,product_id,lot_number,manufactured_at,received_at,expires_at,received_quantity,remaining_quantity,status,notes,created_at,updated_at").order("received_at", { ascending: true }),
+    db.from("inventory_batches").select("id,product_id,lot_number,manufactured_at,received_at,expires_at,received_quantity,remaining_quantity,production_cost_kopecks,status,notes,created_at,updated_at").order("received_at", { ascending: true }),
     db.from("inventory_movements").select("id,batch_id,product_id,order_id,kind,quantity,reason,created_at").order("created_at", { ascending: false }).limit(500),
     db.from("order_batch_allocations").select("id,order_id,product_id,batch_id,quantity,status,created_at,updated_at").eq("status", "written_off").order("created_at", { ascending: true }),
     db.from("payment_orders").select("id,customer,items,delivery,created_at").eq("status", "paid").order("created_at", { ascending: false }).limit(250),
@@ -71,6 +71,7 @@ type InventoryBody = {
   expiresAt?: string | null;
   quantity?: number;
   notes?: string;
+  productionCostKopecks?: number;
   batchId?: string;
   newRemaining?: number;
   reason?: string;
@@ -98,7 +99,11 @@ export async function POST(request: NextRequest) {
     if (!validDate(body.manufacturedAt) || !validDate(body.receivedAt) || !validDate(body.expiresAt) || !body.receivedAt) {
       return NextResponse.json({ error: "Проверьте даты партии" }, { status: 400 });
     }
-    const { data, error } = await db.rpc("inventory_receive_batch_v2", {
+    const productionCostKopecks = Number(body.productionCostKopecks ?? 0);
+    if (!Number.isInteger(productionCostKopecks) || productionCostKopecks < 0 || productionCostKopecks > 10_000_000_000) {
+      return NextResponse.json({ error: "Проверьте стоимость партии" }, { status: 400 });
+    }
+    const { data, error } = await db.rpc("inventory_receive_batch_v3", {
       p_product_id: body.productId,
       p_lot_number: body.lotNumber.trim().slice(0, 120),
       p_manufactured_at: body.manufacturedAt || null,
@@ -106,6 +111,7 @@ export async function POST(request: NextRequest) {
       p_expires_at: body.expiresAt || null,
       p_quantity: quantity,
       p_notes: body.notes?.trim().slice(0, 1000) || null,
+      p_production_cost_kopecks: productionCostKopecks,
     });
     if (error) return NextResponse.json({ error: inventoryError(error.message) }, { status: 500 });
     return NextResponse.json({ ok: true, batchId: data });
@@ -118,13 +124,18 @@ export async function POST(request: NextRequest) {
     if (body.manufacturedAt && body.expiresAt && body.expiresAt < body.manufacturedAt) {
       return NextResponse.json({ error: "Срок годности не может быть раньше даты производства" }, { status: 400 });
     }
-    const { error } = await db.rpc("inventory_update_batch_metadata", {
+    const productionCostKopecks = Number(body.productionCostKopecks ?? 0);
+    if (!Number.isInteger(productionCostKopecks) || productionCostKopecks < 0 || productionCostKopecks > 10_000_000_000) {
+      return NextResponse.json({ error: "Проверьте стоимость партии" }, { status: 400 });
+    }
+    const { error } = await db.rpc("inventory_update_batch_metadata_v2", {
       p_batch_id: body.batchId,
       p_lot_number: body.lotNumber.trim().slice(0, 120),
       p_manufactured_at: body.manufacturedAt || null,
       p_received_at: body.receivedAt,
       p_expires_at: body.expiresAt || null,
       p_notes: body.notes?.trim().slice(0, 1000) || null,
+      p_production_cost_kopecks: productionCostKopecks,
     });
     if (error) {
       const message = error.message.toLowerCase().includes("duplicate key")

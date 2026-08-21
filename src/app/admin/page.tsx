@@ -13,8 +13,9 @@ import type { CellObject, SheetData } from "write-excel-file/browser";
 import SalesDynamicsChart from "@/components/admin/SalesDynamicsChart";
 import ShipmentsWorkspace from "@/components/admin/ShipmentsWorkspace";
 import InventoryWorkspace from "@/components/admin/InventoryWorkspace";
+import FinanceWorkspace from "@/components/admin/FinanceWorkspace";
 
-type Tab = "dashboard" | "orders" | "shipments" | "inventory" | "customers" | "feedback" | "promos" | "products" | "emails" | "integrations";
+type Tab = "dashboard" | "orders" | "shipments" | "inventory" | "finance" | "customers" | "feedback" | "promos" | "products" | "emails" | "integrations";
 type SortField = "name" | "email" | "totalSpent" | "ordersCount" | "avgCheck" | "lastOrder" | "createdAt";
 type SortDir = "asc" | "desc";
 type OrderSortField = "date" | "total" | "status" | "userName";
@@ -916,16 +917,17 @@ export default function AdminPage() {
         <button onClick={() => { void fetch("/api/admin/login", { method: "DELETE" }); setAuthed(false); setPw(""); setAdminPassword(null); }} className="text-xs text-[#aaa] hover:text-[#E8845A]">Выйти</button>
       </div>
 
-      <div className={`${tab === "shipments" || tab === "inventory" ? "max-w-[1920px] px-3 sm:px-4 lg:px-5" : "max-w-7xl px-4 sm:px-6 lg:px-8"} mx-auto py-8`}>
+      <div className={`${tab === "shipments" || tab === "inventory" || tab === "finance" ? "max-w-[1920px] px-3 sm:px-4 lg:px-5" : "max-w-7xl px-4 sm:px-6 lg:px-8"} mx-auto py-8`}>
         {/* Табы */}
         <div className="flex gap-1.5 sm:gap-2 mb-6 sm:mb-8 bg-[#f5f0ec] p-1.5 rounded-2xl w-full overflow-x-auto">
-          {(["dashboard", "orders", "shipments", "inventory", "customers", "feedback", "promos", "products", "emails", "integrations"] as const).map((id) => {
-            const labels: Record<typeof id, string> = { dashboard: "Дашборд", orders: "Заказы", shipments: "Отгрузки", inventory: "Склад", customers: "Покупатели", feedback: "Отзывы и вопросы", promos: "Промокоды", products: "Товары", emails: "Письма", integrations: "Интеграции" };
+          {(["dashboard", "orders", "shipments", "inventory", "finance", "customers", "feedback", "promos", "products", "emails", "integrations"] as const).map((id) => {
+            const labels: Record<typeof id, string> = { dashboard: "Дашборд", orders: "Заказы", shipments: "Отгрузки", inventory: "Склад", finance: "Финансы", customers: "Покупатели", feedback: "Отзывы и вопросы", promos: "Промокоды", products: "Товары", emails: "Письма", integrations: "Интеграции" };
             const icons: Record<typeof id, React.ReactNode> = {
               dashboard: <BarChart2 size={15} />,
               orders: <ShoppingBag size={15} />,
               shipments: <Package size={15} />,
               inventory: <Package size={15} />,
+              finance: <TrendingUp size={15} />,
               customers: <Users size={15} />,
               feedback: <MessageCircle size={15} />,
               promos: <Tag size={15} />,
@@ -1210,6 +1212,8 @@ export default function AdminPage() {
         {tab === "shipments" && <ShipmentsWorkspace password={pw} />}
 
         {tab === "inventory" && <InventoryWorkspace password={pw} />}
+
+        {tab === "finance" && <FinanceWorkspace password={pw} />}
 
         {/* ПОКУПАТЕЛИ */}
         {tab === "customers" && (
