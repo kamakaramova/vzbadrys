@@ -8,6 +8,8 @@ type Batch = { id: string; product_id: string; supply_id: string | null; lot_num
 type Supply = { id: string; supply_number: string; received_at: string; manufactured_at: string | null; expires_at: string | null; notes: string | null };
 type Expense = { id: string; occurred_on: string; period_from: string | null; period_to: string | null; amount_kopecks: number; category: string; description: string | null; batch_id: string | null; supply_id: string | null; created_at: string };
 type Allocation = { order_id: string; batch_id: string | null; quantity: number; status: string };
+type OrderLine = { productId?: string; quantity?: number; stockAmount?: number; unitPrice?: number };
+type PaidOrder = { id: string; amount_kopecks: number; delivery: unknown; items: unknown; created_at: string };
 
 const CATEGORIES = new Set(["production", "raw_materials", "packaging", "laboratory", "design", "server", "software", "marketing", "payment_fee", "tax", "refund", "other"]);
 
@@ -33,10 +35,12 @@ export async function GET(request: NextRequest) {
   const defaultTo = now.toLocaleDateString("sv-SE");
   const from = dateParam(request.nextUrl.searchParams.get("from"), defaultFrom);
   const to = dateParam(request.nextUrl.searchParams.get("to"), defaultTo);
+  const selectedSupplyId = request.nextUrl.searchParams.get("supply") || "";
   if (from > to) return NextResponse.json({ error: "Некорректный период" }, { status: 400 });
 
-  const [ordersResult, expensesResult, batchesResult, suppliesResult, productsResult, allocationsResult, settingsResult] = await Promise.all([
-    db.from("payment_orders").select("id,status,amount_kopecks,delivery,created_at").eq("status", "paid").gte("created_at", `${from}T00:00:00+03:00`).lte("created_at", `${to}T23:59:59.999+03:00`).order("created_at", { ascending: true }).limit(5000),
+  const [ordersResult, allPaidOrdersResult, expensesResult, batchesResult, suppliesResult, productsResult, allocationsResult, settingsResult] = await Promise.all([
+    db.from("payment_orders").select("id,status,amount_kopecks,delivery,items,created_at").eq("status", "paid").gte("created_at", `${from}T00:00:00+03:00`).lte("created_at", `${to}T23:59:59.999+03:00`).order("created_at", { ascending: true }).limit(5000),
+    db.from("payment_orders").select("id,status,amount_kopecks,delivery,items,created_at").eq("status", "paid").order("created_at", { ascending: true }).limit(5000),
     db.from("financial_expenses").select("id,occurred_on,period_from,period_to,amount_kopecks,category,description,batch_id,supply_id,created_at").order("occurred_on", { ascending: false }).limit(5000),
     db.from("inventory_batches").select("id,product_id,supply_id,lot_number,received_quantity,remaining_quantity,production_cost_kopecks").order("received_at", { ascending: false }).limit(3000),
     db.from("inventory_supplies").select("id,supply_number,received_at,manufactured_at,expires_at,notes").order("received_at", { ascending: false }).limit(1000),
@@ -44,83 +48,150 @@ export async function GET(request: NextRequest) {
     db.from("order_batch_allocations").select("order_id,batch_id,quantity,status").eq("status", "written_off").limit(10000),
     db.from("financial_settings").select("usn_rate_bps").eq("singleton", true).maybeSingle(),
   ]);
-  const error = ordersResult.error || expensesResult.error || batchesResult.error || suppliesResult.error || productsResult.error || allocationsResult.error || settingsResult.error;
+  const error = ordersResult.error || allPaidOrdersResult.error || expensesResult.error || batchesResult.error || suppliesResult.error || productsResult.error || allocationsResult.error || settingsResult.error;
   if (error) return NextResponse.json({ error: displayError(error.message) }, { status: 500 });
 
   const allExpenses = (expensesResult.data ?? []) as Expense[];
   const batches = (batchesResult.data ?? []) as Batch[];
   const supplies = (suppliesResult.data ?? []) as Supply[];
-  const productNameById = new Map((productsResult.data ?? []).map((product) => [String(product.id), String((product.data as Json | null)?.name ?? product.id)]));
+  const productInfoById = new Map((productsResult.data ?? []).map((product) => {
+    const data = (product.data as Json | null) ?? {};
+    return [String(product.id), { name: String(data.name ?? product.id), price: Number(data.price ?? 0) }];
+  }));
   const allocations = (allocationsResult.data ?? []) as Allocation[];
   const batchById = new Map(batches.map((batch) => [batch.id, batch]));
-  const batchExpenseById = new Map<string, number>();
-  for (const expense of allExpenses) if (expense.batch_id) batchExpenseById.set(expense.batch_id, (batchExpenseById.get(expense.batch_id) || 0) + Number(expense.amount_kopecks));
-  const supplyExpenseById = new Map<string, number>();
-  for (const expense of allExpenses) if (expense.supply_id) supplyExpenseById.set(expense.supply_id, (supplyExpenseById.get(expense.supply_id) || 0) + Number(expense.amount_kopecks));
   const batchesBySupplyId = new Map<string, Batch[]>();
   for (const batch of batches) if (batch.supply_id) batchesBySupplyId.set(batch.supply_id, [...(batchesBySupplyId.get(batch.supply_id) || []), batch]);
+  const directSupplyExpenseById = new Map<string, number>();
+  const unassignedBusinessExpenses = allExpenses.filter((expense) => !expense.supply_id && !expense.batch_id && expense.category !== "tax").reduce((sum, expense) => sum + Number(expense.amount_kopecks), 0);
+  for (const expense of allExpenses) {
+    if (expense.category === "tax") continue;
+    const supplyId = expense.supply_id || (expense.batch_id ? batchById.get(expense.batch_id)?.supply_id : null);
+    if (supplyId) directSupplyExpenseById.set(supplyId, (directSupplyExpenseById.get(supplyId) || 0) + Number(expense.amount_kopecks));
+  }
+  const totalSupplyUnits = supplies.reduce((sum, supply) => sum + (batchesBySupplyId.get(supply.id) || []).reduce((batchSum, batch) => batchSum + Number(batch.received_quantity), 0), 0);
+  const allocatedCommonExpenseById = new Map<string, number>();
+  for (const supply of supplies) {
+    const units = (batchesBySupplyId.get(supply.id) || []).reduce((sum, batch) => sum + Number(batch.received_quantity), 0);
+    allocatedCommonExpenseById.set(supply.id, totalSupplyUnits ? Math.round(unassignedBusinessExpenses * units / totalSupplyUnits) : 0);
+  }
   const supplyUnitCostById = new Map<string, number>();
   for (const supply of supplies) {
     const supplyBatches = batchesBySupplyId.get(supply.id) || [];
     const quantity = supplyBatches.reduce((sum, batch) => sum + Number(batch.received_quantity), 0);
-    const baseCost = supplyBatches.reduce((sum, batch) => sum + Number(batch.production_cost_kopecks || 0), 0);
-    supplyUnitCostById.set(supply.id, (baseCost + (supplyExpenseById.get(supply.id) || 0)) / Math.max(1, quantity));
+    // Для общей поставки себестоимость берём из журнала расходов: значение
+    // в каждой товарной партии может быть одним и тем же и не должно утраиваться.
+    const totalCost = (directSupplyExpenseById.get(supply.id) || 0) + (allocatedCommonExpenseById.get(supply.id) || 0);
+    supplyUnitCostById.set(supply.id, totalCost / Math.max(1, quantity));
   }
-  const rows = (ordersResult.data ?? []).filter((order) => asDelivery(order.delivery).orderStatus !== "cancelled");
+  const allocationsByOrder = new Map<string, Allocation[]>();
+  for (const allocation of allocations) allocationsByOrder.set(allocation.order_id, [...(allocationsByOrder.get(allocation.order_id) || []), allocation]);
+  const isInSupply = (allocation: Allocation, supplyId: string) => Boolean(allocation.batch_id && batchById.get(allocation.batch_id)?.supply_id === supplyId);
+  const rows = ((ordersResult.data ?? []) as PaidOrder[]).filter((order) => asDelivery(order.delivery).orderStatus !== "cancelled").filter((order) => !selectedSupplyId || (allocationsByOrder.get(order.id) || []).some((allocation) => isInSupply(allocation, selectedSupplyId)));
   const orderIds = new Set(rows.map((order) => String(order.id)));
   const costByOrder = new Map<string, number>();
   const uncostedByOrder = new Map<string, number>();
   for (const allocation of allocations) {
     if (!orderIds.has(allocation.order_id)) continue;
     if (!allocation.batch_id || !batchById.has(allocation.batch_id)) {
+      if (selectedSupplyId) continue;
       uncostedByOrder.set(allocation.order_id, (uncostedByOrder.get(allocation.order_id) || 0) + Number(allocation.quantity));
       continue;
     }
     const batch = batchById.get(allocation.batch_id)!;
-    const unitCost = batch.supply_id
-      ? supplyUnitCostById.get(batch.supply_id) || 0
-      : (Number(batch.production_cost_kopecks || 0) + (batchExpenseById.get(batch.id) || 0)) / Math.max(1, Number(batch.received_quantity));
+    if (selectedSupplyId && batch.supply_id !== selectedSupplyId) continue;
+    const unitCost = batch.supply_id ? supplyUnitCostById.get(batch.supply_id) || 0 : 0;
     costByOrder.set(allocation.order_id, (costByOrder.get(allocation.order_id) || 0) + Math.round(unitCost * Number(allocation.quantity)));
   }
   const periodExpenses = allExpenses.filter((expense) => expense.occurred_on >= from && expense.occurred_on <= to);
-  const operatingExpenses = periodExpenses.filter((expense) => !expense.batch_id && !expense.supply_id && expense.category !== "tax").reduce((sum, expense) => sum + Number(expense.amount_kopecks), 0);
-  const actualTax = periodExpenses.filter((expense) => !expense.batch_id && !expense.supply_id && expense.category === "tax").reduce((sum, expense) => sum + Number(expense.amount_kopecks), 0);
+  const expenseSupplyId = (expense: Expense) => expense.supply_id || (expense.batch_id ? batchById.get(expense.batch_id)?.supply_id || null : null);
+  const shownExpenses = selectedSupplyId ? periodExpenses.filter((expense) => expenseSupplyId(expense) === selectedSupplyId) : periodExpenses;
+  const allDirectPeriodSupplyExpenses = periodExpenses.filter((expense) => expenseSupplyId(expense) !== null && expense.category !== "tax").reduce((sum, expense) => sum + Number(expense.amount_kopecks), 0);
+  const allGeneralPeriodExpenses = periodExpenses.filter((expense) => expenseSupplyId(expense) === null && expense.category !== "tax").reduce((sum, expense) => sum + Number(expense.amount_kopecks), 0);
+  const selectedSupplyUnits = selectedSupplyId ? (batchesBySupplyId.get(selectedSupplyId) || []).reduce((sum, batch) => sum + Number(batch.received_quantity), 0) : 0;
+  const selectedSupplyShare = selectedSupplyId && totalSupplyUnits ? selectedSupplyUnits / totalSupplyUnits : 0;
+  const directPeriodSupplyExpenses = selectedSupplyId
+    ? shownExpenses.filter((expense) => expense.category !== "tax").reduce((sum, expense) => sum + Number(expense.amount_kopecks), 0)
+    : allDirectPeriodSupplyExpenses;
+  const generalPeriodExpenses = selectedSupplyId ? Math.round(allGeneralPeriodExpenses * selectedSupplyShare) : allGeneralPeriodExpenses;
+  const totalPeriodExpenses = selectedSupplyId ? directPeriodSupplyExpenses + generalPeriodExpenses : allDirectPeriodSupplyExpenses + allGeneralPeriodExpenses;
+  const actualTax = shownExpenses.filter((expense) => expense.category === "tax").reduce((sum, expense) => sum + Number(expense.amount_kopecks), 0);
   let revenue = 0, deliveryCollected = 0, deliveryActual = 0, cogs = 0, uncostedUnits = 0;
   const daily = new Map<string, { date: string; revenue: number; deliveryActual: number; cogs: number; operating: number }>();
   for (const row of rows) {
     const delivery = asDelivery(row.delivery);
     const warehouse = asDelivery(delivery.warehouse);
-    const total = Number(row.amount_kopecks || 0);
-    const actual = Math.round(Number(warehouse.actualDeliveryCost || 0) * 100);
+    const lines = (Array.isArray(row.items) ? row.items : []) as OrderLine[];
+    const allLinesCost = lines.reduce((sum, line) => sum + Number(line.unitPrice || 0) * Number(line.quantity || line.stockAmount || 1), 0);
+    const scopedLinesCost = selectedSupplyId ? (allocationsByOrder.get(row.id) || []).filter((allocation) => isInSupply(allocation, selectedSupplyId)).reduce((sum, allocation) => sum + Number(lines.find((line) => line.productId === batchById.get(allocation.batch_id || "")?.product_id)?.unitPrice || 0) * Number(allocation.quantity), 0) : allLinesCost;
+    const share = selectedSupplyId ? (allLinesCost > 0 ? Math.min(1, scopedLinesCost / allLinesCost) : 1) : 1;
+    const total = Math.round(Number(row.amount_kopecks || 0) * share);
+    const actual = Math.round(Number(warehouse.actualDeliveryCost || 0) * 100 * share);
     const orderCost = costByOrder.get(String(row.id)) || 0;
     const day = String(row.created_at).slice(0, 10);
     const entry = daily.get(day) || { date: day, revenue: 0, deliveryActual: 0, cogs: 0, operating: 0 };
     entry.revenue += total; entry.deliveryActual += actual; entry.cogs += orderCost; daily.set(day, entry);
     revenue += total;
-    deliveryCollected += Math.round(Number(delivery.price || 0) * 100);
+    deliveryCollected += Math.round(Number(delivery.price || 0) * 100 * share);
     deliveryActual += actual;
     cogs += orderCost;
     uncostedUnits += uncostedByOrder.get(String(row.id)) || 0;
   }
-  for (const expense of periodExpenses.filter((expense) => !expense.batch_id && !expense.supply_id && expense.category !== "tax")) {
+  for (const expense of shownExpenses.filter((expense) => expense.category !== "tax")) {
     const entry = daily.get(expense.occurred_on) || { date: expense.occurred_on, revenue: 0, deliveryActual: 0, cogs: 0, operating: 0 };
     entry.operating += Number(expense.amount_kopecks); daily.set(expense.occurred_on, entry);
   }
   const usnRateBps = Number(settingsResult.data?.usn_rate_bps ?? 600);
   const estimatedTax = Math.round(revenue * usnRateBps / 10_000);
-  const profitBeforeTax = revenue - deliveryActual - cogs - operatingExpenses;
+  const profitBeforeTax = revenue - deliveryActual - totalPeriodExpenses;
+
+  const supplyStats = new Map<string, { revenue: number; soldUnits: number; orderIds: Set<string>; deliveryActual: number }>();
+  for (const supply of supplies) supplyStats.set(supply.id, { revenue: 0, soldUnits: 0, orderIds: new Set(), deliveryActual: 0 });
+  for (const order of (allPaidOrdersResult.data ?? []) as PaidOrder[]) {
+    if (asDelivery(order.delivery).orderStatus === "cancelled") continue;
+    const lines = (Array.isArray(order.items) ? order.items : []) as OrderLine[];
+    const totalLines = lines.reduce((sum, line) => sum + Number(line.unitPrice || 0) * Number(line.quantity || line.stockAmount || 1), 0);
+    const grouped = new Map<string, { value: number; units: number }>();
+    for (const allocation of allocationsByOrder.get(order.id) || []) {
+      const batch = allocation.batch_id ? batchById.get(allocation.batch_id) : null;
+      if (!batch?.supply_id) continue;
+      const current = grouped.get(batch.supply_id) || { value: 0, units: 0 };
+      const unitPrice = Number(lines.find((line) => line.productId === batch.product_id)?.unitPrice || productInfoById.get(batch.product_id)?.price || 0);
+      current.value += unitPrice * Number(allocation.quantity);
+      current.units += Number(allocation.quantity);
+      grouped.set(batch.supply_id, current);
+    }
+    for (const [supplyId, item] of grouped) {
+      const stats = supplyStats.get(supplyId); if (!stats) continue;
+      const share = totalLines > 0 ? Math.min(1, item.value / totalLines) : 1;
+      stats.revenue += Math.round(Number(order.amount_kopecks || 0) * share);
+      stats.soldUnits += item.units; stats.orderIds.add(order.id);
+      stats.deliveryActual += Math.round(Number(asDelivery(asDelivery(order.delivery).warehouse).actualDeliveryCost || 0) * 100 * share);
+    }
+  }
 
   return NextResponse.json({
     from, to, settings: { usnRateBps },
-    summary: { paidOrders: rows.length, revenue, deliveryCollected, deliveryActual, deliveryDifference: deliveryCollected - deliveryActual, cogs, operatingExpenses, profitBeforeTax, estimatedTax, actualTax, estimatedNetProfit: profitBeforeTax - estimatedTax, uncostedUnits },
+    selectedSupplyId,
+    summary: { paidOrders: rows.length, revenue, deliveryCollected, deliveryActual, deliveryDifference: deliveryCollected - deliveryActual, cogs, totalPeriodExpenses, directPeriodSupplyExpenses, generalPeriodExpenses, profitBeforeTax, estimatedTax, actualTax, estimatedNetProfit: profitBeforeTax - estimatedTax, uncostedUnits },
     daily: [...daily.values()].sort((a, b) => a.date.localeCompare(b.date)).map((entry) => ({ ...entry, profitBeforeTax: entry.revenue - entry.deliveryActual - entry.cogs - entry.operating })),
-    expenses: periodExpenses.map((expense) => ({ ...expense, batch: expense.batch_id ? batchById.get(expense.batch_id) ? { id: expense.batch_id, lotNumber: batchById.get(expense.batch_id)!.lot_number } : null : null, supply: expense.supply_id ? supplies.find((supply) => supply.id === expense.supply_id) ? { id: expense.supply_id, supplyNumber: supplies.find((supply) => supply.id === expense.supply_id)!.supply_number } : null : null })),
-    batches: batches.map((batch) => ({ ...batch, extraCosts: batchExpenseById.get(batch.id) || 0, totalCost: Number(batch.production_cost_kopecks || 0) + (batchExpenseById.get(batch.id) || 0) })),
+    expenses: shownExpenses.map((expense) => ({ ...expense, batch: expense.batch_id ? batchById.get(expense.batch_id) ? { id: expense.batch_id, lotNumber: batchById.get(expense.batch_id)!.lot_number } : null : null, supply: expenseSupplyId(expense) ? supplies.find((supply) => supply.id === expenseSupplyId(expense)) ? { id: expenseSupplyId(expense)!, supplyNumber: supplies.find((supply) => supply.id === expenseSupplyId(expense))!.supply_number } : null : null })),
+    batches: batches.map((batch) => ({ ...batch, extraCosts: 0, totalCost: 0 })),
     supplies: supplies.map((supply) => {
       const supplyBatches = batchesBySupplyId.get(supply.id) || [];
-      const baseCost = supplyBatches.reduce((sum, batch) => sum + Number(batch.production_cost_kopecks || 0), 0);
-      const extraCosts = supplyExpenseById.get(supply.id) || 0;
-      return { ...supply, baseCost, extraCosts, totalCost: baseCost + extraCosts, totalReceived: supplyBatches.reduce((sum, batch) => sum + Number(batch.received_quantity), 0), totalRemaining: supplyBatches.reduce((sum, batch) => sum + Number(batch.remaining_quantity), 0), products: supplyBatches.map((batch) => ({ id: batch.id, name: productNameById.get(batch.product_id) || batch.product_id, received: Number(batch.received_quantity), remaining: Number(batch.remaining_quantity) })) };
+      const directCosts = directSupplyExpenseById.get(supply.id) || 0;
+      const allocatedCommonCosts = allocatedCommonExpenseById.get(supply.id) || 0;
+      const totalReceived = supplyBatches.reduce((sum, batch) => sum + Number(batch.received_quantity), 0);
+      const stats = supplyStats.get(supply.id) || { revenue: 0, soldUnits: 0, orderIds: new Set<string>(), deliveryActual: 0 };
+      const orderCount = stats.orderIds.size;
+      const averageUnitsPerOrder = orderCount ? stats.soldUnits / orderCount : 0;
+      const projectedOrders = averageUnitsPerOrder ? totalReceived / averageUnitsPerOrder : 0;
+      const projectedRevenue = supplyBatches.reduce((sum, batch) => sum + Number(productInfoById.get(batch.product_id)?.price || 0) * Number(batch.received_quantity) * 100, 0);
+      const averageDeliveryPerOrder = orderCount ? stats.deliveryActual / orderCount : 0;
+      const projectedDelivery = Math.round(projectedOrders * averageDeliveryPerOrder);
+      const totalCost = directCosts + allocatedCommonCosts;
+      const projectedTax = Math.round(projectedRevenue * usnRateBps / 10_000);
+      return { ...supply, directCosts, allocatedCommonCosts, totalCost, totalReceived, totalRemaining: supplyBatches.reduce((sum, batch) => sum + Number(batch.remaining_quantity), 0), products: supplyBatches.map((batch) => ({ id: batch.id, name: productInfoById.get(batch.product_id)?.name || batch.product_id, received: Number(batch.received_quantity), remaining: Number(batch.remaining_quantity) })), soldRevenue: stats.revenue, soldUnits: stats.soldUnits, soldOrders: orderCount, averageOrderRevenue: orderCount ? Math.round(stats.revenue / orderCount) : 0, projectedOrders: Math.round(projectedOrders * 10) / 10, projectedRevenue, projectedDelivery, projectedNetProfit: projectedRevenue - totalCost - projectedDelivery - projectedTax, estimatedCostPerOrder: projectedOrders ? Math.round((totalCost + projectedDelivery) / projectedOrders) : 0 };
     }),
   });
 }
