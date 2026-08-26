@@ -16,14 +16,15 @@ export async function GET(request: NextRequest) {
   const db = getServerSupabase();
   if (!db) return NextResponse.json({ error: "not_configured" }, { status: 503 });
 
-  const [productsResult, batchesResult, movementsResult, allocationsResult, ordersResult] = await Promise.all([
+  const [productsResult, batchesResult, movementsResult, allocationsResult, ordersResult, suppliesResult] = await Promise.all([
     db.from("products").select("id,data").order("id"),
-    db.from("inventory_batches").select("id,product_id,lot_number,manufactured_at,received_at,expires_at,received_quantity,remaining_quantity,production_cost_kopecks,status,notes,created_at,updated_at").order("received_at", { ascending: true }),
+    db.from("inventory_batches").select("id,product_id,supply_id,lot_number,manufactured_at,received_at,expires_at,received_quantity,remaining_quantity,production_cost_kopecks,status,notes,created_at,updated_at").order("received_at", { ascending: true }),
     db.from("inventory_movements").select("id,batch_id,product_id,order_id,kind,quantity,reason,created_at").order("created_at", { ascending: false }).limit(500),
     db.from("order_batch_allocations").select("id,order_id,product_id,batch_id,quantity,status,created_at,updated_at").eq("status", "written_off").order("created_at", { ascending: true }),
     db.from("payment_orders").select("id,customer,items,delivery,created_at").eq("status", "paid").order("created_at", { ascending: false }).limit(250),
+    db.from("inventory_supplies").select("id,supply_number,manufactured_at,received_at,expires_at,notes,created_at,updated_at").order("received_at", { ascending: false }),
   ]);
-  const error = productsResult.error || batchesResult.error || movementsResult.error || allocationsResult.error || ordersResult.error;
+  const error = productsResult.error || batchesResult.error || movementsResult.error || allocationsResult.error || ordersResult.error || suppliesResult.error;
   if (error) return NextResponse.json({ error: inventoryError(error.message) }, { status: 500 });
 
   const products = (productsResult.data ?? []).map((row) => {
@@ -56,6 +57,7 @@ export async function GET(request: NextRequest) {
   return NextResponse.json({
     products,
     batches: batchesResult.data ?? [],
+    supplies: suppliesResult.data ?? [],
     movements: movementsResult.data ?? [],
     allocations: allocationsResult.data ?? [],
     orders,

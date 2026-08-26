@@ -4,8 +4,9 @@ import { isAdminAuthorized } from "@/lib/adminAuth";
 import { getServerSupabase } from "@/lib/supabaseServer";
 
 type Json = Record<string, unknown>;
-type Batch = { id: string; product_id: string; lot_number: string; received_quantity: number; remaining_quantity: number; production_cost_kopecks: number };
-type Expense = { id: string; occurred_on: string; period_from: string | null; period_to: string | null; amount_kopecks: number; category: string; description: string | null; batch_id: string | null; created_at: string };
+type Batch = { id: string; product_id: string; supply_id: string | null; lot_number: string; received_quantity: number; remaining_quantity: number; production_cost_kopecks: number };
+type Supply = { id: string; supply_number: string; received_at: string; manufactured_at: string | null; expires_at: string | null; notes: string | null };
+type Expense = { id: string; occurred_on: string; period_from: string | null; period_to: string | null; amount_kopecks: number; category: string; description: string | null; batch_id: string | null; supply_id: string | null; created_at: string };
 type Allocation = { order_id: string; batch_id: string | null; quantity: number; status: string };
 
 const CATEGORIES = new Set(["production", "raw_materials", "packaging", "laboratory", "design", "server", "software", "marketing", "payment_fee", "tax", "refund", "other"]);
@@ -34,22 +35,37 @@ export async function GET(request: NextRequest) {
   const to = dateParam(request.nextUrl.searchParams.get("to"), defaultTo);
   if (from > to) return NextResponse.json({ error: "Некорректный период" }, { status: 400 });
 
-  const [ordersResult, expensesResult, batchesResult, allocationsResult, settingsResult] = await Promise.all([
+  const [ordersResult, expensesResult, batchesResult, suppliesResult, productsResult, allocationsResult, settingsResult] = await Promise.all([
     db.from("payment_orders").select("id,status,amount_kopecks,delivery,created_at").eq("status", "paid").gte("created_at", `${from}T00:00:00+03:00`).lte("created_at", `${to}T23:59:59.999+03:00`).order("created_at", { ascending: true }).limit(5000),
-    db.from("financial_expenses").select("id,occurred_on,period_from,period_to,amount_kopecks,category,description,batch_id,created_at").order("occurred_on", { ascending: false }).limit(5000),
-    db.from("inventory_batches").select("id,product_id,lot_number,received_quantity,remaining_quantity,production_cost_kopecks").order("received_at", { ascending: false }).limit(3000),
+    db.from("financial_expenses").select("id,occurred_on,period_from,period_to,amount_kopecks,category,description,batch_id,supply_id,created_at").order("occurred_on", { ascending: false }).limit(5000),
+    db.from("inventory_batches").select("id,product_id,supply_id,lot_number,received_quantity,remaining_quantity,production_cost_kopecks").order("received_at", { ascending: false }).limit(3000),
+    db.from("inventory_supplies").select("id,supply_number,received_at,manufactured_at,expires_at,notes").order("received_at", { ascending: false }).limit(1000),
+    db.from("products").select("id,data").limit(3000),
     db.from("order_batch_allocations").select("order_id,batch_id,quantity,status").eq("status", "written_off").limit(10000),
     db.from("financial_settings").select("usn_rate_bps").eq("singleton", true).maybeSingle(),
   ]);
-  const error = ordersResult.error || expensesResult.error || batchesResult.error || allocationsResult.error || settingsResult.error;
+  const error = ordersResult.error || expensesResult.error || batchesResult.error || suppliesResult.error || productsResult.error || allocationsResult.error || settingsResult.error;
   if (error) return NextResponse.json({ error: displayError(error.message) }, { status: 500 });
 
   const allExpenses = (expensesResult.data ?? []) as Expense[];
   const batches = (batchesResult.data ?? []) as Batch[];
+  const supplies = (suppliesResult.data ?? []) as Supply[];
+  const productNameById = new Map((productsResult.data ?? []).map((product) => [String(product.id), String((product.data as Json | null)?.name ?? product.id)]));
   const allocations = (allocationsResult.data ?? []) as Allocation[];
   const batchById = new Map(batches.map((batch) => [batch.id, batch]));
   const batchExpenseById = new Map<string, number>();
   for (const expense of allExpenses) if (expense.batch_id) batchExpenseById.set(expense.batch_id, (batchExpenseById.get(expense.batch_id) || 0) + Number(expense.amount_kopecks));
+  const supplyExpenseById = new Map<string, number>();
+  for (const expense of allExpenses) if (expense.supply_id) supplyExpenseById.set(expense.supply_id, (supplyExpenseById.get(expense.supply_id) || 0) + Number(expense.amount_kopecks));
+  const batchesBySupplyId = new Map<string, Batch[]>();
+  for (const batch of batches) if (batch.supply_id) batchesBySupplyId.set(batch.supply_id, [...(batchesBySupplyId.get(batch.supply_id) || []), batch]);
+  const supplyUnitCostById = new Map<string, number>();
+  for (const supply of supplies) {
+    const supplyBatches = batchesBySupplyId.get(supply.id) || [];
+    const quantity = supplyBatches.reduce((sum, batch) => sum + Number(batch.received_quantity), 0);
+    const baseCost = supplyBatches.reduce((sum, batch) => sum + Number(batch.production_cost_kopecks || 0), 0);
+    supplyUnitCostById.set(supply.id, (baseCost + (supplyExpenseById.get(supply.id) || 0)) / Math.max(1, quantity));
+  }
   const rows = (ordersResult.data ?? []).filter((order) => asDelivery(order.delivery).orderStatus !== "cancelled");
   const orderIds = new Set(rows.map((order) => String(order.id)));
   const costByOrder = new Map<string, number>();
@@ -61,12 +77,14 @@ export async function GET(request: NextRequest) {
       continue;
     }
     const batch = batchById.get(allocation.batch_id)!;
-    const unitCost = (Number(batch.production_cost_kopecks || 0) + (batchExpenseById.get(batch.id) || 0)) / Math.max(1, Number(batch.received_quantity));
+    const unitCost = batch.supply_id
+      ? supplyUnitCostById.get(batch.supply_id) || 0
+      : (Number(batch.production_cost_kopecks || 0) + (batchExpenseById.get(batch.id) || 0)) / Math.max(1, Number(batch.received_quantity));
     costByOrder.set(allocation.order_id, (costByOrder.get(allocation.order_id) || 0) + Math.round(unitCost * Number(allocation.quantity)));
   }
   const periodExpenses = allExpenses.filter((expense) => expense.occurred_on >= from && expense.occurred_on <= to);
-  const operatingExpenses = periodExpenses.filter((expense) => !expense.batch_id && expense.category !== "tax").reduce((sum, expense) => sum + Number(expense.amount_kopecks), 0);
-  const actualTax = periodExpenses.filter((expense) => !expense.batch_id && expense.category === "tax").reduce((sum, expense) => sum + Number(expense.amount_kopecks), 0);
+  const operatingExpenses = periodExpenses.filter((expense) => !expense.batch_id && !expense.supply_id && expense.category !== "tax").reduce((sum, expense) => sum + Number(expense.amount_kopecks), 0);
+  const actualTax = periodExpenses.filter((expense) => !expense.batch_id && !expense.supply_id && expense.category === "tax").reduce((sum, expense) => sum + Number(expense.amount_kopecks), 0);
   let revenue = 0, deliveryCollected = 0, deliveryActual = 0, cogs = 0, uncostedUnits = 0;
   const daily = new Map<string, { date: string; revenue: number; deliveryActual: number; cogs: number; operating: number }>();
   for (const row of rows) {
@@ -84,7 +102,7 @@ export async function GET(request: NextRequest) {
     cogs += orderCost;
     uncostedUnits += uncostedByOrder.get(String(row.id)) || 0;
   }
-  for (const expense of periodExpenses.filter((expense) => !expense.batch_id && expense.category !== "tax")) {
+  for (const expense of periodExpenses.filter((expense) => !expense.batch_id && !expense.supply_id && expense.category !== "tax")) {
     const entry = daily.get(expense.occurred_on) || { date: expense.occurred_on, revenue: 0, deliveryActual: 0, cogs: 0, operating: 0 };
     entry.operating += Number(expense.amount_kopecks); daily.set(expense.occurred_on, entry);
   }
@@ -96,8 +114,14 @@ export async function GET(request: NextRequest) {
     from, to, settings: { usnRateBps },
     summary: { paidOrders: rows.length, revenue, deliveryCollected, deliveryActual, deliveryDifference: deliveryCollected - deliveryActual, cogs, operatingExpenses, profitBeforeTax, estimatedTax, actualTax, estimatedNetProfit: profitBeforeTax - estimatedTax, uncostedUnits },
     daily: [...daily.values()].sort((a, b) => a.date.localeCompare(b.date)).map((entry) => ({ ...entry, profitBeforeTax: entry.revenue - entry.deliveryActual - entry.cogs - entry.operating })),
-    expenses: periodExpenses.map((expense) => ({ ...expense, batch: expense.batch_id ? batchById.get(expense.batch_id) ? { id: expense.batch_id, lotNumber: batchById.get(expense.batch_id)!.lot_number } : null : null })),
+    expenses: periodExpenses.map((expense) => ({ ...expense, batch: expense.batch_id ? batchById.get(expense.batch_id) ? { id: expense.batch_id, lotNumber: batchById.get(expense.batch_id)!.lot_number } : null : null, supply: expense.supply_id ? supplies.find((supply) => supply.id === expense.supply_id) ? { id: expense.supply_id, supplyNumber: supplies.find((supply) => supply.id === expense.supply_id)!.supply_number } : null : null })),
     batches: batches.map((batch) => ({ ...batch, extraCosts: batchExpenseById.get(batch.id) || 0, totalCost: Number(batch.production_cost_kopecks || 0) + (batchExpenseById.get(batch.id) || 0) })),
+    supplies: supplies.map((supply) => {
+      const supplyBatches = batchesBySupplyId.get(supply.id) || [];
+      const baseCost = supplyBatches.reduce((sum, batch) => sum + Number(batch.production_cost_kopecks || 0), 0);
+      const extraCosts = supplyExpenseById.get(supply.id) || 0;
+      return { ...supply, baseCost, extraCosts, totalCost: baseCost + extraCosts, totalReceived: supplyBatches.reduce((sum, batch) => sum + Number(batch.received_quantity), 0), totalRemaining: supplyBatches.reduce((sum, batch) => sum + Number(batch.remaining_quantity), 0), products: supplyBatches.map((batch) => ({ id: batch.id, name: productNameById.get(batch.product_id) || batch.product_id, received: Number(batch.received_quantity), remaining: Number(batch.remaining_quantity) })) };
+    }),
   });
 }
 
@@ -131,6 +155,7 @@ export async function POST(request: NextRequest) {
     const amountKopecks = Number(body.amountKopecks);
     const category = String(body.category || "");
     const batchId = body.batchId ? String(body.batchId) : null;
+    const supplyId = body.supplyId ? String(body.supplyId) : null;
     const periodFrom = body.periodFrom ? String(body.periodFrom) : null;
     const periodTo = body.periodTo ? String(body.periodTo) : null;
     if (!/^\d{4}-\d{2}-\d{2}$/.test(occurredOn) || !Number.isInteger(amountKopecks) || amountKopecks <= 0 || amountKopecks > 10_000_000_000 || !CATEGORIES.has(category)) {
@@ -139,7 +164,7 @@ export async function POST(request: NextRequest) {
     if ((periodFrom && !/^\d{4}-\d{2}-\d{2}$/.test(periodFrom)) || (periodTo && !/^\d{4}-\d{2}-\d{2}$/.test(periodTo)) || (periodFrom && periodTo && periodFrom > periodTo)) {
       return NextResponse.json({ error: "Проверьте период расхода" }, { status: 400 });
     }
-    const payload = { occurred_on: occurredOn, amount_kopecks: amountKopecks, category, batch_id: batchId, period_from: periodFrom, period_to: periodTo, description: String(body.description || "").trim().slice(0, 1000) || null, updated_at: new Date().toISOString() };
+    const payload = { occurred_on: occurredOn, amount_kopecks: amountKopecks, category, batch_id: supplyId ? null : batchId, supply_id: supplyId, period_from: periodFrom, period_to: periodTo, description: String(body.description || "").trim().slice(0, 1000) || null, updated_at: new Date().toISOString() };
     const query = id ? db.from("financial_expenses").update(payload).eq("id", id) : db.from("financial_expenses").insert(payload);
     const { error } = await query;
     if (error) return NextResponse.json({ error: displayError(error.message) }, { status: 500 });

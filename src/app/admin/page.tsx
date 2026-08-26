@@ -14,6 +14,7 @@ import SalesDynamicsChart from "@/components/admin/SalesDynamicsChart";
 import ShipmentsWorkspace from "@/components/admin/ShipmentsWorkspace";
 import InventoryWorkspace from "@/components/admin/InventoryWorkspace";
 import FinanceWorkspace from "@/components/admin/FinanceWorkspace";
+import { formatPhoneForDisplay } from "@/lib/phone";
 
 type Tab = "dashboard" | "orders" | "shipments" | "inventory" | "finance" | "customers" | "feedback" | "promos" | "products" | "emails" | "integrations";
 type SortField = "name" | "email" | "totalSpent" | "ordersCount" | "avgCheck" | "lastOrder" | "createdAt";
@@ -272,7 +273,7 @@ export default function AdminPage() {
     setStatusSaved(false);
     setEditingOrderContacts(false);
     setEditOrderEmail(order.userEmail ?? "");
-    setEditOrderPhone(order.userPhone ?? "");
+    setEditOrderPhone(formatPhoneForDisplay(order.userPhone));
     setEditOrderRegion(order.deliveryRegion ?? "");
     setEditOrderCity(order.deliveryCity ?? "");
     setEditOrderAddress(order.deliveryAddressLine ?? order.deliveryAddress ?? "");
@@ -765,7 +766,7 @@ export default function AdminPage() {
       sortedOrders.map((o) => ({
         "Номер": o.id, "Дата": new Date(o.date).toLocaleDateString("ru-RU"),
         "Покупатель": o.userName ?? "", "Email": o.userEmail ?? "",
-        "Телефон": o.userPhone ?? "", "Статус": STATUS_LABELS[o.status],
+        "Телефон": formatPhoneForDisplay(o.userPhone), "Статус": STATUS_LABELS[o.status],
         "Статус оплаты": paymentStatusInfo(o.paymentStatus).label,
         "Товары (руб)": o.subtotal, "Скидка (руб)": o.discount,
         "Доставка (руб)": o.deliveryCost, "Итого (руб)": o.total,
@@ -824,7 +825,7 @@ export default function AdminPage() {
           { value: new Date(order.date), type: Date, format: "dd.mm.yyyy hh:mm", alignVertical: "top", ...(shaded ? { backgroundColor: "#FFF8F4" } : {}) },
           textCell(order.userName ?? "", shaded),
           textCell(order.userEmail ?? "", shaded),
-          textCell(order.userPhone ?? "", shaded),
+          textCell(formatPhoneForDisplay(order.userPhone), shaded),
           textCell(STATUS_LABELS[order.status], shaded),
           textCell(paymentStatusInfo(order.paymentStatus).label, shaded),
           textCell(order.deliveryMethod, shaded),
@@ -1280,7 +1281,7 @@ export default function AdminPage() {
                             </div>
                             <div>
                               <p className="font-semibold">{c.name}</p>
-                              <p className="text-xs text-[#aaa]">{c.phone}</p>
+                              <p className="text-xs text-[#aaa]">{formatPhoneForDisplay(c.phone)}</p>
                             </div>
                           </div>
                         </td>
@@ -1845,7 +1846,7 @@ export default function AdminPage() {
                     <div key={contact.email} className="flex flex-col gap-1 px-6 py-3 sm:flex-row sm:items-center sm:justify-between">
                       <div>
                         <p className="text-sm font-semibold">{contact.name || "Покупатель"}</p>
-                        <p className="text-xs text-[#6b6b6b]">{contact.email}{contact.phone ? ` · ${contact.phone}` : ""}</p>
+                        <p className="text-xs text-[#6b6b6b]">{contact.email}{contact.phone ? ` · ${formatPhoneForDisplay(contact.phone)}` : ""}</p>
                       </div>
                       <p className="text-xs text-[#8A817C]">Согласие: {new Date(contact.consentAt).toLocaleString("ru-RU")}</p>
                     </div>
@@ -2403,7 +2404,7 @@ export default function AdminPage() {
                   <>
                     <p className="font-semibold">{selectedOrder.userName ?? "—"}</p>
                     <p className="text-sm text-[#6b6b6b]">{selectedOrder.userEmail}</p>
-                    <p className="text-sm text-[#6b6b6b]">{selectedOrder.userPhone}</p>
+                    <p className="text-sm text-[#6b6b6b]">{formatPhoneForDisplay(selectedOrder.userPhone)}</p>
                     <p className="mt-2 text-sm text-[#6b6b6b]">{selectedOrder.deliveryAddress}</p>
                     {orderContactsMessage && <p className="mt-2 text-sm font-medium text-green-600">{orderContactsMessage}</p>}
                   </>
@@ -2646,7 +2647,7 @@ export default function AdminPage() {
                 <div>
                   <p className="font-bold text-lg">{selectedCustomer.name}</p>
                   <p className="text-sm text-[#6b6b6b]">{selectedCustomer.email}</p>
-                  <p className="text-sm text-[#6b6b6b]">{selectedCustomer.phone}</p>
+                  <p className="text-sm text-[#6b6b6b]">{formatPhoneForDisplay(selectedCustomer.phone)}</p>
                 </div>
               </div>
               <div className="grid grid-cols-3 gap-3">

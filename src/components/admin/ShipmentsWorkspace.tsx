@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ArrowDown, ArrowUp, ArrowUpDown, Check, Clipboard, ListChecks, Printer, RefreshCw, Search, Send, SquareCheckBig } from "lucide-react";
+import { formatPhoneForDisplay, phoneDigits } from "@/lib/phone";
 
 type Warehouse = {
   actualDeliveryCost: number | null;
@@ -48,7 +49,7 @@ function savedView() {
   if (typeof window === "undefined") return null;
   try {
     return JSON.parse(sessionStorage.getItem(STORAGE_KEY) || "null") as null | {
-      from?: string; to?: string; search?: string; onlyIncomplete?: boolean; statusSort?: "none" | "asc" | "desc"; scrollLeft?: number; scrollTop?: number;
+      from?: string; to?: string; search?: string; onlyIncomplete?: boolean; statusFilter?: string; statusSort?: "none" | "asc" | "desc"; scrollLeft?: number; scrollTop?: number;
     };
   } catch { return null; }
 }
@@ -59,6 +60,7 @@ export default function ShipmentsWorkspace({ password }: { password: string }) {
   const [to, setTo] = useState(today);
   const [search, setSearch] = useState("");
   const [onlyIncomplete, setOnlyIncomplete] = useState(false);
+  const [statusFilter, setStatusFilter] = useState("all");
   const [statusSort, setStatusSort] = useState<"none" | "asc" | "desc">("none");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -67,6 +69,7 @@ export default function ShipmentsWorkspace({ password }: { password: string }) {
   const [statusSaving, setStatusSaving] = useState<string | null>(null);
   const [statusMessage, setStatusMessage] = useState("");
   const [copiedOrder, setCopiedOrder] = useState<string | null>(null);
+  const [copiedPhone, setCopiedPhone] = useState<string | null>(null);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [batchStatus, setBatchStatus] = useState("confirmed");
   const [batchSaving, setBatchSaving] = useState(false);
@@ -105,6 +108,7 @@ export default function ShipmentsWorkspace({ password }: { password: string }) {
       if (view.to) setTo(view.to);
       setSearch(view.search || "");
       setOnlyIncomplete(Boolean(view.onlyIncomplete));
+      setStatusFilter(view.statusFilter || "all");
       setStatusSort(view.statusSort || "none");
       requestAnimationFrame(() => {
         if (!tableRef.current) return;
@@ -118,27 +122,27 @@ export default function ShipmentsWorkspace({ password }: { password: string }) {
   const rememberView = () => {
     const table = tableRef.current;
     sessionStorage.setItem(STORAGE_KEY, JSON.stringify({
-      from, to, search, onlyIncomplete, statusSort, scrollLeft: table?.scrollLeft || 0, scrollTop: table?.scrollTop || 0,
+      from, to, search, onlyIncomplete, statusFilter, statusSort, scrollLeft: table?.scrollLeft || 0, scrollTop: table?.scrollTop || 0,
     }));
   };
   useEffect(() => {
     if (!restoredViewRef.current) return;
     rememberView();
-  }, [from, to, search, onlyIncomplete, statusSort]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [from, to, search, onlyIncomplete, statusFilter, statusSort]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const visible = useMemo(() => {
     const filtered = rows.filter((row) => {
       const q = search.trim().toLowerCase();
       const matches = !q || [row.id, row.customerName, row.email, row.phone, row.deliveryAddress]
         .some((value) => value.toLowerCase().includes(q));
-      const w = row.warehouse;
-      const incomplete = !w.orderChecked || !w.assembled || !w.fiscalReceiptDone || !w.honestSignDone;
-      return matches && (!onlyIncomplete || incomplete);
+      const matchesStatus = statusFilter === "all" || row.orderStatus === statusFilter;
+      const incomplete = row.orderStatus !== "delivered";
+      return matches && matchesStatus && (!onlyIncomplete || incomplete);
     });
     if (statusSort === "none") return filtered;
     const direction = statusSort === "asc" ? 1 : -1;
     return [...filtered].sort((a, b) => direction * ((STATUS_ORDER[a.orderStatus] ?? 99) - (STATUS_ORDER[b.orderStatus] ?? 99)));
-  }, [rows, search, onlyIncomplete, statusSort]);
+  }, [rows, search, onlyIncomplete, statusFilter, statusSort]);
 
   const selectedRows = useMemo(() => rows.filter((row) => selectedIds.includes(row.id)), [rows, selectedIds]);
 
@@ -225,6 +229,11 @@ export default function ShipmentsWorkspace({ password }: { password: string }) {
     setCopiedOrder(id);
     window.setTimeout(() => setCopiedOrder((value) => value === id ? null : value), 1500);
   };
+  const copyPhone = async (id: string, phone: string) => {
+    await navigator.clipboard.writeText(phoneDigits(phone));
+    setCopiedPhone(id);
+    window.setTimeout(() => setCopiedPhone((value) => value === id ? null : value), 1500);
+  };
 
   const toggleSelected = (id: string) => setSelectedIds((current) => current.includes(id) ? current.filter((value) => value !== id) : [...current, id]);
   const toggleAllVisible = () => setSelectedIds((current) => {
@@ -262,7 +271,7 @@ export default function ShipmentsWorkspace({ password }: { password: string }) {
           item.allocations.forEach((allocation) => { if (allocation.lotNumber) entry.lots.push(`${allocation.lotNumber} × ${allocation.quantity}`); });
           result[key] = entry; return result;
         }, {})).map((item, index) => `<tr><td>${index + 1}</td><td><b>${escape(item.name)}</b></td><td class="num">${item.quantity}</td><td>${escape([...new Set(item.lots)].join(", ") || "Партия не указана")}</td><td>${escape(item.orders.join(", "))}</td></tr>`).join("")
-      : documentRows.map((row, index) => `<tr><td>${index + 1}</td><td><b>${escape(row.id)}</b><br><small>${new Date(row.createdAt).toLocaleDateString("ru-RU")}</small></td><td>${escape(row.customerName)}<br><small>${escape(row.phone)} · ${escape(row.email)}</small></td><td>${escape(row.deliveryMethod)}<br>${escape(row.deliveryAddress)}</td><td class="num">${escape(money(row.total))}<br><small>доставка: ${escape(money(row.customerDeliveryCost))}</small></td><td>${escape(row.trackNumber || "—")}</td></tr>`).join("");
+      : documentRows.map((row, index) => `<tr><td>${index + 1}</td><td><b>${escape(row.id)}</b><br><small>${new Date(row.createdAt).toLocaleDateString("ru-RU")}</small></td><td>${escape(row.customerName)}<br><small>${escape(formatPhoneForDisplay(row.phone))} · ${escape(row.email)}</small></td><td>${escape(row.deliveryMethod)}<br>${escape(row.deliveryAddress)}</td><td class="num">${escape(money(row.total))}<br><small>доставка: ${escape(money(row.customerDeliveryCost))}</small></td><td>${escape(row.trackNumber || "—")}</td></tr>`).join("");
     const headings = kind === "assembly" ? ["№", "Товар", "Кол-во", "Партия", "Заказы"] : ["№", "Заказ", "Покупатель", "Доставка / адрес", "Сумма", "Трек"];
     const printWindow = window.open("", "_blank", "noopener,noreferrer");
     if (!printWindow) { setError("Разрешите всплывающие окна, чтобы открыть печать"); return; }
@@ -317,6 +326,7 @@ export default function ShipmentsWorkspace({ password }: { password: string }) {
       <button onClick={() => quickRange(1)} className="px-3 py-2 rounded-lg bg-[#fff4ee] text-[#b9633f] text-sm font-semibold">Сегодня</button>
       <button onClick={() => quickRange(7)} className="px-3 py-2 rounded-lg bg-[#fff4ee] text-[#b9633f] text-sm font-semibold">7 дней</button>
       <div className="relative min-w-[240px] flex-1"><Search size={16} className="absolute left-3 top-3 text-[#aaa]"/><input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Заказ, имя, телефон, адрес…" className="w-full border border-[#e8ddd7] rounded-lg pl-9 pr-3 py-2 text-sm"/></div>
+      <label className="text-xs font-semibold text-[#756c67]">Статус<select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="block mt-1 border border-[#e8ddd7] rounded-lg px-3 py-2 text-sm bg-white"><option value="all">Все статусы</option>{ORDER_STATUSES.map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>
       <label className="flex items-center gap-2 text-sm font-medium"><input type="checkbox" checked={onlyIncomplete} onChange={(e) => setOnlyIncomplete(e.target.checked)} className="accent-[#E8845A]"/>Только незавершённые</label>
     </div>
     {error && <p className="rounded-xl bg-red-50 text-red-600 px-4 py-3 text-sm">{error}</p>}
@@ -362,7 +372,7 @@ export default function ShipmentsWorkspace({ password }: { password: string }) {
               </button>
             </div>
           </td>
-          <td className="px-2.5 py-3 border-b border-r border-[#eee7e2] w-[180px]"><b>{row.customerName}</b><div className="text-[#837a75] mt-1 whitespace-nowrap">{row.phone}</div><div className="text-[#aaa] break-all">{row.email}</div></td>
+          <td className="px-2.5 py-3 border-b border-r border-[#eee7e2] w-[180px]"><b>{row.customerName}</b><div className="mt-1 flex items-center gap-1.5 text-[#837a75] whitespace-nowrap"><span>{formatPhoneForDisplay(row.phone)}</span><button onClick={() => void copyPhone(row.id, row.phone)} title="Скопировать номер без скобок и дефисов" aria-label={`Скопировать номер телефона ${row.customerName}`} className="shrink-0 inline-flex w-6 h-6 items-center justify-center rounded-md border border-[#eadfd8] bg-white text-[#c66d48] hover:bg-[#fff0e8] hover:border-[#e7b49e] transition-colors"><Clipboard size={12}/></button>{copiedPhone === row.id && <span className="text-[10px] font-semibold text-green-600">Скопировано</span>}</div><div className="text-[#aaa] break-all">{row.email}</div></td>
           <td className="px-2.5 py-3 border-b border-r border-[#eee7e2] w-[205px]">{row.items.map((item) => <div key={item.id} className="mb-2 leading-snug"><div>{item.name} <b>×{item.quantity}</b></div>{item.allocations.map((allocation, allocationIndex) => <div key={`${allocation.batchId || "none"}:${allocationIndex}`} className={`mt-0.5 text-[10px] font-semibold ${allocation.batchId ? "text-[#7d746f]" : "text-red-600"}`}>{allocation.batchId ? `Партия ${allocation.lotNumber}: ${allocation.quantity}` : `Не распределено: ${allocation.quantity}`}</div>)}</div>)}</td>
           <td className="px-2.5 py-3 border-b border-r border-[#eee7e2] w-[105px] font-extrabold whitespace-nowrap tabular-nums">{money(row.total)}</td>
           <td className="px-2.5 py-3 border-b border-r border-[#eee7e2] w-[235px]"><b>{row.deliveryMethod}</b><button onClick={() => navigator.clipboard.writeText(row.deliveryAddress)} className="block text-left mt-1 text-[#756c67] hover:text-[#c66d48] leading-snug">{row.deliveryAddress || "Адрес не указан"}</button>{row.trackNumber && <div className="mt-1 font-mono">{row.trackNumber}</div>}</td>

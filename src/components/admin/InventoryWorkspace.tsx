@@ -8,10 +8,11 @@ import {
 
 type Product = { id: string; name: string; category: string; stockQty: number | null; inStock: boolean };
 type Batch = {
-  id: string; product_id: string; lot_number: string; manufactured_at: string | null; received_at: string; expires_at: string | null;
+  id: string; product_id: string; supply_id: string | null; lot_number: string; manufactured_at: string | null; received_at: string; expires_at: string | null;
   received_quantity: number; remaining_quantity: number; status: "active" | "quarantined" | "depleted";
   production_cost_kopecks: number; notes: string | null; created_at: string; updated_at: string;
 };
+type Supply = { id: string; supply_number: string; manufactured_at: string | null; received_at: string; expires_at: string | null; notes: string | null; created_at: string; updated_at: string };
 type Movement = {
   id: string; batch_id: string | null; product_id: string; order_id: string | null;
   kind: string; quantity: number; reason: string | null; created_at: string;
@@ -26,9 +27,9 @@ type InventoryOrder = {
 };
 type InventoryPayload = {
   products: Product[]; batches: Batch[]; movements: Movement[];
-  allocations: Allocation[]; orders: InventoryOrder[];
+  allocations: Allocation[]; orders: InventoryOrder[]; supplies: Supply[];
 };
-type InventoryTab = "batches" | "orders" | "movements";
+type InventoryTab = "batches" | "supplies" | "orders" | "movements";
 type AllocationDraft = { batchId: string; quantity: string };
 type BatchForm = { lotNumber: string; manufacturedAt: string; receivedAt: string; expiresAt: string; notes: string; productionCost: string };
 
@@ -51,7 +52,7 @@ const unit = (product?: Product) => product?.category === "seeds" ? "г" : "шт
 const today = () => new Date().toLocaleDateString("sv-SE");
 
 export default function InventoryWorkspace({ password }: { password: string }) {
-  const [data, setData] = useState<InventoryPayload>({ products: [], batches: [], movements: [], allocations: [], orders: [] });
+  const [data, setData] = useState<InventoryPayload>({ products: [], batches: [], movements: [], allocations: [], orders: [], supplies: [] });
   const [tab, setTab] = useState<InventoryTab>("batches");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -88,6 +89,7 @@ export default function InventoryWorkspace({ password }: { password: string }) {
 
   const productById = useMemo(() => new Map(data.products.map((product) => [product.id, product])), [data.products]);
   const batchById = useMemo(() => new Map(data.batches.map((batch) => [batch.id, batch])), [data.batches]);
+  const supplyById = useMemo(() => new Map(data.supplies.map((supply) => [supply.id, supply])), [data.supplies]);
   const inventoryStartedAt = useMemo(() => {
     const first = [...data.movements].sort((a, b) => a.created_at.localeCompare(b.created_at))[0];
     return first?.created_at ? new Date(first.created_at).getTime() : Number.POSITIVE_INFINITY;
@@ -203,7 +205,7 @@ export default function InventoryWorkspace({ password }: { password: string }) {
 
     <div className="grid grid-cols-2 xl:grid-cols-4 gap-2.5">
       {[
-        ["Товаров на учёте", data.products.filter((product) => product.stockQty !== null).length, `${data.batches.length} партий`],
+        ["Товаров на учёте", data.products.filter((product) => product.stockQty !== null).length, `${data.supplies.length} поставок · ${data.batches.length} товарных партий`],
         ["Мало или закончилось", lowStock.length, "Нужна проверка остатков"],
         ["Срок до 90 дней", expiring.length, "Партии для приоритетной отгрузки"],
         ["Без партии", unallocated.length, "Позиции заказов для проверки"],
@@ -220,11 +222,39 @@ export default function InventoryWorkspace({ password }: { password: string }) {
 
     <div className="flex gap-1.5 overflow-x-auto rounded-2xl bg-[#f5f0ec] p-1.5 w-fit max-w-full">
       {([
-        ["batches", "Остатки и партии", Boxes], ["orders", "Партии в заказах", ClipboardCheck], ["movements", "История движений", History],
+        ["supplies", "Поставки", Boxes], ["batches", "Остатки и партии", Boxes], ["orders", "Партии в заказах", ClipboardCheck], ["movements", "История движений", History],
       ] as const).map(([id, label, Icon]) => <button key={id} onClick={() => setTab(id)} className={`inline-flex items-center gap-2 px-4 py-2.5 rounded-xl whitespace-nowrap text-sm font-semibold ${tab === id ? "bg-white shadow-sm text-[#1a1a1a]" : "text-[#756c67]"}`}><Icon size={15}/>{label}</button>)}
     </div>
 
-    {loading ? <div className="py-16 flex justify-center text-[#999]"><LoaderCircle className="animate-spin"/></div> : tab === "batches" ? <div className="space-y-3">
+    {loading ? <div className="py-16 flex justify-center text-[#999]"><LoaderCircle className="animate-spin"/></div> : tab === "supplies" ? <div className="space-y-3">
+      <div className="rounded-2xl border border-[#eadfd8] bg-white overflow-hidden">
+        {data.supplies.map((supply) => {
+          const supplyBatches = data.batches.filter((batch) => batch.supply_id === supply.id);
+          const totalReceived = supplyBatches.reduce((sum, batch) => sum + batch.received_quantity, 0);
+          const totalRemaining = supplyBatches.reduce((sum, batch) => sum + batch.remaining_quantity, 0);
+          return <div key={supply.id} className="border-b border-[#eee7e2] last:border-b-0 p-5">
+            <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
+              <div>
+                <div className="text-xs font-semibold tracking-wide uppercase text-[#c66d48]">Общая поставка</div>
+                <h3 className="mt-1 text-lg font-extrabold">{supply.supply_number}</h3>
+                <p className="mt-1 text-sm text-[#756c67]">Принята {date(supply.received_at)}{supply.manufactured_at ? ` · изготовлена ${date(supply.manufactured_at)}` : ""}{supply.expires_at ? ` · годна до ${date(supply.expires_at)}` : ""}</p>
+              </div>
+              <div className="grid grid-cols-2 gap-2 text-right text-xs">
+                <div><div className="text-[#999]">Товарных партий</div><b className="text-base tabular-nums">{supplyBatches.length}</b></div>
+                <div><div className="text-[#999]">Остаток</div><b className="text-base tabular-nums text-green-700">{number(totalRemaining)} из {number(totalReceived)}</b></div>
+              </div>
+            </div>
+            {supply.notes && <p className="mt-3 text-sm text-[#756c67]">{supply.notes}</p>}
+            <div className="mt-4 flex flex-wrap gap-2">
+              {supplyBatches.map((batch) => <span key={batch.id} className="rounded-xl border border-[#eadfd8] bg-[#fffaf7] px-3 py-2 text-xs"><b>{productById.get(batch.product_id)?.name || batch.product_id}</b><span className="mx-1 text-[#aaa]">·</span>{batch.lot_number}<span className="mx-1 text-[#aaa]">·</span>{number(batch.remaining_quantity)} {unit(productById.get(batch.product_id))}</span>)}
+              {!supplyBatches.length && <span className="text-sm text-[#999]">Товарные партии пока не добавлены.</span>}
+            </div>
+          </div>;
+        })}
+        {!data.supplies.length && <div className="px-6 py-10 text-sm text-[#999]">Общих поставок пока нет. Отдельные товарные партии и остатки при этом сохранены.</div>}
+      </div>
+      <p className="text-xs text-[#999]">Общая поставка объединяет связанные товары одной приёмки. Списания, остатки и сроки годности по каждому товару продолжают учитываться отдельно.</p>
+    </div> : tab === "batches" ? <div className="space-y-3">
       <div className="relative max-w-md"><Search size={16} className="absolute left-3 top-3 text-[#aaa]"/><input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Найти товар" className="w-full rounded-xl border border-[#eadfd8] bg-white pl-9 pr-3 py-2.5 text-sm"/></div>
       <div className="rounded-2xl border border-[#eadfd8] bg-white overflow-hidden">
         {visibleProducts.map((product) => {
@@ -237,10 +267,11 @@ export default function InventoryWorkspace({ password }: { password: string }) {
               {warning && <span title="Мало товара" className="text-amber-600"><AlertTriangle size={16}/></span>}
               <span className={`font-extrabold tabular-nums whitespace-nowrap ${warning ? "text-amber-700" : "text-green-700"}`}>{product.stockQty === null ? "Не задан" : `${number(product.stockQty)} ${unit(product)}`}</span>
             </button>
-            {isExpanded && <div className="overflow-x-auto bg-[#fffdfb]"><table className="w-full min-w-[1040px] text-xs"><thead className="text-[#756c67]"><tr>{["Партия","Произведено","Принята","Годен до","Количество","Остаток","Статус","Примечание","Действия"].map((label) => <th key={label} className="text-left px-4 py-2 border-t border-b border-[#eee7e2] bg-[#faf6f3]">{label}</th>)}</tr></thead>
+            {isExpanded && <div className="overflow-x-auto bg-[#fffdfb]"><table className="w-full min-w-[1160px] text-xs"><thead className="text-[#756c67]"><tr>{["Общая поставка","Партия товара","Произведено","Принята","Годен до","Количество","Остаток","Статус","Примечание","Действия"].map((label) => <th key={label} className="text-left px-4 py-2 border-t border-b border-[#eee7e2] bg-[#faf6f3]">{label}</th>)}</tr></thead>
               <tbody>{batches.map((batch) => {
                 const expiresSoon = Boolean(batch.expires_at && new Date(`${batch.expires_at}T23:59:59`).getTime() <= expiringLimit && batch.remaining_quantity > 0);
-                return <tr key={batch.id}><td className="px-4 py-3 font-mono font-bold">{batch.lot_number}</td><td className="px-4 py-3">{date(batch.manufactured_at)}</td><td className="px-4 py-3">{date(batch.received_at)}</td><td className={`px-4 py-3 ${expiresSoon ? "font-bold text-amber-700" : ""}`}>{date(batch.expires_at)}</td><td className="px-4 py-3 tabular-nums">{number(batch.received_quantity)} {unit(product)}</td><td className="px-4 py-3 font-extrabold tabular-nums">{number(batch.remaining_quantity)} {unit(product)}</td><td className="px-4 py-3"><span className={`px-2 py-1 rounded-lg font-semibold ${batch.status === "active" ? "bg-green-50 text-green-700" : batch.status === "quarantined" ? "bg-red-50 text-red-700" : "bg-gray-100 text-gray-600"}`}>{STATUS_LABELS[batch.status]}</span></td><td className="px-4 py-3 max-w-[260px] text-[#837a75]">{batch.notes || ""}</td><td className="px-4 py-3"><div className="flex gap-1.5"><button onClick={() => openEdit(batch)} className="p-1.5 rounded-lg border border-[#eadfd8] bg-white text-[#756c67]" title="Редактировать данные партии"><Pencil size={15}/></button><button onClick={() => { setAdjusting(batch); setAdjustment({ remaining: String(batch.remaining_quantity), reason: "" }); }} className="px-2.5 py-1.5 rounded-lg border border-[#eadfd8] bg-white font-semibold">Инвентаризация</button><button onClick={() => void setBatchStatus(batch, batch.status === "quarantined" ? "active" : "quarantined")} className={`p-1.5 rounded-lg border ${batch.status === "quarantined" ? "border-green-200 text-green-700" : "border-red-200 text-red-600"}`} title={batch.status === "quarantined" ? "Вернуть в активные" : "Поместить в карантин"}>{batch.status === "quarantined" ? <Check size={15}/> : <ShieldAlert size={15}/>}</button></div></td></tr>;
+                const supply = batch.supply_id ? supplyById.get(batch.supply_id) : null;
+                return <tr key={batch.id}><td className="px-4 py-3 font-semibold text-[#756c67]">{supply?.supply_number || "Не объединена"}</td><td className="px-4 py-3 font-mono font-bold">{batch.lot_number}</td><td className="px-4 py-3">{date(batch.manufactured_at)}</td><td className="px-4 py-3">{date(batch.received_at)}</td><td className={`px-4 py-3 ${expiresSoon ? "font-bold text-amber-700" : ""}`}>{date(batch.expires_at)}</td><td className="px-4 py-3 tabular-nums">{number(batch.received_quantity)} {unit(product)}</td><td className="px-4 py-3 font-extrabold tabular-nums">{number(batch.remaining_quantity)} {unit(product)}</td><td className="px-4 py-3"><span className={`px-2 py-1 rounded-lg font-semibold ${batch.status === "active" ? "bg-green-50 text-green-700" : batch.status === "quarantined" ? "bg-red-50 text-red-700" : "bg-gray-100 text-gray-600"}`}>{STATUS_LABELS[batch.status]}</span></td><td className="px-4 py-3 max-w-[260px] text-[#837a75]">{batch.notes || ""}</td><td className="px-4 py-3"><div className="flex gap-1.5"><button onClick={() => openEdit(batch)} className="p-1.5 rounded-lg border border-[#eadfd8] bg-white text-[#756c67]" title="Редактировать данные партии"><Pencil size={15}/></button><button onClick={() => { setAdjusting(batch); setAdjustment({ remaining: String(batch.remaining_quantity), reason: "" }); }} className="px-2.5 py-1.5 rounded-lg border border-[#eadfd8] bg-white font-semibold">Инвентаризация</button><button onClick={() => void setBatchStatus(batch, batch.status === "quarantined" ? "active" : "quarantined")} className={`p-1.5 rounded-lg border ${batch.status === "quarantined" ? "border-green-200 text-green-700" : "border-red-200 text-red-600"}`} title={batch.status === "quarantined" ? "Вернуть в активные" : "Поместить в карантин"}>{batch.status === "quarantined" ? <Check size={15}/> : <ShieldAlert size={15}/>}</button></div></td></tr>;
               })}</tbody></table>{!batches.length && <div className="px-12 py-6 text-sm text-[#999]">Добавьте первую партию через кнопку «Принять партию».</div>}</div>}
           </div>;
         })}

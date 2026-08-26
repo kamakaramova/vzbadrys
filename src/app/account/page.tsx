@@ -9,6 +9,7 @@ import { productImagePaths } from "@/lib/productImages";
 import { useCartStore } from "@/store/cartStore";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
+import { formatPhoneForDisplay } from "@/lib/phone";
 import {
   User, Package, LogOut, Gift, Copy, Check, ChevronRight,
   Clock, Truck, CheckCircle, XCircle, RotateCcw, ShoppingBag,
@@ -263,7 +264,7 @@ export default function AccountPage() {
             <div className="flex-1">
               <h1 className="text-xl font-bold">{user.name}</h1>
               <p className="text-sm text-[#6b6b6b]">{user.email}</p>
-              <p className="text-sm text-[#aaa]">{user.phone}</p>
+              <p className="text-sm text-[#aaa]">{formatPhoneForDisplay(user.phone)}</p>
               {profileMsg && (
                 <p className={`text-xs mt-2 ${profileMsg.ok ? "text-green-600" : "text-red-500"}`}>
                   {profileMsg.text}
@@ -556,7 +557,7 @@ export default function AccountPage() {
                         {[
                           { label: "Имя", value: user.name },
                           { label: "Email", value: user.email },
-                          { label: "Телефон", value: user.phone },
+                          { label: "Телефон", value: formatPhoneForDisplay(user.phone) },
                           { label: "Дата регистрации", value: formatDate(user.createdAt) },
                         ].map((f, i) => (
                           <div key={i}>
