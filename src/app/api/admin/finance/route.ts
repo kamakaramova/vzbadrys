@@ -313,7 +313,15 @@ export async function POST(request: NextRequest) {
       const productData = productDataById.get(String(batch.product_id)) || {};
       const productName = String(productData.name || "").toLowerCase();
       const isCitrate = `${String(batch.product_id).toLowerCase()} ${productName}`.includes("цитрат") || `${String(batch.product_id).toLowerCase()} ${productName}`.includes("citrat");
-      const productionCost = isCitrate ? 303 * 100 * 300 : Number(batch.production_cost_kopecks || 0);
+      const storedCost = Number(batch.production_cost_kopecks || 0);
+      // До этого исправления поле ошибочно принимало цену за баночку как
+      // сумму всей позиции. В стартовой поставке 301/237/303 были введены
+      // именно как цены за баночку, поэтому безопасно переводим их в полную
+      // стоимость 300 единиц. Уже корректно сохранённая общая сумма не меняется.
+      const factoryUnitCost = isCitrate
+        ? 303 * 100
+        : (storedCost > 0 && storedCost < 100_000 ? storedCost : Math.round(storedCost / Math.max(1, Number(batch.received_quantity))));
+      const productionCost = factoryUnitCost * 300;
       const { error: updateError } = await db.from("inventory_batches").update({ received_quantity: 300, remaining_quantity: remaining, production_cost_kopecks: productionCost, updated_at: new Date().toISOString() }).eq("id", batch.id);
       if (updateError) return NextResponse.json({ error: displayError(updateError.message) }, { status: 500 });
     }
