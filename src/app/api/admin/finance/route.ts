@@ -229,7 +229,10 @@ export async function GET(request: NextRequest) {
           const price = Number(productInfoById.get(batch.product_id)?.price || 0) * 100;
           const productStats = batchStats.get(batch.id) || { revenue: 0, soldUnits: 0, orderIds: new Set<string>() };
           const projectedProductRevenue = price * quantity;
-          const grossProfit = projectedProductRevenue - landedCost;
+          // Полная экономика товара: помимо цены завода и расходов поставки
+          // сюда попадает доля общих расходов бизнеса (сервер, дизайнер,
+          // сервисы и т. п.), которые внесены в журнал без привязки к товару.
+          const grossProfit = projectedProductRevenue - fullCost;
           return {
             id: batch.id, productId: batch.product_id, lotNumber: batch.lot_number,
             name: productInfoById.get(batch.product_id)?.name || batch.product_id,
