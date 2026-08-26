@@ -19,6 +19,13 @@ function dateParam(value: string | null, fallback: string) {
 
 function asDelivery(value: unknown): Json { return value && typeof value === "object" ? value as Json : {}; }
 
+// Историю не удаляем: исключённая строка остаётся видимой в журнале, но не
+// участвует второй раз в себестоимости. Это нужно для старой общей
+// «Спецификации», когда цена завода уже внесена отдельно по каждой баночке.
+function isExcludedFromCalculation(expense: Expense) {
+  return String(expense.description || "").startsWith("[ИСКЛЮЧЕНО ИЗ РАСЧЁТА]");
+}
+
 function displayError(message: string) {
   const lower = message.toLowerCase();
   if (lower.includes("financial_") || lower.includes("production_cost_kopecks") || lower.includes("schema cache")) return "Финансы ещё не включены в базе данных";
@@ -52,6 +59,7 @@ export async function GET(request: NextRequest) {
   if (error) return NextResponse.json({ error: displayError(error.message) }, { status: 500 });
 
   const allExpenses = (expensesResult.data ?? []) as Expense[];
+  const countedExpenses = allExpenses.filter((expense) => !isExcludedFromCalculation(expense));
   const batches = (batchesResult.data ?? []) as Batch[];
   const supplies = (suppliesResult.data ?? []) as Supply[];
   const productInfoById = new Map((productsResult.data ?? []).map((product) => {
@@ -67,8 +75,8 @@ export async function GET(request: NextRequest) {
   // этикетка или анализ одного БАДa не должны усредняться по всем трём.
   const supplyWideExpenseById = new Map<string, number>();
   const batchExpenseById = new Map<string, number>();
-  const unassignedBusinessExpenses = allExpenses.filter((expense) => !expense.supply_id && !expense.batch_id && expense.category !== "tax").reduce((sum, expense) => sum + Number(expense.amount_kopecks), 0);
-  for (const expense of allExpenses) {
+  const unassignedBusinessExpenses = countedExpenses.filter((expense) => !expense.supply_id && !expense.batch_id && expense.category !== "tax").reduce((sum, expense) => sum + Number(expense.amount_kopecks), 0);
+  for (const expense of countedExpenses) {
     if (expense.category === "tax") continue;
     if (expense.batch_id && batchById.has(expense.batch_id)) {
       batchExpenseById.set(expense.batch_id, (batchExpenseById.get(expense.batch_id) || 0) + Number(expense.amount_kopecks));
@@ -115,7 +123,7 @@ export async function GET(request: NextRequest) {
     const unitCost = batchUnitCostById.get(batch.id) || 0;
     costByOrder.set(allocation.order_id, (costByOrder.get(allocation.order_id) || 0) + Math.round(unitCost * Number(allocation.quantity)));
   }
-  const periodExpenses = allExpenses.filter((expense) => expense.occurred_on >= from && expense.occurred_on <= to);
+  const periodExpenses = countedExpenses.filter((expense) => expense.occurred_on >= from && expense.occurred_on <= to);
   const expenseSupplyId = (expense: Expense) => expense.supply_id || (expense.batch_id ? batchById.get(expense.batch_id)?.supply_id || null : null);
   const shownExpenses = selectedSupplyId ? periodExpenses.filter((expense) => expenseSupplyId(expense) === selectedSupplyId) : periodExpenses;
   const allDirectPeriodSupplyExpenses = periodExpenses.filter((expense) => expenseSupplyId(expense) !== null && expense.category !== "tax").reduce((sum, expense) => sum + Number(expense.amount_kopecks), 0);
@@ -222,6 +230,7 @@ export async function GET(request: NextRequest) {
           const quantity = Number(batch.received_quantity);
           const share = totalReceived ? quantity / totalReceived : 0;
           const factoryCost = Number(batch.production_cost_kopecks);
+          const factoryUnitCost = quantity ? Math.round(factoryCost / quantity) : 0;
           const directProductCosts = batchExpenseById.get(batch.id) || 0;
           const sharedCostShare = Math.round(sharedSupplyCosts * share);
           const landedCost = factoryCost + directProductCosts + sharedCostShare;
@@ -237,7 +246,7 @@ export async function GET(request: NextRequest) {
             id: batch.id, productId: batch.product_id, lotNumber: batch.lot_number,
             name: productInfoById.get(batch.product_id)?.name || batch.product_id,
             received: quantity, remaining: Number(batch.remaining_quantity), sold: productStats.soldUnits,
-            factoryCost, directProductCosts, sharedCostShare, landedCost, landedUnitCost: quantity ? Math.round(landedCost / quantity) : 0,
+            factoryCost, factoryUnitCost, directProductCosts, sharedCostShare, landedCost, landedUnitCost: quantity ? Math.round(landedCost / quantity) : 0,
             allocatedCommonCosts: Math.round(allocatedCommonCosts * share), fullCost, fullUnitCost: quantity ? Math.round(fullCost / quantity) : 0,
             websitePrice: price, soldRevenue: productStats.revenue, soldOrders: productStats.orderIds.size,
             projectedRevenue: projectedProductRevenue, grossProfit, grossMarginBps: projectedProductRevenue ? Math.round(grossProfit / projectedProductRevenue * 10_000) : 0,
@@ -269,15 +278,49 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ ok: true });
   }
 
-  if (action === "saveBatchFactoryCost") {
+  if (action === "saveBatchFactoryUnitCost") {
     const batchId = String(body.batchId || "");
-    const factoryCostKopecks = Number(body.factoryCostKopecks);
-    if (!/^[0-9a-f-]{36}$/i.test(batchId) || !Number.isInteger(factoryCostKopecks) || factoryCostKopecks < 0 || factoryCostKopecks > 10_000_000_000) {
+    const factoryUnitCostKopecks = Number(body.factoryUnitCostKopecks);
+    if (!/^[0-9a-f-]{36}$/i.test(batchId) || !Number.isInteger(factoryUnitCostKopecks) || factoryUnitCostKopecks < 0 || factoryUnitCostKopecks > 10_000_000_000) {
       return NextResponse.json({ error: "Проверьте товарную позицию и сумму" }, { status: 400 });
     }
+    const { data: batch, error: readError } = await db.from("inventory_batches").select("received_quantity").eq("id", batchId).maybeSingle();
+    if (readError || !batch) return NextResponse.json({ error: displayError(readError?.message || "Партия не найдена") }, { status: 404 });
+    const factoryCostKopecks = factoryUnitCostKopecks * Number(batch.received_quantity);
+    if (!Number.isSafeInteger(factoryCostKopecks)) return NextResponse.json({ error: "Сумма слишком большая" }, { status: 400 });
     const { error } = await db.from("inventory_batches").update({ production_cost_kopecks: factoryCostKopecks, updated_at: new Date().toISOString() }).eq("id", batchId);
     if (error) return NextResponse.json({ error: displayError(error.message) }, { status: 500 });
     return NextResponse.json({ ok: true });
+  }
+
+  if (action === "correctStarterSupply") {
+    const { data: supply, error: supplyError } = await db.from("inventory_supplies").select("id,supply_number").ilike("supply_number", "%СТАРТОВЫЙ-20260820%").maybeSingle();
+    if (supplyError || !supply) return NextResponse.json({ error: displayError(supplyError?.message || "Стартовая поставка не найдена") }, { status: 404 });
+    const [{ data: batches, error: batchesError }, { data: products, error: productsError }, { data: expenses, error: expensesError }] = await Promise.all([
+      db.from("inventory_batches").select("id,product_id,received_quantity,production_cost_kopecks").eq("supply_id", supply.id),
+      db.from("products").select("id,data"),
+      db.from("financial_expenses").select("id,description").eq("supply_id", supply.id).ilike("description", "%специфика%"),
+    ]);
+    const error = batchesError || productsError || expensesError;
+    if (error) return NextResponse.json({ error: displayError(error.message) }, { status: 500 });
+    const stockByProductId = new Map((products || []).map((product) => [String(product.id), Number(((product.data || {}) as Json).stockQty)]));
+    for (const batch of batches || []) {
+      const remaining = stockByProductId.get(String(batch.product_id));
+      if (!Number.isInteger(remaining) || Number(remaining) < 0 || Number(remaining) > 300) {
+        return NextResponse.json({ error: "Не удалось взять текущий остаток из карточки товара" }, { status: 400 });
+      }
+      const isCitrate = String(batch.product_id).toLowerCase().includes("magniy-citrat");
+      const productionCost = isCitrate ? 303 * 100 * 300 : Number(batch.production_cost_kopecks || 0);
+      const { error: updateError } = await db.from("inventory_batches").update({ received_quantity: 300, remaining_quantity: remaining, production_cost_kopecks: productionCost, updated_at: new Date().toISOString() }).eq("id", batch.id);
+      if (updateError) return NextResponse.json({ error: displayError(updateError.message) }, { status: 500 });
+    }
+    for (const expense of expenses || []) {
+      const description = String(expense.description || "");
+      if (description.startsWith("[ИСКЛЮЧЕНО ИЗ РАСЧЁТА]")) continue;
+      const { error: updateError } = await db.from("financial_expenses").update({ description: `[ИСКЛЮЧЕНО ИЗ РАСЧЁТА] ${description}`, updated_at: new Date().toISOString() }).eq("id", expense.id);
+      if (updateError) return NextResponse.json({ error: displayError(updateError.message) }, { status: 500 });
+    }
+    return NextResponse.json({ ok: true, changedBatches: (batches || []).length, excludedExpenses: (expenses || []).length });
   }
 
   if (action === "deleteExpense") {
