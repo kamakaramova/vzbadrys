@@ -99,6 +99,7 @@ export default function FinanceWorkspace({ password }: { password: string }) {
     const ok = await post({ action: "saveBatchFactoryUnitCost", batchId: factoryDraft.id, factoryUnitCostKopecks: Math.round(Number(factoryDraft.amount) * 100) }, "Цена завода за баночку сохранена.");
     if (ok) setFactoryDraft(null);
   };
+  const starterSupplyNeedsCorrection = data.supplies.some((supply) => supply.supply_number.includes("СТАРТОВЫЙ-20260820") && supply.products.some((product) => product.received !== 300));
   const metrics = [
     ["Оплачено покупателями", money(data.summary.revenue), "Вся сумма заказов, включая доставку", "text-[#222]"],
     ["Выручка по товарам", money(data.summary.productRevenue), "Без денег, взятых за доставку", "text-[#222]"],
@@ -113,7 +114,7 @@ export default function FinanceWorkspace({ password }: { password: string }) {
   return <section className="space-y-5 min-w-0">
     <div className="flex flex-col xl:flex-row xl:items-end justify-between gap-3">
       <div><h2 className="text-2xl font-extrabold flex items-center gap-2"><WalletCards size={23} className="text-[#E8845A]"/>Финансы</h2><p className="text-sm text-[#8f8782] mt-1">Управленческий учёт: заказы, отгрузки, партии и расходы в одной картине.</p></div>
-      <div className="flex gap-2"><button onClick={() => void load()} disabled={loading} className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl border border-[#eadfd8] bg-white text-sm font-semibold"><RefreshCw size={15} className={loading ? "animate-spin" : ""}/>Обновить</button><button onClick={openNew} className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#E8845A] text-white text-sm font-bold"><Plus size={16}/>Добавить расход</button></div>
+      <div className="flex flex-wrap gap-2"><button onClick={() => void load()} disabled={loading} className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl border border-[#eadfd8] bg-white text-sm font-semibold"><RefreshCw size={15} className={loading ? "animate-spin" : ""}/>Обновить</button>{starterSupplyNeedsCorrection && <button onClick={() => void post({ action: "correctStarterSupply" }, "Стартовая поставка исправлена: по 300 банок каждого БАДa; старая спецификация исключена из расчёта.")} disabled={saving} className="px-4 py-2.5 rounded-xl border border-amber-200 bg-amber-50 text-sm font-bold text-amber-800">Исправить стартовую поставку</button>}<button onClick={openNew} className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#E8845A] text-white text-sm font-bold"><Plus size={16}/>Добавить расход</button></div>
     </div>
     <div className="rounded-2xl border border-[#eadfd8] bg-white p-3 flex flex-wrap items-end gap-3">
       <label className="text-xs font-semibold text-[#756c67]">С даты<input type="date" value={from} onChange={(event) => setFrom(event.target.value)} className="block mt-1 rounded-xl border border-[#eadfd8] px-3 py-2 text-sm"/></label>

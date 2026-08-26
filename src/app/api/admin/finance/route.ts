@@ -303,13 +303,16 @@ export async function POST(request: NextRequest) {
     ]);
     const error = batchesError || productsError || expensesError;
     if (error) return NextResponse.json({ error: displayError(error.message) }, { status: 500 });
-    const stockByProductId = new Map((products || []).map((product) => [String(product.id), Number(((product.data || {}) as Json).stockQty)]));
+    const productDataById = new Map((products || []).map((product) => [String(product.id), (product.data || {}) as Json]));
+    const stockByProductId = new Map([...productDataById.entries()].map(([id, data]) => [id, Number(data.stockQty)]));
     for (const batch of batches || []) {
       const remaining = stockByProductId.get(String(batch.product_id));
       if (!Number.isInteger(remaining) || Number(remaining) < 0 || Number(remaining) > 300) {
         return NextResponse.json({ error: "Не удалось взять текущий остаток из карточки товара" }, { status: 400 });
       }
-      const isCitrate = String(batch.product_id).toLowerCase().includes("magniy-citrat");
+      const productData = productDataById.get(String(batch.product_id)) || {};
+      const productName = String(productData.name || "").toLowerCase();
+      const isCitrate = `${String(batch.product_id).toLowerCase()} ${productName}`.includes("цитрат") || `${String(batch.product_id).toLowerCase()} ${productName}`.includes("citrat");
       const productionCost = isCitrate ? 303 * 100 * 300 : Number(batch.production_cost_kopecks || 0);
       const { error: updateError } = await db.from("inventory_batches").update({ received_quantity: 300, remaining_quantity: remaining, production_cost_kopecks: productionCost, updated_at: new Date().toISOString() }).eq("id", batch.id);
       if (updateError) return NextResponse.json({ error: displayError(updateError.message) }, { status: 500 });
