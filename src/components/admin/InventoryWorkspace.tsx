@@ -32,6 +32,7 @@ type InventoryPayload = {
 type InventoryTab = "batches" | "supplies" | "orders" | "movements";
 type AllocationDraft = { batchId: string; quantity: string };
 type BatchForm = { lotNumber: string; manufacturedAt: string; receivedAt: string; expiresAt: string; notes: string; productionCost: string };
+type SupplyForm = { supplyNumber: string; manufacturedAt: string; receivedAt: string; expiresAt: string; notes: string };
 
 const MOVEMENT_LABELS: Record<string, string> = {
   opening: "Стартовый остаток", receipt: "Приёмка", sale: "Продажа",
@@ -64,6 +65,8 @@ export default function InventoryWorkspace({ password }: { password: string }) {
   const [receipt, setReceipt] = useState({ productId: "", lotNumber: "", quantity: "", manufacturedAt: "", receivedAt: today(), expiresAt: "", notes: "", productionCost: "" });
   const [editing, setEditing] = useState<Batch | null>(null);
   const [batchForm, setBatchForm] = useState<BatchForm>({ lotNumber: "", manufacturedAt: "", receivedAt: today(), expiresAt: "", notes: "", productionCost: "" });
+  const [editingSupply, setEditingSupply] = useState<Supply | null>(null);
+  const [supplyForm, setSupplyForm] = useState<SupplyForm>({ supplyNumber: "", manufacturedAt: "", receivedAt: today(), expiresAt: "", notes: "" });
   const [adjusting, setAdjusting] = useState<Batch | null>(null);
   const [adjustment, setAdjustment] = useState({ remaining: "", reason: "" });
   const [reassigning, setReassigning] = useState<{ order: InventoryOrder; productId: string; required: number } | null>(null);
@@ -157,6 +160,25 @@ export default function InventoryWorkspace({ password }: { password: string }) {
     }, "Данные партии сохранены.");
     if (ok) setEditing(null);
   };
+  const openSupplyEdit = (supply: Supply) => {
+    setEditingSupply(supply);
+    setSupplyForm({
+      supplyNumber: supply.supply_number,
+      manufacturedAt: supply.manufactured_at || "",
+      receivedAt: supply.received_at || supply.created_at.slice(0, 10),
+      expiresAt: supply.expires_at || "",
+      notes: supply.notes || "",
+    });
+  };
+  const saveSupply = async () => {
+    if (!editingSupply) return;
+    const ok = await post({
+      action: "editSupply", supplyId: editingSupply.id, lotNumber: supplyForm.supplyNumber,
+      manufacturedAt: supplyForm.manufacturedAt || null, receivedAt: supplyForm.receivedAt,
+      expiresAt: supplyForm.expiresAt || null, notes: supplyForm.notes,
+    }, "Данные общей поставки сохранены. Все связанные отгрузки остаются привязаны к ней.");
+    if (ok) setEditingSupply(null);
+  };
   const adjust = async () => {
     if (!adjusting) return;
     const ok = await post({ action: "adjust", batchId: adjusting.id, newRemaining: Number(adjustment.remaining), reason: adjustment.reason }, "Фактический остаток сохранён в истории движений.");
@@ -239,9 +261,12 @@ export default function InventoryWorkspace({ password }: { password: string }) {
                 <h3 className="mt-1 text-lg font-extrabold">{supply.supply_number}</h3>
                 <p className="mt-1 text-sm text-[#756c67]">Принята {date(supply.received_at)}{supply.manufactured_at ? ` · изготовлена ${date(supply.manufactured_at)}` : ""}{supply.expires_at ? ` · годна до ${date(supply.expires_at)}` : ""}</p>
               </div>
-              <div className="grid grid-cols-2 gap-2 text-right text-xs">
+              <div className="flex flex-col items-stretch sm:items-end gap-3">
+                <button onClick={() => openSupplyEdit(supply)} className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-[#eadfd8] bg-white px-3 py-2 text-xs font-bold text-[#756c67]"><Pencil size={14}/>Редактировать</button>
+                <div className="grid grid-cols-2 gap-2 text-right text-xs">
                 <div><div className="text-[#999]">Товарных партий</div><b className="text-base tabular-nums">{supplyBatches.length}</b></div>
                 <div><div className="text-[#999]">Остаток</div><b className="text-base tabular-nums text-green-700">{number(totalRemaining)} из {number(totalReceived)}</b></div>
+                </div>
               </div>
             </div>
             {supply.notes && <p className="mt-3 text-sm text-[#756c67]">{supply.notes}</p>}
@@ -305,6 +330,14 @@ export default function InventoryWorkspace({ password }: { password: string }) {
       <label className="text-xs font-semibold text-[#756c67]">Годен до<input type="date" value={batchForm.expiresAt} onChange={(event) => setBatchForm({ ...batchForm, expiresAt: event.target.value })} className="block w-full mt-1 rounded-xl border border-[#eadfd8] px-3 py-2.5 text-sm"/></label>
       <label className="sm:col-span-2 text-xs font-semibold text-[#756c67]">Комментарий<textarea value={batchForm.notes} onChange={(event) => setBatchForm({ ...batchForm, notes: event.target.value })} rows={3} placeholder="Например: документы проверены" className="block w-full mt-1 rounded-xl border border-[#eadfd8] px-3 py-2.5 text-sm resize-none"/></label>
     </div><div className="px-6 py-4 border-t border-[#eee7e2] flex justify-end gap-2"><button onClick={() => setEditing(null)} className="px-4 py-2 rounded-xl border border-[#eadfd8]">Отмена</button><button onClick={() => void saveBatch()} disabled={saving || !batchForm.lotNumber.trim() || !batchForm.receivedAt} className="px-4 py-2 rounded-xl bg-[#E8845A] text-white font-bold disabled:opacity-50 inline-flex items-center gap-2">{saving && <LoaderCircle size={15} className="animate-spin"/>}Сохранить изменения</button></div></div></div>}
+
+    {editingSupply && <div className="fixed inset-0 z-50 bg-black/35 flex items-center justify-center p-4" onMouseDown={(event) => { if (event.currentTarget === event.target) setEditingSupply(null); }}><div className="w-full max-w-xl bg-white rounded-3xl shadow-2xl overflow-hidden"><div className="px-6 py-4 border-b border-[#eee7e2] flex justify-between gap-3"><div><h3 className="font-extrabold">Редактировать общую поставку</h3><p className="text-xs text-[#999] mt-1">Изменения применятся ко всей поставке. Количества и списания товаров не изменятся.</p></div><button onClick={() => setEditingSupply(null)} aria-label="Закрыть"><X size={20}/></button></div><div className="p-6 grid sm:grid-cols-2 gap-4">
+      <label className="sm:col-span-2 text-xs font-semibold text-[#756c67]">Название / номер поставки<input value={supplyForm.supplyNumber} onChange={(event) => setSupplyForm({ ...supplyForm, supplyNumber: event.target.value })} className="block w-full mt-1 rounded-xl border border-[#eadfd8] px-3 py-2.5 text-sm"/></label>
+      <label className="text-xs font-semibold text-[#756c67]">Дата производства<input type="date" value={supplyForm.manufacturedAt} onChange={(event) => setSupplyForm({ ...supplyForm, manufacturedAt: event.target.value })} className="block w-full mt-1 rounded-xl border border-[#eadfd8] px-3 py-2.5 text-sm"/></label>
+      <label className="text-xs font-semibold text-[#756c67]">Дата приёмки<input type="date" value={supplyForm.receivedAt} onChange={(event) => setSupplyForm({ ...supplyForm, receivedAt: event.target.value })} className="block w-full mt-1 rounded-xl border border-[#eadfd8] px-3 py-2.5 text-sm"/></label>
+      <label className="text-xs font-semibold text-[#756c67]">Годен до<input type="date" value={supplyForm.expiresAt} onChange={(event) => setSupplyForm({ ...supplyForm, expiresAt: event.target.value })} className="block w-full mt-1 rounded-xl border border-[#eadfd8] px-3 py-2.5 text-sm"/></label>
+      <label className="sm:col-span-2 text-xs font-semibold text-[#756c67]">Комментарий<textarea value={supplyForm.notes} onChange={(event) => setSupplyForm({ ...supplyForm, notes: event.target.value })} rows={3} placeholder="Например: первая поставка трёх БАДов" className="block w-full mt-1 rounded-xl border border-[#eadfd8] px-3 py-2.5 text-sm resize-none"/></label>
+    </div><div className="px-6 py-4 border-t border-[#eee7e2] flex justify-end gap-2"><button onClick={() => setEditingSupply(null)} className="px-4 py-2 rounded-xl border border-[#eadfd8]">Отмена</button><button onClick={() => void saveSupply()} disabled={saving || !supplyForm.supplyNumber.trim() || !supplyForm.receivedAt} className="px-4 py-2 rounded-xl bg-[#E8845A] text-white font-bold disabled:opacity-50 inline-flex items-center gap-2">{saving && <LoaderCircle size={15} className="animate-spin"/>}Сохранить изменения</button></div></div></div>}
 
     {adjusting && <div className="fixed inset-0 z-50 bg-black/35 flex items-center justify-center p-4"><div className="w-full max-w-md bg-white rounded-3xl shadow-2xl p-6"><div className="flex justify-between gap-3"><div><h3 className="font-extrabold">Инвентаризация партии</h3><p className="text-sm text-[#756c67] mt-1">{adjusting.lot_number}</p></div><button onClick={() => setAdjusting(null)}><X size={20}/></button></div><label className="block mt-5 text-xs font-semibold text-[#756c67]">Фактический остаток<input type="number" min="0" value={adjustment.remaining} onChange={(event) => setAdjustment({ ...adjustment, remaining: event.target.value })} className="block w-full mt-1 rounded-xl border border-[#eadfd8] px-3 py-2.5 text-sm"/></label><label className="block mt-4 text-xs font-semibold text-[#756c67]">Причина корректировки<textarea value={adjustment.reason} onChange={(event) => setAdjustment({ ...adjustment, reason: event.target.value })} rows={3} placeholder="Например: пересчёт 20 августа" className="block w-full mt-1 rounded-xl border border-[#eadfd8] px-3 py-2.5 text-sm resize-none"/></label><div className="flex justify-end gap-2 mt-5"><button onClick={() => setAdjusting(null)} className="px-4 py-2 rounded-xl border border-[#eadfd8]">Отмена</button><button onClick={() => void adjust()} disabled={saving} className="px-4 py-2 rounded-xl bg-[#E8845A] text-white font-bold disabled:opacity-50">Сохранить</button></div></div></div>}
 

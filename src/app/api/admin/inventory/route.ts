@@ -65,7 +65,7 @@ export async function GET(request: NextRequest) {
 }
 
 type InventoryBody = {
-  action?: "receive" | "adjust" | "reassign" | "batchStatus" | "editBatch";
+  action?: "receive" | "adjust" | "reassign" | "batchStatus" | "editBatch" | "editSupply";
   productId?: string;
   lotNumber?: string;
   manufacturedAt?: string | null;
@@ -75,6 +75,7 @@ type InventoryBody = {
   notes?: string;
   productionCostKopecks?: number;
   batchId?: string;
+  supplyId?: string;
   newRemaining?: number;
   reason?: string;
   orderId?: string;
@@ -142,6 +143,30 @@ export async function POST(request: NextRequest) {
     if (error) {
       const message = error.message.toLowerCase().includes("duplicate key")
         ? "Такая партия для этого товара уже существует"
+        : inventoryError(error.message);
+      return NextResponse.json({ error: message }, { status: 500 });
+    }
+    return NextResponse.json({ ok: true });
+  }
+
+  if (body.action === "editSupply") {
+    if (!body.supplyId || !body.lotNumber?.trim() || !body.receivedAt || !validDate(body.manufacturedAt) || !validDate(body.receivedAt) || !validDate(body.expiresAt)) {
+      return NextResponse.json({ error: "Укажите название поставки и дату приёмки" }, { status: 400 });
+    }
+    if (body.manufacturedAt && body.expiresAt && body.expiresAt < body.manufacturedAt) {
+      return NextResponse.json({ error: "Срок годности не может быть раньше даты производства" }, { status: 400 });
+    }
+    const { error } = await db.from("inventory_supplies").update({
+      supply_number: body.lotNumber.trim().slice(0, 120),
+      manufactured_at: body.manufacturedAt || null,
+      received_at: body.receivedAt,
+      expires_at: body.expiresAt || null,
+      notes: body.notes?.trim().slice(0, 1000) || null,
+      updated_at: new Date().toISOString(),
+    }).eq("id", body.supplyId);
+    if (error) {
+      const message = error.message.toLowerCase().includes("duplicate key")
+        ? "Поставка с таким названием уже есть"
         : inventoryError(error.message);
       return NextResponse.json({ error: message }, { status: 500 });
     }
