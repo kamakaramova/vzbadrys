@@ -62,12 +62,19 @@ export async function GET(request: NextRequest) {
   const batchById = new Map(batches.map((batch) => [batch.id, batch]));
   const batchesBySupplyId = new Map<string, Batch[]>();
   for (const batch of batches) if (batch.supply_id) batchesBySupplyId.set(batch.supply_id, [...(batchesBySupplyId.get(batch.supply_id) || []), batch]);
-  const directSupplyExpenseById = new Map<string, number>();
+  // Расходы у поставки и расходы у конкретной баночки живут раздельно.
+  // Это важно для одной общей поставки с несколькими товарами: цена завода,
+  // этикетка или анализ одного БАДa не должны усредняться по всем трём.
+  const supplyWideExpenseById = new Map<string, number>();
+  const batchExpenseById = new Map<string, number>();
   const unassignedBusinessExpenses = allExpenses.filter((expense) => !expense.supply_id && !expense.batch_id && expense.category !== "tax").reduce((sum, expense) => sum + Number(expense.amount_kopecks), 0);
   for (const expense of allExpenses) {
     if (expense.category === "tax") continue;
-    const supplyId = expense.supply_id || (expense.batch_id ? batchById.get(expense.batch_id)?.supply_id : null);
-    if (supplyId) directSupplyExpenseById.set(supplyId, (directSupplyExpenseById.get(supplyId) || 0) + Number(expense.amount_kopecks));
+    if (expense.batch_id && batchById.has(expense.batch_id)) {
+      batchExpenseById.set(expense.batch_id, (batchExpenseById.get(expense.batch_id) || 0) + Number(expense.amount_kopecks));
+    } else if (expense.supply_id) {
+      supplyWideExpenseById.set(expense.supply_id, (supplyWideExpenseById.get(expense.supply_id) || 0) + Number(expense.amount_kopecks));
+    }
   }
   const totalSupplyUnits = supplies.reduce((sum, supply) => sum + (batchesBySupplyId.get(supply.id) || []).reduce((batchSum, batch) => batchSum + Number(batch.received_quantity), 0), 0);
   const allocatedCommonExpenseById = new Map<string, number>();
@@ -75,14 +82,19 @@ export async function GET(request: NextRequest) {
     const units = (batchesBySupplyId.get(supply.id) || []).reduce((sum, batch) => sum + Number(batch.received_quantity), 0);
     allocatedCommonExpenseById.set(supply.id, totalSupplyUnits ? Math.round(unassignedBusinessExpenses * units / totalSupplyUnits) : 0);
   }
-  const supplyUnitCostById = new Map<string, number>();
+  const batchUnitCostById = new Map<string, number>();
   for (const supply of supplies) {
     const supplyBatches = batchesBySupplyId.get(supply.id) || [];
     const quantity = supplyBatches.reduce((sum, batch) => sum + Number(batch.received_quantity), 0);
-    // Для общей поставки себестоимость берём из журнала расходов: значение
-    // в каждой товарной партии может быть одним и тем же и не должно утраиваться.
-    const totalCost = (directSupplyExpenseById.get(supply.id) || 0) + (allocatedCommonExpenseById.get(supply.id) || 0);
-    supplyUnitCostById.set(supply.id, totalCost / Math.max(1, quantity));
+    const sharedSupplyCost = supplyWideExpenseById.get(supply.id) || 0;
+    for (const batch of supplyBatches) {
+      const batchQuantity = Number(batch.received_quantity);
+      const share = quantity ? batchQuantity / quantity : 0;
+      // Себестоимость поступления: цена завода позиции + прямые расходы
+      // позиции + её доля общих затрат именно этой поставки.
+      const landedCost = Number(batch.production_cost_kopecks) + (batchExpenseById.get(batch.id) || 0) + Math.round(sharedSupplyCost * share);
+      batchUnitCostById.set(batch.id, landedCost / Math.max(1, batchQuantity));
+    }
   }
   const allocationsByOrder = new Map<string, Allocation[]>();
   for (const allocation of allocations) allocationsByOrder.set(allocation.order_id, [...(allocationsByOrder.get(allocation.order_id) || []), allocation]);
@@ -100,7 +112,7 @@ export async function GET(request: NextRequest) {
     }
     const batch = batchById.get(allocation.batch_id)!;
     if (selectedSupplyId && batch.supply_id !== selectedSupplyId) continue;
-    const unitCost = batch.supply_id ? supplyUnitCostById.get(batch.supply_id) || 0 : 0;
+    const unitCost = batchUnitCostById.get(batch.id) || 0;
     costByOrder.set(allocation.order_id, (costByOrder.get(allocation.order_id) || 0) + Math.round(unitCost * Number(allocation.quantity)));
   }
   const periodExpenses = allExpenses.filter((expense) => expense.occurred_on >= from && expense.occurred_on <= to);
@@ -146,7 +158,9 @@ export async function GET(request: NextRequest) {
   const profitBeforeTax = revenue - deliveryActual - totalPeriodExpenses;
 
   const supplyStats = new Map<string, { revenue: number; soldUnits: number; orderIds: Set<string>; deliveryActual: number }>();
+  const batchStats = new Map<string, { revenue: number; soldUnits: number; orderIds: Set<string> }>();
   for (const supply of supplies) supplyStats.set(supply.id, { revenue: 0, soldUnits: 0, orderIds: new Set(), deliveryActual: 0 });
+  for (const batch of batches) batchStats.set(batch.id, { revenue: 0, soldUnits: 0, orderIds: new Set() });
   for (const order of (allPaidOrdersResult.data ?? []) as PaidOrder[]) {
     if (asDelivery(order.delivery).orderStatus === "cancelled") continue;
     const lines = (Array.isArray(order.items) ? order.items : []) as OrderLine[];
@@ -160,6 +174,14 @@ export async function GET(request: NextRequest) {
       current.value += unitPrice * Number(allocation.quantity);
       current.units += Number(allocation.quantity);
       grouped.set(batch.supply_id, current);
+
+      const batchSale = batchStats.get(batch.id);
+      if (batchSale) {
+        const lineShare = totalLines > 0 ? Math.min(1, unitPrice * Number(allocation.quantity) / totalLines) : 1;
+        batchSale.revenue += Math.round(Number(order.amount_kopecks || 0) * lineShare);
+        batchSale.soldUnits += Number(allocation.quantity);
+        batchSale.orderIds.add(order.id);
+      }
     }
     for (const [supplyId, item] of grouped) {
       const stats = supplyStats.get(supplyId); if (!stats) continue;
@@ -173,13 +195,15 @@ export async function GET(request: NextRequest) {
   return NextResponse.json({
     from, to, settings: { usnRateBps },
     selectedSupplyId,
-    summary: { paidOrders: rows.length, revenue, deliveryCollected, deliveryActual, deliveryDifference: deliveryCollected - deliveryActual, cogs, totalPeriodExpenses, directPeriodSupplyExpenses, generalPeriodExpenses, profitBeforeTax, estimatedTax, actualTax, estimatedNetProfit: profitBeforeTax - estimatedTax, uncostedUnits },
+    summary: { paidOrders: rows.length, revenue, productRevenue: revenue - deliveryCollected, deliveryCollected, deliveryActual, deliveryDifference: deliveryCollected - deliveryActual, cogs, grossProductProfit: revenue - deliveryCollected - cogs, totalPeriodExpenses, directPeriodSupplyExpenses, generalPeriodExpenses, profitBeforeTax, estimatedTax, actualTax, estimatedNetProfit: profitBeforeTax - estimatedTax, uncostedUnits },
     daily: [...daily.values()].sort((a, b) => a.date.localeCompare(b.date)).map((entry) => ({ ...entry, profitBeforeTax: entry.revenue - entry.deliveryActual - entry.cogs - entry.operating })),
     expenses: shownExpenses.map((expense) => ({ ...expense, batch: expense.batch_id ? batchById.get(expense.batch_id) ? { id: expense.batch_id, lotNumber: batchById.get(expense.batch_id)!.lot_number } : null : null, supply: expenseSupplyId(expense) ? supplies.find((supply) => supply.id === expenseSupplyId(expense)) ? { id: expenseSupplyId(expense)!, supplyNumber: supplies.find((supply) => supply.id === expenseSupplyId(expense))!.supply_number } : null : null })),
-    batches: batches.map((batch) => ({ ...batch, extraCosts: 0, totalCost: 0 })),
+    batches: batches.map((batch) => ({ ...batch, extraCosts: batchExpenseById.get(batch.id) || 0, totalCost: Math.round((batchUnitCostById.get(batch.id) || 0) * Number(batch.received_quantity)) })),
     supplies: supplies.map((supply) => {
       const supplyBatches = batchesBySupplyId.get(supply.id) || [];
-      const directCosts = directSupplyExpenseById.get(supply.id) || 0;
+      const sharedSupplyCosts = supplyWideExpenseById.get(supply.id) || 0;
+      const productDirectCosts = supplyBatches.reduce((sum, batch) => sum + Number(batch.production_cost_kopecks) + (batchExpenseById.get(batch.id) || 0), 0);
+      const directCosts = sharedSupplyCosts + productDirectCosts;
       const allocatedCommonCosts = allocatedCommonExpenseById.get(supply.id) || 0;
       const totalReceived = supplyBatches.reduce((sum, batch) => sum + Number(batch.received_quantity), 0);
       const stats = supplyStats.get(supply.id) || { revenue: 0, soldUnits: 0, orderIds: new Set<string>(), deliveryActual: 0 };
@@ -191,7 +215,37 @@ export async function GET(request: NextRequest) {
       const projectedDelivery = Math.round(projectedOrders * averageDeliveryPerOrder);
       const totalCost = directCosts + allocatedCommonCosts;
       const projectedTax = Math.round(projectedRevenue * usnRateBps / 10_000);
-      return { ...supply, directCosts, allocatedCommonCosts, totalCost, totalReceived, totalRemaining: supplyBatches.reduce((sum, batch) => sum + Number(batch.remaining_quantity), 0), products: supplyBatches.map((batch) => ({ id: batch.id, name: productInfoById.get(batch.product_id)?.name || batch.product_id, received: Number(batch.received_quantity), remaining: Number(batch.remaining_quantity) })), soldRevenue: stats.revenue, soldUnits: stats.soldUnits, soldOrders: orderCount, averageOrderRevenue: orderCount ? Math.round(stats.revenue / orderCount) : 0, projectedOrders: Math.round(projectedOrders * 10) / 10, projectedRevenue, projectedDelivery, projectedNetProfit: projectedRevenue - totalCost - projectedDelivery - projectedTax, estimatedCostPerOrder: projectedOrders ? Math.round((totalCost + projectedDelivery) / projectedOrders) : 0 };
+      return {
+        ...supply, sharedSupplyCosts, productDirectCosts, directCosts, allocatedCommonCosts, totalCost, totalReceived,
+        totalRemaining: supplyBatches.reduce((sum, batch) => sum + Number(batch.remaining_quantity), 0),
+        products: supplyBatches.map((batch) => {
+          const quantity = Number(batch.received_quantity);
+          const share = totalReceived ? quantity / totalReceived : 0;
+          const factoryCost = Number(batch.production_cost_kopecks);
+          const directProductCosts = batchExpenseById.get(batch.id) || 0;
+          const sharedCostShare = Math.round(sharedSupplyCosts * share);
+          const landedCost = factoryCost + directProductCosts + sharedCostShare;
+          const fullCost = landedCost + Math.round(allocatedCommonCosts * share);
+          const price = Number(productInfoById.get(batch.product_id)?.price || 0) * 100;
+          const productStats = batchStats.get(batch.id) || { revenue: 0, soldUnits: 0, orderIds: new Set<string>() };
+          const projectedProductRevenue = price * quantity;
+          const grossProfit = projectedProductRevenue - landedCost;
+          return {
+            id: batch.id, productId: batch.product_id, lotNumber: batch.lot_number,
+            name: productInfoById.get(batch.product_id)?.name || batch.product_id,
+            received: quantity, remaining: Number(batch.remaining_quantity), sold: productStats.soldUnits,
+            factoryCost, directProductCosts, sharedCostShare, landedCost, landedUnitCost: quantity ? Math.round(landedCost / quantity) : 0,
+            allocatedCommonCosts: Math.round(allocatedCommonCosts * share), fullCost, fullUnitCost: quantity ? Math.round(fullCost / quantity) : 0,
+            websitePrice: price, soldRevenue: productStats.revenue, soldOrders: productStats.orderIds.size,
+            projectedRevenue: projectedProductRevenue, grossProfit, grossMarginBps: projectedProductRevenue ? Math.round(grossProfit / projectedProductRevenue * 10_000) : 0,
+          };
+        }),
+        soldRevenue: stats.revenue, soldUnits: stats.soldUnits, soldOrders: orderCount,
+        averageOrderRevenue: orderCount ? Math.round(stats.revenue / orderCount) : 0,
+        projectedOrders: Math.round(projectedOrders * 10) / 10, projectedRevenue, projectedDelivery,
+        projectedNetProfit: projectedRevenue - totalCost - projectedDelivery - projectedTax,
+        estimatedCostPerOrder: projectedOrders ? Math.round((totalCost + projectedDelivery) / projectedOrders) : 0,
+      };
     }),
   });
 }
@@ -208,6 +262,17 @@ export async function POST(request: NextRequest) {
     const usnRateBps = Number(body.usnRateBps);
     if (!Number.isInteger(usnRateBps) || usnRateBps < 0 || usnRateBps > 3000) return NextResponse.json({ error: "Проверьте ставку УСН" }, { status: 400 });
     const { error } = await db.from("financial_settings").upsert({ singleton: true, usn_rate_bps: usnRateBps, updated_at: new Date().toISOString() });
+    if (error) return NextResponse.json({ error: displayError(error.message) }, { status: 500 });
+    return NextResponse.json({ ok: true });
+  }
+
+  if (action === "saveBatchFactoryCost") {
+    const batchId = String(body.batchId || "");
+    const factoryCostKopecks = Number(body.factoryCostKopecks);
+    if (!/^[0-9a-f-]{36}$/i.test(batchId) || !Number.isInteger(factoryCostKopecks) || factoryCostKopecks < 0 || factoryCostKopecks > 10_000_000_000) {
+      return NextResponse.json({ error: "Проверьте товарную позицию и сумму" }, { status: 400 });
+    }
+    const { error } = await db.from("inventory_batches").update({ production_cost_kopecks: factoryCostKopecks, updated_at: new Date().toISOString() }).eq("id", batchId);
     if (error) return NextResponse.json({ error: displayError(error.message) }, { status: 500 });
     return NextResponse.json({ ok: true });
   }
