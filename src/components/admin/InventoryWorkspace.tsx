@@ -69,6 +69,8 @@ export default function InventoryWorkspace({ password }: { password: string }) {
   const [supplyForm, setSupplyForm] = useState<SupplyForm>({ supplyNumber: "", manufacturedAt: "", receivedAt: today(), expiresAt: "", notes: "" });
   const [adjusting, setAdjusting] = useState<Batch | null>(null);
   const [adjustment, setAdjustment] = useState({ remaining: "", reason: "" });
+  const [showPersonalWriteoff, setShowPersonalWriteoff] = useState(false);
+  const [personalWriteoff, setPersonalWriteoff] = useState({ batchId: "", quantity: "1", note: "" });
   const [reassigning, setReassigning] = useState<{ order: InventoryOrder; productId: string; required: number } | null>(null);
   const [allocationDrafts, setAllocationDrafts] = useState<AllocationDraft[]>([]);
   const [referenceTime] = useState(() => Date.now());
@@ -184,6 +186,20 @@ export default function InventoryWorkspace({ password }: { password: string }) {
     const ok = await post({ action: "adjust", batchId: adjusting.id, newRemaining: Number(adjustment.remaining), reason: adjustment.reason }, "Фактический остаток сохранён в истории движений.");
     if (ok) setAdjusting(null);
   };
+  const writeOffForPersonalUse = async () => {
+    const batch = data.batches.find((item) => item.id === personalWriteoff.batchId);
+    const quantity = Number(personalWriteoff.quantity);
+    if (!batch || !Number.isInteger(quantity) || quantity <= 0 || quantity > batch.remaining_quantity) {
+      setError("Выберите партию и укажите количество не больше текущего остатка.");
+      return;
+    }
+    const reason = `Личное использование${personalWriteoff.note.trim() ? `: ${personalWriteoff.note.trim()}` : ""}`;
+    const ok = await post({ action: "adjust", batchId: batch.id, newRemaining: batch.remaining_quantity - quantity, reason }, "Баночки списаны на личное использование и отражены в истории движений.");
+    if (ok) {
+      setShowPersonalWriteoff(false);
+      setPersonalWriteoff({ batchId: "", quantity: "1", note: "" });
+    }
+  };
   const setBatchStatus = async (batch: Batch, status: Batch["status"]) => {
     await post({ action: "batchStatus", batchId: batch.id, status }, status === "quarantined" ? "Партия помещена в карантин и исключена из доступного остатка." : "Статус партии обновлён.");
   };
@@ -221,6 +237,7 @@ export default function InventoryWorkspace({ password }: { password: string }) {
       </div>
       <div className="flex gap-2">
         <button onClick={() => void load()} disabled={loading} className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl border border-[#eadfd8] bg-white text-sm font-semibold"><RefreshCw size={15} className={loading ? "animate-spin" : ""}/>Обновить</button>
+        <button onClick={() => setShowPersonalWriteoff(true)} className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl border border-[#f1cfbf] bg-[#fff7f2] text-sm font-bold text-[#b85d3b]">Списать для себя</button>
         <button onClick={() => setShowReceipt(true)} className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#E8845A] text-white text-sm font-bold"><Plus size={16}/>Принять партию</button>
       </div>
     </div>
@@ -338,6 +355,8 @@ export default function InventoryWorkspace({ password }: { password: string }) {
       <label className="text-xs font-semibold text-[#756c67]">Годен до<input type="date" value={supplyForm.expiresAt} onChange={(event) => setSupplyForm({ ...supplyForm, expiresAt: event.target.value })} className="block w-full mt-1 rounded-xl border border-[#eadfd8] px-3 py-2.5 text-sm"/></label>
       <label className="sm:col-span-2 text-xs font-semibold text-[#756c67]">Комментарий<textarea value={supplyForm.notes} onChange={(event) => setSupplyForm({ ...supplyForm, notes: event.target.value })} rows={3} placeholder="Например: первая поставка трёх БАДов" className="block w-full mt-1 rounded-xl border border-[#eadfd8] px-3 py-2.5 text-sm resize-none"/></label>
     </div><div className="px-6 py-4 border-t border-[#eee7e2] flex justify-end gap-2"><button onClick={() => setEditingSupply(null)} className="px-4 py-2 rounded-xl border border-[#eadfd8]">Отмена</button><button onClick={() => void saveSupply()} disabled={saving || !supplyForm.supplyNumber.trim() || !supplyForm.receivedAt} className="px-4 py-2 rounded-xl bg-[#E8845A] text-white font-bold disabled:opacity-50 inline-flex items-center gap-2">{saving && <LoaderCircle size={15} className="animate-spin"/>}Сохранить изменения</button></div></div></div>}
+
+    {showPersonalWriteoff && <div className="fixed inset-0 z-50 bg-black/35 flex items-center justify-center p-4" onMouseDown={(event) => { if (event.currentTarget === event.target) setShowPersonalWriteoff(false); }}><div className="w-full max-w-md bg-white rounded-3xl shadow-2xl overflow-hidden"><div className="px-6 py-4 border-b border-[#eee7e2] flex justify-between gap-3"><div><h3 className="font-extrabold">Списать для личного использования</h3><p className="text-xs text-[#999] mt-1">Это не продажа: остаток уменьшится, а запись останется в истории склада.</p></div><button onClick={() => setShowPersonalWriteoff(false)}><X size={20}/></button></div><div className="p-6 space-y-4"><label className="block text-xs font-semibold text-[#756c67]">Товар и партия<select value={personalWriteoff.batchId} onChange={(event) => setPersonalWriteoff({ ...personalWriteoff, batchId: event.target.value })} className="block w-full mt-1 rounded-xl border border-[#eadfd8] px-3 py-2.5 text-sm bg-white"><option value="">Выберите партию</option>{data.batches.filter((batch) => batch.remaining_quantity > 0 && batch.status === "active").map((batch) => <option key={batch.id} value={batch.id}>{productById.get(batch.product_id)?.name || batch.product_id} · {batch.lot_number} · остаток {number(batch.remaining_quantity)}</option>)}</select></label><label className="block text-xs font-semibold text-[#756c67]">Количество баночек<input type="number" min="1" value={personalWriteoff.quantity} onChange={(event) => setPersonalWriteoff({ ...personalWriteoff, quantity: event.target.value })} className="block w-full mt-1 rounded-xl border border-[#eadfd8] px-3 py-2.5 text-sm"/></label><label className="block text-xs font-semibold text-[#756c67]">Комментарий (необязательно)<textarea rows={3} value={personalWriteoff.note} onChange={(event) => setPersonalWriteoff({ ...personalWriteoff, note: event.target.value })} placeholder="Например: тест состава" className="block w-full mt-1 rounded-xl border border-[#eadfd8] px-3 py-2.5 text-sm resize-none"/></label></div><div className="px-6 py-4 border-t border-[#eee7e2] flex justify-end gap-2"><button onClick={() => setShowPersonalWriteoff(false)} className="px-4 py-2 rounded-xl border border-[#eadfd8]">Отмена</button><button onClick={() => void writeOffForPersonalUse()} disabled={saving || !personalWriteoff.batchId} className="px-4 py-2 rounded-xl bg-[#E8845A] text-white font-bold disabled:opacity-50">Списать</button></div></div></div>}
 
     {adjusting && <div className="fixed inset-0 z-50 bg-black/35 flex items-center justify-center p-4"><div className="w-full max-w-md bg-white rounded-3xl shadow-2xl p-6"><div className="flex justify-between gap-3"><div><h3 className="font-extrabold">Инвентаризация партии</h3><p className="text-sm text-[#756c67] mt-1">{adjusting.lot_number}</p></div><button onClick={() => setAdjusting(null)}><X size={20}/></button></div><label className="block mt-5 text-xs font-semibold text-[#756c67]">Фактический остаток<input type="number" min="0" value={adjustment.remaining} onChange={(event) => setAdjustment({ ...adjustment, remaining: event.target.value })} className="block w-full mt-1 rounded-xl border border-[#eadfd8] px-3 py-2.5 text-sm"/></label><label className="block mt-4 text-xs font-semibold text-[#756c67]">Причина корректировки<textarea value={adjustment.reason} onChange={(event) => setAdjustment({ ...adjustment, reason: event.target.value })} rows={3} placeholder="Например: пересчёт 20 августа" className="block w-full mt-1 rounded-xl border border-[#eadfd8] px-3 py-2.5 text-sm resize-none"/></label><div className="flex justify-end gap-2 mt-5"><button onClick={() => setAdjusting(null)} className="px-4 py-2 rounded-xl border border-[#eadfd8]">Отмена</button><button onClick={() => void adjust()} disabled={saving} className="px-4 py-2 rounded-xl bg-[#E8845A] text-white font-bold disabled:opacity-50">Сохранить</button></div></div></div>}
 

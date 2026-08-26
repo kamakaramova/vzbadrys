@@ -173,6 +173,9 @@ export async function GET(request: NextRequest) {
     if (asDelivery(order.delivery).orderStatus === "cancelled") continue;
     const lines = (Array.isArray(order.items) ? order.items : []) as OrderLine[];
     const totalLines = lines.reduce((sum, line) => sum + Number(line.unitPrice || 0) * Number(line.quantity || line.stockAmount || 1), 0);
+    // История продаж должна опираться на цену и скидку из самого заказа,
+    // поэтому будущая смена цены карточки не перепишет прошлую выручку.
+    const productRevenueInOrder = Math.max(0, Number(order.amount_kopecks || 0) - Math.round(Number(asDelivery(order.delivery).price || 0) * 100));
     const grouped = new Map<string, { value: number; units: number }>();
     for (const allocation of allocationsByOrder.get(order.id) || []) {
       const batch = allocation.batch_id ? batchById.get(allocation.batch_id) : null;
@@ -186,7 +189,7 @@ export async function GET(request: NextRequest) {
       const batchSale = batchStats.get(batch.id);
       if (batchSale) {
         const lineShare = totalLines > 0 ? Math.min(1, unitPrice * Number(allocation.quantity) / totalLines) : 1;
-        batchSale.revenue += Math.round(Number(order.amount_kopecks || 0) * lineShare);
+        batchSale.revenue += Math.round(productRevenueInOrder * lineShare);
         batchSale.soldUnits += Number(allocation.quantity);
         batchSale.orderIds.add(order.id);
       }
@@ -194,7 +197,7 @@ export async function GET(request: NextRequest) {
     for (const [supplyId, item] of grouped) {
       const stats = supplyStats.get(supplyId); if (!stats) continue;
       const share = totalLines > 0 ? Math.min(1, item.value / totalLines) : 1;
-      stats.revenue += Math.round(Number(order.amount_kopecks || 0) * share);
+      stats.revenue += Math.round(productRevenueInOrder * share);
       stats.soldUnits += item.units; stats.orderIds.add(order.id);
       stats.deliveryActual += Math.round(Number(asDelivery(asDelivery(order.delivery).warehouse).actualDeliveryCost || 0) * 100 * share);
     }
@@ -242,6 +245,9 @@ export async function GET(request: NextRequest) {
           // сюда попадает доля общих расходов бизнеса (сервер, дизайнер,
           // сервисы и т. п.), которые внесены в журнал без привязки к товару.
           const grossProfit = projectedProductRevenue - fullCost;
+          const realizedCost = Math.round((quantity ? fullCost / quantity : 0) * productStats.soldUnits);
+          const realizedGrossProfit = productStats.revenue - realizedCost;
+          const realizedEstimatedTax = Math.round(productStats.revenue * usnRateBps / 10_000);
           return {
             id: batch.id, productId: batch.product_id, lotNumber: batch.lot_number,
             name: productInfoById.get(batch.product_id)?.name || batch.product_id,
@@ -250,6 +256,7 @@ export async function GET(request: NextRequest) {
             allocatedCommonCosts: Math.round(allocatedCommonCosts * share), fullCost, fullUnitCost: quantity ? Math.round(fullCost / quantity) : 0,
             websitePrice: price, soldRevenue: productStats.revenue, soldOrders: productStats.orderIds.size,
             projectedRevenue: projectedProductRevenue, grossProfit, grossMarginBps: projectedProductRevenue ? Math.round(grossProfit / projectedProductRevenue * 10_000) : 0,
+            realizedCost, realizedGrossProfit, realizedEstimatedTax, realizedNetProfit: realizedGrossProfit - realizedEstimatedTax,
           };
         }),
         soldRevenue: stats.revenue, soldUnits: stats.soldUnits, soldOrders: orderCount,
