@@ -6,6 +6,7 @@ export type EmailKind =
   | "payment_failed"
   | "order_confirmed"
   | "order_shipped"
+  | "order_ready_for_pickup"
   | "order_delivered"
   | "order_cancelled"
   | "auth_confirmation"

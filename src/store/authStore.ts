@@ -16,7 +16,7 @@ export interface OrderItem {
 export interface Order {
   id: string;
   date: string;
-  status: "processing" | "confirmed" | "shipped" | "delivered" | "cancelled";
+  status: "processing" | "confirmed" | "shipped" | "ready_for_pickup" | "delivered" | "cancelled";
   items: OrderItem[];
   subtotal: number;
   discount: number;
@@ -96,6 +96,7 @@ const STATUS_LABELS: Record<Order["status"], string> = {
   processing: "Новый",
   confirmed: "На сборке",
   shipped: "Передан в доставку",
+  ready_for_pickup: "Доставлен в пункт выдачи",
   delivered: "Завершён",
   cancelled: "Отменён",
 };

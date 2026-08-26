@@ -9,7 +9,7 @@ import { getBonusBalance } from "@/lib/loyalty";
 import { isAdminAuthorized } from "@/lib/adminAuth";
 import { allocateOrderStock, returnOrderStock } from "@/lib/stock";
 
-const ORDER_STATUSES = new Set(["processing", "confirmed", "shipped", "delivered", "cancelled"]);
+const ORDER_STATUSES = new Set(["processing", "confirmed", "shipped", "ready_for_pickup", "delivered", "cancelled"]);
 
 function mapOrder(row: Record<string, unknown>) {
   const customer = (row.customer ?? {}) as Record<string, string>;
@@ -216,7 +216,7 @@ export async function PATCH(request: NextRequest) {
   let emailResult: "sent" | "skipped" | "failed" = "skipped";
   const previousTrackNumber = String(delivery.trackNumber ?? "").trim();
   const nextTrackNumber = body.trackNumber?.trim() || "";
-  const emailStatuses = new Set(["confirmed", "shipped", "delivered", "cancelled"]);
+  const emailStatuses = new Set(["confirmed", "shipped", "ready_for_pickup", "delivered", "cancelled"]);
   // Отмену можно безопасно сохранить повторно: sendEmail защитит от дубля,
   // а заказ, отменённый до появления функции, всё же получит уведомление.
   const shouldNotify = body.status === "cancelled"

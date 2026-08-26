@@ -68,6 +68,7 @@ const STATUS_COLORS: Record<Order["status"], string> = {
   processing: "bg-yellow-100 text-yellow-700",
   confirmed: "bg-blue-100 text-blue-700",
   shipped: "bg-purple-100 text-purple-700",
+  ready_for_pickup: "bg-cyan-100 text-cyan-700",
   delivered: "bg-green-100 text-green-700",
   cancelled: "bg-red-100 text-red-600",
 };
@@ -977,7 +978,7 @@ export default function AdminPage() {
 
             <div className="bg-white rounded-3xl border border-[#f0e8e0] p-6">
               <h2 className="font-bold mb-5">Заказы по статусам</h2>
-              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+              <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-7 gap-3">
                 {[
                   {
                     key: "awaiting",
@@ -1002,6 +1003,12 @@ export default function AdminPage() {
                     label: STATUS_LABELS.shipped,
                     color: STATUS_COLORS.shipped,
                     count: orders.filter((o) => o.paymentStatus === "paid" && o.status === "shipped").length,
+                  },
+                  {
+                    key: "ready_for_pickup",
+                    label: STATUS_LABELS.ready_for_pickup,
+                    color: STATUS_COLORS.ready_for_pickup,
+                    count: orders.filter((o) => o.paymentStatus === "paid" && o.status === "ready_for_pickup").length,
                   },
                   {
                     key: "delivered",

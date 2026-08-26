@@ -22,6 +22,7 @@ const STATUS_COLORS: Record<Order["status"], string> = {
   processing: "bg-yellow-100 text-yellow-700",
   confirmed:  "bg-blue-100 text-blue-700",
   shipped:    "bg-purple-100 text-purple-700",
+  ready_for_pickup: "bg-cyan-100 text-cyan-700",
   delivered:  "bg-green-100 text-green-700",
   cancelled:  "bg-red-100 text-red-600",
 };
@@ -30,6 +31,7 @@ const STATUS_ICONS: Record<Order["status"], React.ReactNode> = {
   processing: <RotateCcw size={13} />,
   confirmed:  <Check size={13} />,
   shipped:    <Truck size={13} />,
+  ready_for_pickup: <MapPin size={13} />,
   delivered:  <CheckCircle size={13} />,
   cancelled:  <XCircle size={13} />,
 };

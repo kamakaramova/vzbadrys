@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSupabase } from "@/lib/supabaseServer";
 import { deliveryMethodLabel, paymentMethodLabel } from "@/lib/orderLabels";
 
-const ORDER_STATUSES = new Set(["processing", "confirmed", "shipped", "delivered", "cancelled"]);
+const ORDER_STATUSES = new Set(["processing", "confirmed", "shipped", "ready_for_pickup", "delivered", "cancelled"]);
 
 function mapOrder(row: Record<string, unknown>) {
   const delivery = (row.delivery ?? {}) as Record<string, unknown>;

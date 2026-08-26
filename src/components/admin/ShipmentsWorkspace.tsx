@@ -25,6 +25,7 @@ const ORDER_STATUSES = [
   ["processing", "Новый"],
   ["confirmed", "На сборке"],
   ["shipped", "Передан в доставку"],
+  ["ready_for_pickup", "Доставлен в пункт выдачи"],
   ["delivered", "Завершён"],
   ["cancelled", "Отменён"],
 ] as const;
@@ -33,6 +34,7 @@ const STATUS_STYLE: Record<string, string> = {
   processing: "bg-yellow-50 text-yellow-800 border-yellow-200",
   confirmed: "bg-blue-50 text-blue-700 border-blue-200",
   shipped: "bg-purple-50 text-purple-700 border-purple-200",
+  ready_for_pickup: "bg-cyan-50 text-cyan-700 border-cyan-200",
   delivered: "bg-green-50 text-green-700 border-green-200",
   cancelled: "bg-red-50 text-red-700 border-red-200",
 };
@@ -286,11 +288,12 @@ export default function ShipmentsWorkspace({ password }: { password: string }) {
         <div className="mt-0.5 text-[11px] text-[#8b817b]">Только заказы с заполненным фактом</div>
       </div>
     </div>
-    <div className="grid grid-cols-2 xl:grid-cols-4 gap-2.5">
+    <div className="grid grid-cols-2 xl:grid-cols-5 gap-2.5">
       {[
         ["Новые", summary.statusCounts.processing || 0, "Ещё не переданы на сборку", "border-amber-200 bg-amber-50", "text-amber-800"],
         ["На сборке", summary.statusCounts.confirmed || 0, "Нужно подготовить к отправке", "border-orange-200 bg-orange-50", "text-orange-800"],
         ["Переданы в доставку", summary.statusCounts.shipped || 0, "Уже отгружены", "border-purple-200 bg-purple-50", "text-purple-700"],
+        ["В пункте выдачи", summary.statusCounts.ready_for_pickup || 0, "Ждут получения покупателем", "border-cyan-200 bg-cyan-50", "text-cyan-700"],
         ["Завершены", summary.statusCounts.delivered || 0, "Заказ получен покупателем", "border-green-200 bg-green-50", "text-green-700"],
       ].map(([label, value, note, cardClass, valueClass]) => <div key={label} className={`rounded-2xl border px-4 py-3 ${cardClass}`}>
         <div className="text-xs font-semibold text-[#756c67]">{label}</div>

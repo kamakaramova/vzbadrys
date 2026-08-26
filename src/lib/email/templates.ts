@@ -3,6 +3,7 @@ export type OrderEmailStatus =
   | "payment_failed"
   | "confirmed"
   | "shipped"
+  | "ready_for_pickup"
   | "delivered"
   | "cancelled";
 
@@ -140,6 +141,41 @@ export function orderEmail(
       extra: `${deliveryBlock}${trackBlock}`,
     };
   })();
+  const readyForPickupContent = (() => {
+    if (deliveryCode === "ozon_pvz") {
+      return {
+        subject: `Ваш заказ ${order.id} уже ждёт Вас в пункте выдачи Ozon`,
+        title: "Ваш заказ уже в пункте выдачи Ozon",
+        lead: `${name}, заказ доставлен в выбранный Вами пункт выдачи.`,
+        extra: `${deliveryBlock}<div style="background:#fff3ec;border-radius:14px;padding:16px;margin-bottom:20px"><p style="margin:0;font-size:15px;line-height:1.65;color:#5f5752">Откройте приложение Ozon и войдите по номеру телефона, который указали при оформлении заказа. В разделе с Вашими заказами появится отправление — для получения используйте QR-код или штрих-код из приложения.</p></div>${actionButton("Открыть заказы Ozon", "https://www.ozon.ru/my/orderlist/")}`,
+      };
+    }
+    if (deliveryCode === "pochta") {
+      const trackingUrl = order.trackNumber
+        ? `https://www.pochta.ru/tracking?barcode=${encodeURIComponent(order.trackNumber)}`
+        : "https://www.pochta.ru/tracking";
+      return {
+        subject: `Ваш заказ ${order.id} уже ждёт Вас в отделении Почты России`,
+        title: "Ваш заказ уже в отделении",
+        lead: `${name}, заказ доставлен в отделение, выбранное Вами при оформлении.`,
+        extra: `${deliveryBlock}${trackBlock}<div style="background:#fff3ec;border-radius:14px;padding:16px;margin-bottom:20px"><p style="margin:0;font-size:15px;line-height:1.65;color:#5f5752">Откройте приложение или сайт Почты России: там можно посмотреть статус, адрес и режим работы отделения. Если для получения понадобится документ, сервис подскажет это в карточке отправления.</p></div>${actionButton("Открыть Почту России", trackingUrl)}`,
+      };
+    }
+    if (deliveryCode === "pickup") {
+      return {
+        subject: `Ваш заказ ${order.id} готов к самовывозу`,
+        title: "Ваш заказ уже ждёт Вас",
+        lead: `${name}, Ваш заказ готов к самовывозу.`,
+        extra: `${deliveryBlock}<div style="background:#fff3ec;border-radius:14px;padding:16px;margin-bottom:20px"><p style="margin:0;font-size:15px;line-height:1.65;color:#5f5752">Пожалуйста, позвоните нам не менее чем за час до приезда, чтобы согласовать время получения.</p></div>${actionButton("Позвонить и договориться", "tel:+79872970767")}`,
+      };
+    }
+    return {
+      subject: `Ваш заказ ${order.id} уже ждёт Вас в пункте выдачи`,
+      title: "Ваш заказ уже в пункте выдачи",
+      lead: `${name}, заказ доставлен в выбранный Вами пункт выдачи.`,
+      extra: `${deliveryBlock}${trackBlock}<p style="font-size:15px;line-height:1.65;margin:0;color:#5f5752">Пожалуйста, откройте сервис доставки, который выбрали при оформлении, чтобы посмотреть детали получения.</p>`,
+    };
+  })();
   const hasBonusBalance = typeof order.bonusBalance === "number" && Number.isFinite(order.bonusBalance);
   const bonusBalance = hasBonusBalance ? Math.max(0, Math.floor(order.bonusBalance || 0)) : 0;
   const bonusSummary = hasBonusBalance
@@ -164,6 +200,7 @@ export function orderEmail(
       lead: `${name}, проверяем товары и готовим их к отправке. Как только заказ передадут в доставку или подготовят к самовывозу, мы сразу сообщим.`,
     },
     shipped: shippedContent,
+    ready_for_pickup: readyForPickupContent,
     delivered: {
       subject: "Спасибо, что выбрали «взБАДрись»!",
       title: "Спасибо, что выбрали нас",
@@ -178,7 +215,7 @@ export function orderEmail(
     },
   };
   const content = statusContent[status];
-  const delivery = status === "shipped" ? "" : deliveryBlock;
+  const delivery = status === "shipped" || status === "ready_for_pickup" ? "" : deliveryBlock;
   const body = status === "delivered"
     ? content.extra || ""
     : `${orderCard(order)}${delivery}${content.extra || ""}`;
