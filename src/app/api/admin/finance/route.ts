@@ -300,6 +300,20 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ ok: true });
   }
 
+  // Точечная корректировка количества для первой поставки. В отличие от
+  // старой миграции ниже она не меняет остатки, себестоимость или расходы.
+  if (action === "setStarterSupplyReceivedQuantity") {
+    const { data: supply, error: supplyError } = await db.from("inventory_supplies").select("id").ilike("supply_number", "%СТАРТОВЫЙ-20260820%").maybeSingle();
+    if (supplyError || !supply) return NextResponse.json({ error: displayError(supplyError?.message || "Стартовая поставка не найдена") }, { status: 404 });
+    const { data: batches, error: batchesError } = await db.from("inventory_batches").select("id").eq("supply_id", supply.id);
+    if (batchesError) return NextResponse.json({ error: displayError(batchesError.message) }, { status: 500 });
+    for (const batch of batches || []) {
+      const { error: updateError } = await db.from("inventory_batches").update({ received_quantity: 300, updated_at: new Date().toISOString() }).eq("id", batch.id);
+      if (updateError) return NextResponse.json({ error: displayError(updateError.message) }, { status: 500 });
+    }
+    return NextResponse.json({ ok: true, changedBatches: (batches || []).length });
+  }
+
   if (action === "correctStarterSupply") {
     const { data: supply, error: supplyError } = await db.from("inventory_supplies").select("id,supply_number").ilike("supply_number", "%СТАРТОВЫЙ-20260820%").maybeSingle();
     if (supplyError || !supply) return NextResponse.json({ error: displayError(supplyError?.message || "Стартовая поставка не найдена") }, { status: 404 });
