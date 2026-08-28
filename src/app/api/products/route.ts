@@ -2,13 +2,30 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSupabase } from "@/lib/supabaseServer";
 import { isAdminAuthorized } from "@/lib/adminAuth";
 
+// Последняя успешная версия каталога остаётся в памяти процесса. Это даёт витрине
+// актуальные цены при единичном сбое сети между сервером и Supabase.
+let lastKnownProducts: unknown[] | null = null;
+
 // Публичное чтение всех товаров (используется сайтом как запасной путь).
 export async function GET() {
   const db = getServerSupabase();
   if (!db) return NextResponse.json({ error: "not_configured" }, { status: 503 });
-  const { data, error } = await db.from("products").select("data");
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-  return NextResponse.json({ products: (data ?? []).map((r) => r.data) });
+  try {
+    const { data, error } = await db.from("products").select("data");
+    if (error) throw error;
+    const products = (data ?? []).map((r) => r.data);
+    lastKnownProducts = products;
+    return NextResponse.json({ products }, { headers: { "cache-control": "no-store" } });
+  } catch (error) {
+    if (lastKnownProducts) {
+      return NextResponse.json(
+        { products: lastKnownProducts, stale: true },
+        { headers: { "cache-control": "no-store", "x-vzbadrys-catalog-source": "last-known-good" } },
+      );
+    }
+    console.error("Не удалось загрузить каталог", error);
+    return NextResponse.json({ error: "catalogue_temporarily_unavailable" }, { status: 503 });
+  }
 }
 
 // Запись из админки: требует пароль. Складские поля нельзя перезаписать

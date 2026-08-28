@@ -4,6 +4,49 @@ import { create } from "zustand";
 import { Product, products as defaultProducts } from "@/lib/products";
 
 type SaveResult = { ok: boolean; error?: string };
+const PRODUCT_CACHE_KEY = "vzbadrys:last-known-products";
+
+function mergeWithCatalogue(savedProducts: Product[]): Product[] {
+  const savedById = new Map<string, Product>(
+    savedProducts.map((product): [string, Product] => [product.id, product]),
+  );
+  const mergedProducts = defaultProducts.map((catalogueProduct) => {
+    const savedProduct = savedById.get(catalogueProduct.id);
+    return savedProduct
+      ? {
+          ...catalogueProduct,
+          ...savedProduct,
+          sku: savedProduct.sku || catalogueProduct.sku,
+          // Документы хранятся как проверенные PDF в репозитории. Старые записи
+          // Supabase могут содержать прежние ссылки и не должны их перезаписывать.
+          documents: catalogueProduct.documents,
+        }
+      : catalogueProduct;
+  });
+  const customProducts = savedProducts.filter(
+    (product) => !defaultProducts.some((catalogueProduct) => catalogueProduct.id === product.id),
+  );
+  return [...mergedProducts, ...customProducts];
+}
+
+function readCachedProducts(): Product[] | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const cached = JSON.parse(window.localStorage.getItem(PRODUCT_CACHE_KEY) ?? "null");
+    return Array.isArray(cached) ? cached : null;
+  } catch {
+    return null;
+  }
+}
+
+function cacheProducts(products: Product[]) {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.setItem(PRODUCT_CACHE_KEY, JSON.stringify(products));
+  } catch {
+    // Кэш удобен, но не должен мешать покупке, если браузер запретил localStorage.
+  }
+}
 
 interface ProductStore {
   products: Product[];
@@ -51,38 +94,25 @@ export const useProductStore = create<ProductStore>((set, get) => ({
     if (get().initialized || get().loading) return;
     set({ loading: true });
 
+    const cachedProducts = readCachedProducts();
+    if (cachedProducts?.length) set({ products: mergeWithCatalogue(cachedProducts) });
+
     // Читаем через серверный маршрут, а не напрямую из браузера. Так правила RLS
     // не могут вернуть старый каталог или пустой результат после правки в админке.
     try {
       const response = await fetch("/api/products", { cache: "no-store" });
       const payload = await response.json();
       if (response.ok && Array.isArray(payload.products)) {
-        const savedById = new Map<string, Product>(
-          payload.products.map((product: Product): [string, Product] => [product.id, product]),
-        );
-        const mergedProducts = defaultProducts.map((catalogueProduct) => {
-          const savedProduct = savedById.get(catalogueProduct.id);
-          return savedProduct
-            ? {
-                ...catalogueProduct,
-                ...savedProduct,
-                sku: savedProduct.sku || catalogueProduct.sku,
-                // Документы хранятся как проверенные PDF в репозитории. Старые записи
-                // Supabase могут содержать прежние ссылки и не должны их перезаписывать.
-                documents: catalogueProduct.documents,
-              }
-            : catalogueProduct;
-        });
-        const customProducts = payload.products.filter(
-          (product: Product) => !defaultProducts.some((catalogueProduct) => catalogueProduct.id === product.id),
-        );
-        set({ products: [...mergedProducts, ...customProducts], initialized: true, loading: false });
+        const products = mergeWithCatalogue(payload.products as Product[]);
+        cacheProducts(payload.products as Product[]);
+        set({ products, initialized: true, loading: false });
         return;
       }
     } catch {
-      // На случай временной недоступности базы сохраняем доступность витрины.
+      // На случай временной недоступности базы оставляем последнюю корректную
+      // версию, а не подменяем её устаревшими значениями из исходного каталога.
     }
-    set({ products: defaultProducts, initialized: true, loading: false });
+    set({ initialized: true, loading: false });
   },
 
   updateProduct: async (id, updates) => {
