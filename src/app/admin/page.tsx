@@ -64,6 +64,25 @@ const DEFAULT_DELIVERY_SETTINGS: DeliverySettings = {
   enabled: { pickup: true, sdek_pvz: true, yandex_pvz: true, ozon_pvz: true, pochta: true },
   pochtaWidgetId: 62722,
 };
+const ADMIN_ORDERS_SESSION_CACHE_KEY = "vzbadrys:admin-orders:last-known";
+
+function getAdminOrdersSessionCache(): Order[] | null {
+  try {
+    const value = window.sessionStorage.getItem(ADMIN_ORDERS_SESSION_CACHE_KEY);
+    const orders = value ? JSON.parse(value) : null;
+    return Array.isArray(orders) ? orders as Order[] : null;
+  } catch {
+    return null;
+  }
+}
+
+function setAdminOrdersSessionCache(orders: Order[]) {
+  try {
+    window.sessionStorage.setItem(ADMIN_ORDERS_SESSION_CACHE_KEY, JSON.stringify(orders));
+  } catch {
+    // Это только временная подстраховка текущей админской сессии.
+  }
+}
 
 const STATUS_COLORS: Record<Order["status"], string> = {
   processing: "bg-yellow-100 text-yellow-700",
@@ -295,8 +314,12 @@ export default function AdminPage() {
       if (!response.ok || !Array.isArray(data.orders)) {
         throw new Error(data.error || "Не удалось загрузить заказы");
       }
-      setDbOrders(data.orders as Order[]);
+      const orders = data.orders as Order[];
+      setDbOrders(orders);
+      setAdminOrdersSessionCache(orders);
     } catch (error) {
+      const cachedOrders = getAdminOrdersSessionCache();
+      if (!dbOrders.length && cachedOrders?.length) setDbOrders(cachedOrders);
       setOrdersError(error instanceof Error ? error.message : "Не удалось загрузить заказы");
     } finally {
       setOrdersLoading(false);
@@ -916,7 +939,7 @@ export default function AdminPage() {
             <p className="text-xs text-[#aaa]">Панель управления</p>
           </div>
         </div>
-        <button onClick={() => { void fetch("/api/admin/login", { method: "DELETE" }); setAuthed(false); setPw(""); setAdminPassword(null); }} className="text-xs text-[#aaa] hover:text-[#E8845A]">Выйти</button>
+        <button onClick={() => { void fetch("/api/admin/login", { method: "DELETE" }); window.sessionStorage.removeItem(ADMIN_ORDERS_SESSION_CACHE_KEY); setAuthed(false); setPw(""); setAdminPassword(null); }} className="text-xs text-[#aaa] hover:text-[#E8845A]">Выйти</button>
       </div>
 
       <div className={`${tab === "shipments" || tab === "inventory" || tab === "finance" ? "max-w-[1920px] px-3 sm:px-4 lg:px-5" : "max-w-7xl px-4 sm:px-6 lg:px-8"} mx-auto py-8`}>
