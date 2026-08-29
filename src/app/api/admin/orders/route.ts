@@ -10,6 +10,12 @@ import { isAdminAuthorized } from "@/lib/adminAuth";
 import { allocateOrderStock, returnOrderStock } from "@/lib/stock";
 
 const ORDER_STATUSES = new Set(["processing", "confirmed", "shipped", "ready_for_pickup", "delivered", "cancelled"]);
+type AdminOrder = ReturnType<typeof mapOrder>;
+
+// Только оперативный резерв в памяти процесса: при единичном тайм-ауте Supabase
+// админка продолжает видеть последнюю корректную выборку, а не пустую таблицу.
+// После восстановления связи следующий запрос сразу обновит эти данные.
+let lastKnownOrders: AdminOrder[] | null = null;
 
 function mapOrder(row: Record<string, unknown>) {
   const customer = (row.customer ?? {}) as Record<string, string>;
@@ -75,13 +81,26 @@ export async function GET(request: NextRequest) {
   const db = getServerSupabase();
   if (!db) return NextResponse.json({ error: "not_configured" }, { status: 503 });
 
-  const { data, error } = await db
-    .from("payment_orders")
-    .select("id,status,amount_kopecks,customer,items,delivery,promo_code,comment,user_id,payment_method,is_test,stock_written_off,paid_at,created_at")
-    .order("created_at", { ascending: false });
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  try {
+    const { data, error } = await db
+      .from("payment_orders")
+      .select("id,status,amount_kopecks,customer,items,delivery,promo_code,comment,user_id,payment_method,is_test,stock_written_off,paid_at,created_at")
+      .order("created_at", { ascending: false });
+    if (error) throw error;
 
-  return NextResponse.json({ orders: (data ?? []).map((row) => mapOrder(row)) });
+    const orders = (data ?? []).map((row) => mapOrder(row));
+    lastKnownOrders = orders;
+    return NextResponse.json({ orders }, { headers: { "cache-control": "no-store" } });
+  } catch (error) {
+    console.error("Не удалось загрузить заказы админки", error);
+    if (lastKnownOrders) {
+      return NextResponse.json(
+        { orders: lastKnownOrders, stale: true },
+        { headers: { "cache-control": "no-store", "x-vzbadrys-orders-source": "last-known-good" } },
+      );
+    }
+    return NextResponse.json({ error: "orders_temporarily_unavailable" }, { status: 503 });
+  }
 }
 
 export async function PATCH(request: NextRequest) {

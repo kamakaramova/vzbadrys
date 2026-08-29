@@ -1179,7 +1179,7 @@ export default function AdminPage() {
                   </thead>
                   <tbody>
                     {sortedOrders.length === 0 ? (
-                      <tr><td colSpan={8} className="text-center py-12 text-[#aaa] text-sm">Заказов нет</td></tr>
+                      <tr><td colSpan={8} className="text-center py-12 text-[#aaa] text-sm">{ordersError ? "Не удалось загрузить заказы. Попробуйте обновить страницу." : "Заказов нет"}</td></tr>
                     ) : sortedOrders.map((o) => (
                       <tr key={o.id} className="border-b border-[#f0e8e0] last:border-0 hover:bg-[#fdf8f5] transition-colors">
                         <td className="px-5 py-3 font-mono text-xs font-semibold text-[#E8845A]">{o.id}</td>
