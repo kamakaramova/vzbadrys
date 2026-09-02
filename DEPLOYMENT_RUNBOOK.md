@@ -166,16 +166,16 @@ systemctl restart vzbadrys
 
 ## Как обновлять сайт после перехода с Vercel
 
-На сервере:
+На сервере запускайте только защищённый скрипт деплоя:
 
 ```bash
-cd /opt/vzbadrys
-git pull --ff-only origin main
-corepack npm ci
-NODE_OPTIONS=--max-old-space-size=1200 corepack npm run build
-systemctl restart vzbadrys
-systemctl --no-pager status vzbadrys
+/usr/local/sbin/deploy-vzbadrys
 ```
+
+Скрипт сам собирает приложение с `/etc/vzbadrys/vzbadrys.env`. Это критично:
+`NEXT_PUBLIC_*` переменные встраиваются в браузерную сборку во время `build`.
+Не запускать `npm run build` вручную без этого окружения — иначе могут перестать
+работать авторизация, личный кабинет и другие клиентские интеграции.
 
 Проверки:
 
