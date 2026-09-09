@@ -12,6 +12,7 @@ import {
 import { findReferralOwner, getAuthenticatedUser, getBonusBalance, normalizeCode, REFERRAL_DISCOUNT_PERCENT } from "@/lib/loyalty";
 import { getServerSupabase } from "@/lib/supabaseServer";
 import { getDeliverySettings } from "@/lib/deliverySettings";
+import { getOzonPvzDeliveryPrice } from "@/lib/deliveryPricing";
 import { rateLimit } from "@/lib/rateLimit";
 
 export const runtime = "nodejs";
@@ -240,7 +241,9 @@ export async function POST(request: NextRequest) {
     ? 0
     : deliveryMethod === "pochta"
       ? requestedPochtaPriceKopecks
-      : DELIVERY_PRICES[deliveryMethod] * 100;
+      : (deliveryMethod === "ozon_pvz"
+        ? getOzonPvzDeliveryPrice({ region: deliveryRegion, city: deliveryCity })
+        : DELIVERY_PRICES[deliveryMethod]) * 100;
   const deliveryPrice = deliveryPriceKopecks / 100;
   const productsTotalKopecks = (subtotal - discount) * 100;
   const totalKopecks = productsTotalKopecks + deliveryPriceKopecks;

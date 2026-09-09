@@ -9,6 +9,7 @@ import { supabase } from "@/lib/supabase";
 import PochtaWidget, { PochtaPoint } from "@/components/PochtaWidget";
 import PaymentLogos from "@/components/PaymentLogos";
 import { productImagePaths } from "@/lib/productImages";
+import { getOzonPvzDeliveryPrice, isKaliningradDestination } from "@/lib/deliveryPricing";
 import { Check, MapPin, Package, CreditCard, MessageSquare } from "lucide-react";
 
 type DeliveryMethod = "pickup" | "sdek_pvz" | "yandex_pvz" | "ozon_pvz" | "pochta";
@@ -108,12 +109,14 @@ export default function CheckoutPage() {
   const referralDiscountAmount = Math.round((subtotal * referralDiscount) / 100);
   const allowedBonusPayment = Math.min(bonusPointsToSpend, maxBonusPayment, user?.bonusPoints || 0);
   const discountedSubtotal = Math.max(0, subtotal - promoDiscountAmount - referralDiscountAmount - allowedBonusPayment);
+  const isKaliningradOzonDelivery = delivery === "ozon_pvz" && isKaliningradDestination(form);
+  const ozonPvzPrice = getOzonPvzDeliveryPrice(form);
 
   const allDeliveryOptions: { id: DeliveryMethod; label: string; desc: string; price: number; days: string; isPvz: boolean }[] = [
     { id: "pickup", label: "Самовывоз — Казань", desc: "г. Казань, ул. Айдарова, 15", price: 0, days: "после готовности заказа", isPvz: false },
     { id: "sdek_pvz", label: "СДЭК — Пункт выдачи", desc: "Укажите адрес удобного ПВЗ СДЭК", price: discountedSubtotal >= 3000 ? 0 : 300, days: "2–5 дней", isPvz: true },
     { id: "yandex_pvz", label: "Яндекс — Пункт выдачи", desc: "Укажите адрес удобного ПВЗ Яндекс", price: discountedSubtotal >= 3000 ? 0 : 300, days: "3–6 дней", isPvz: true },
-    { id: "ozon_pvz", label: "Ozon — Пункт выдачи", desc: "Укажите адрес удобного ПВЗ Ozon", price: discountedSubtotal >= 3000 ? 0 : 250, days: "3–7 дней", isPvz: true },
+    { id: "ozon_pvz", label: "Ozon — Пункт выдачи", desc: "Укажите адрес удобного ПВЗ Ozon", price: discountedSubtotal >= 3000 ? 0 : ozonPvzPrice, days: "3–7 дней", isPvz: true },
     { id: "pochta", label: "Почта России", desc: "В любой населённый пункт России", price: discountedSubtotal >= 3000 ? 0 : 250, days: "5–14 дней", isPvz: false },
   ];
   const deliveryOptions = allDeliveryOptions.filter((option) => deliverySettings.enabled[option.id]);
@@ -344,7 +347,12 @@ export default function CheckoutPage() {
                   </div>
                 ) : (
                 <div className="grid sm:grid-cols-2 gap-4">
-                  {delivery === "ozon_pvz" && renderField({ label: "Регион / область / республика", name: "region", placeholder: "Например: Республика Татарстан" })}
+                  {delivery === "ozon_pvz" && (
+                    <div>
+                      {renderField({ label: "Регион / область / республика", name: "region", placeholder: "Например: Калининградская область" })}
+                      <p className="text-xs text-[#aaa] mt-1">Обязательно укажите область или республику — это помогает рассчитать доставку верно.</p>
+                    </div>
+                  )}
                   {renderField({ label: "Город", name: "city", placeholder: "Казань" })}
                   {renderField({ label: "Индекс (необязательно)", name: "zip", placeholder: "123456" })}
                   {selectedDelivery.isPvz && (
@@ -352,9 +360,16 @@ export default function CheckoutPage() {
                       {renderField({ label: "Адрес пункта выдачи", name: "address", placeholder: "Например: ул. Ленина, 5 — ПВЗ на первом этаже" })}
                       <p className="text-xs text-[#aaa] mt-1">Найдите ближайший ПВЗ на сайте службы доставки и введите его адрес</p>
                       {delivery === "ozon_pvz" && (
-                        <div className="mt-3 rounded-xl border border-[#cddfff] bg-[#f4f8ff] px-3 py-2.5 text-xs leading-relaxed text-[#61779e]">
-                          После отправки посылка появится в вашем личном кабинете Ozon — там вы сможете отслеживать её самостоятельно.
-                        </div>
+                        <>
+                          {isKaliningradOzonDelivery && discountedSubtotal < 3000 && (
+                            <div className="mt-3 rounded-xl border border-[#f5d5c0] bg-[#fff8f5] px-3 py-2.5 text-xs leading-relaxed text-[#8b4513]">
+                              Для Калининградской области доставка в ПВЗ Ozon — 650 ₽.
+                            </div>
+                          )}
+                          <div className="mt-3 rounded-xl border border-[#cddfff] bg-[#f4f8ff] px-3 py-2.5 text-xs leading-relaxed text-[#61779e]">
+                            После отправки посылка появится в вашем личном кабинете Ozon — там вы сможете отслеживать её самостоятельно.
+                          </div>
+                        </>
                       )}
                     </div>
                   )}
