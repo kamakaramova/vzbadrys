@@ -13,6 +13,7 @@ import { findReferralOwner, getAuthenticatedUser, getBonusBalance, normalizeCode
 import { getServerSupabase } from "@/lib/supabaseServer";
 import { getDeliverySettings } from "@/lib/deliverySettings";
 import { getOzonPvzDeliveryPrice } from "@/lib/deliveryPricing";
+import { getFiscalProductName } from "@/lib/fiscalProductNames";
 import { rateLimit } from "@/lib/rateLimit";
 
 export const runtime = "nodejs";
@@ -153,6 +154,7 @@ export async function POST(request: NextRequest) {
     cartId: string;
     productId: string;
     name: string;
+    fiscalName: string;
     needMark: boolean;
     quantity: number;
     unitPrice: number;
@@ -175,6 +177,7 @@ export async function POST(request: NextRequest) {
         cartId: item.id,
         productId,
         name: grams ? `${product.name}, ${Number(grams) === 1000 ? "1 кг" : `${grams} г`}` : product.name,
+        fiscalName: getFiscalProductName(productId, product.name),
         needMark: product.category === "bads",
         quantity: item.quantity,
         unitPrice: resolved.price,
@@ -276,7 +279,7 @@ export async function POST(request: NextRequest) {
   const units = orderLines.flatMap((line) =>
     Array.from({ length: line.quantity }, (_, index) => ({
       extId: `${line.cartId}-${index + 1}`,
-      name: line.name,
+      name: line.fiscalName,
       needMark: line.needMark,
       grossKopecks: line.unitPrice * 100,
     }))
