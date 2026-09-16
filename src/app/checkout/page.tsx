@@ -120,7 +120,12 @@ export default function CheckoutPage() {
     { id: "ozon_pvz", label: "Ozon — Пункт выдачи", desc: "Укажите адрес удобного ПВЗ Ozon", price: discountedSubtotal >= 3000 ? 0 : ozonPvzPrice, days: "3–7 дней", isPvz: true },
     { id: "pochta", label: "Почта России", desc: "В любой населённый пункт России", price: discountedSubtotal >= 3000 ? 0 : 250, days: "5–14 дней", isPvz: false },
   ];
-  const deliveryOptions = allDeliveryOptions.filter((option) => deliverySettings.enabled[option.id]);
+  // СДЭК не предлагаем как самостоятельный способ доставки. Он используется
+  // только для Калининградской области после выбора Ozon — с понятной подсказкой
+  // и сохранением заказа как доставки СДЭК на стороне сервера.
+  const deliveryOptions = allDeliveryOptions.filter(
+    (option) => option.id !== "sdek_pvz" && deliverySettings.enabled[option.id]
+  );
 
   useEffect(() => {
     if (!deliveryOptions.some((option) => option.id === delivery)) {
