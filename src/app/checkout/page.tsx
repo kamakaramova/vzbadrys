@@ -110,11 +110,12 @@ export default function CheckoutPage() {
   const allowedBonusPayment = Math.min(bonusPointsToSpend, maxBonusPayment, user?.bonusPoints || 0);
   const discountedSubtotal = Math.max(0, subtotal - promoDiscountAmount - referralDiscountAmount - allowedBonusPayment);
   const isKaliningradOzonDelivery = delivery === "ozon_pvz" && isKaliningradDestination(form);
+  const isKaliningradCdekDelivery = delivery === "sdek_pvz" && isKaliningradDestination(form);
   const ozonPvzPrice = getOzonPvzDeliveryPrice(form);
 
   const allDeliveryOptions: { id: DeliveryMethod; label: string; desc: string; price: number; days: string; isPvz: boolean }[] = [
     { id: "pickup", label: "Самовывоз — Казань", desc: "г. Казань, ул. Айдарова, 15", price: 0, days: "после готовности заказа", isPvz: false },
-    { id: "sdek_pvz", label: "СДЭК — Пункт выдачи", desc: "Укажите адрес удобного ПВЗ СДЭК", price: discountedSubtotal >= 3000 ? 0 : 300, days: "2–5 дней", isPvz: true },
+    { id: "sdek_pvz", label: "СДЭК — Пункт выдачи", desc: "Укажите адрес удобного ПВЗ СДЭК", price: discountedSubtotal >= 3000 ? 0 : (isKaliningradCdekDelivery ? 650 : 300), days: "2–5 дней", isPvz: true },
     { id: "yandex_pvz", label: "Яндекс — Пункт выдачи", desc: "Укажите адрес удобного ПВЗ Яндекс", price: discountedSubtotal >= 3000 ? 0 : 300, days: "3–6 дней", isPvz: true },
     { id: "ozon_pvz", label: "Ozon — Пункт выдачи", desc: "Укажите адрес удобного ПВЗ Ozon", price: discountedSubtotal >= 3000 ? 0 : ozonPvzPrice, days: "3–7 дней", isPvz: true },
     { id: "pochta", label: "Почта России", desc: "В любой населённый пункт России", price: discountedSubtotal >= 3000 ? 0 : 250, days: "5–14 дней", isPvz: false },
@@ -173,7 +174,7 @@ export default function CheckoutPage() {
           },
           delivery: {
             method: delivery,
-            region: delivery === "ozon_pvz" ? form.region : "",
+            region: (delivery === "ozon_pvz" || isKaliningradCdekDelivery) ? form.region : "",
             city: delivery === "pickup" ? "Казань" : form.city,
             address: delivery === "pickup" ? "ул. Айдарова, 15" : form.address,
             zip: delivery === "pickup" ? "" : form.zip,
@@ -347,28 +348,38 @@ export default function CheckoutPage() {
                   </div>
                 ) : (
                 <div className="grid sm:grid-cols-2 gap-4">
-                  {delivery === "ozon_pvz" && (
+                  {(delivery === "ozon_pvz" || delivery === "sdek_pvz") && (
                     <div>
                       {renderField({ label: "Регион / область / республика", name: "region", placeholder: "Например: Калининградская область" })}
-                      <p className="text-xs text-[#aaa] mt-1">Обязательно укажите область или республику — это помогает рассчитать доставку верно.</p>
+                      <p className="text-xs text-[#aaa] mt-1">Укажите область или республику — это помогает рассчитать доставку верно.</p>
                     </div>
                   )}
                   {renderField({ label: "Город", name: "city", placeholder: "Казань" })}
                   {renderField({ label: "Индекс (необязательно)", name: "zip", placeholder: "123456" })}
                   {selectedDelivery.isPvz && (
                     <div className="sm:col-span-2">
-                      {renderField({ label: "Адрес пункта выдачи", name: "address", placeholder: "Например: ул. Ленина, 5 — ПВЗ на первом этаже" })}
-                      <p className="text-xs text-[#aaa] mt-1">Найдите ближайший ПВЗ на сайте службы доставки и введите его адрес</p>
+                      {renderField({
+                        label: isKaliningradOzonDelivery ? "Адрес пункта выдачи СДЭК" : "Адрес пункта выдачи",
+                        name: "address",
+                        placeholder: isKaliningradOzonDelivery ? "Например: ул. Ленина, 5 — ПВЗ СДЭК" : "Например: ул. Ленина, 5 — ПВЗ на первом этаже",
+                      })}
+                      <p className="text-xs text-[#aaa] mt-1">
+                        {isKaliningradOzonDelivery
+                          ? "Найдите удобный ПВЗ СДЭК на сайте СДЭК и укажите его адрес."
+                          : "Найдите ближайший ПВЗ на сайте службы доставки и введите его адрес"}
+                      </p>
                       {delivery === "ozon_pvz" && (
                         <>
-                          {isKaliningradOzonDelivery && discountedSubtotal < 3000 && (
+                          {isKaliningradOzonDelivery ? (
                             <div className="mt-3 rounded-xl border border-[#f5d5c0] bg-[#fff8f5] px-3 py-2.5 text-xs leading-relaxed text-[#8b4513]">
-                              Для Калининградской области доставка в ПВЗ Ozon — 650 ₽.
+                              <p className="font-semibold mb-1">Для Калининградской области отправляем СДЭКом</p>
+                              <p>К сожалению, доставка Ozon в это направление не отправляется. Укажите выше адрес удобного ПВЗ СДЭК — мы отправим заказ СДЭКом. {discountedSubtotal < 3000 ? "Стоимость доставки — 650 ₽." : "Для Вашего заказа доставка бесплатна."} Спасибо, что выбираете «взБАДрись»!</p>
+                            </div>
+                          ) : (
+                            <div className="mt-3 rounded-xl border border-[#cddfff] bg-[#f4f8ff] px-3 py-2.5 text-xs leading-relaxed text-[#61779e]">
+                              После отправки посылка появится в вашем личном кабинете Ozon — там вы сможете отслеживать её самостоятельно.
                             </div>
                           )}
-                          <div className="mt-3 rounded-xl border border-[#cddfff] bg-[#f4f8ff] px-3 py-2.5 text-xs leading-relaxed text-[#61779e]">
-                            После отправки посылка появится в вашем личном кабинете Ozon — там вы сможете отслеживать её самостоятельно.
-                          </div>
                         </>
                       )}
                     </div>
