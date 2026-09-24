@@ -6,7 +6,7 @@ import { getServerSupabase } from "@/lib/supabaseServer";
 export const runtime = "nodejs";
 
 const BENEFITS = new Set(["Кожа", "Волосы", "Ногти", "Суставы", "Комплексный эффект"]);
-const FLAVORS = new Set(["Нейтральный", "Манго", "Гранат", "Вишня", "Апельсин", "Шиповник", "Женьшень", "Персик", "Киви"]);
+const FLAVORS = new Set(["Нейтральный", "Манго", "Гранат", "Вишня", "Чёрная смородина", "Апельсин", "Шиповник", "Женьшень", "Персик", "Киви"]);
 const FORMATS = new Set(["Порошок в банке", "Порошок в стиках", "Желе в банке", "Желе в стиках"]);
 
 async function authorizedUser(request: NextRequest) {

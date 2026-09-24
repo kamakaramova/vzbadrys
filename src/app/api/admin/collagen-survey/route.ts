@@ -6,7 +6,7 @@ import { getServerSupabase } from "@/lib/supabaseServer";
 export const runtime = "nodejs";
 
 const BENEFITS = ["Кожа", "Волосы", "Ногти", "Суставы", "Комплексный эффект"];
-const FLAVORS = ["Нейтральный", "Манго", "Гранат", "Вишня", "Апельсин", "Шиповник", "Женьшень", "Персик", "Киви"];
+const FLAVORS = ["Нейтральный", "Манго", "Гранат", "Вишня", "Чёрная смородина", "Апельсин", "Шиповник", "Женьшень", "Персик", "Киви"];
 const FORMATS = ["Порошок в банке", "Порошок в стиках", "Желе в банке", "Желе в стиках"];
 
 type Response = { benefits: string[] | null; flavor: string | null; format: string | null };
