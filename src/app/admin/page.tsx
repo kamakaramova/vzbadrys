@@ -5,7 +5,7 @@ import {
   BarChart2, Users, ShoppingBag, TrendingUp,
   Search, Download, ChevronUp, ChevronDown,
   X, Check, Package, Eye, Tag, Trash2, ToggleLeft, ToggleRight,
-  Edit2, ImageIcon, Mail, Send, UserPlus, RefreshCw, Link2, MessageCircle,
+  Edit2, ImageIcon, Mail, Send, UserPlus, RefreshCw, Link2, MessageCircle, CircleDollarSign,
 } from "lucide-react";
 import { useProductStore } from "@/store/productStore";
 import { Product, WeightVariant } from "@/lib/products";
@@ -16,8 +16,8 @@ import InventoryWorkspace from "@/components/admin/InventoryWorkspace";
 import FinanceWorkspace from "@/components/admin/FinanceWorkspace";
 import { formatPhoneForDisplay } from "@/lib/phone";
 
-type Tab = "dashboard" | "orders" | "shipments" | "inventory" | "finance" | "customers" | "feedback" | "promos" | "products" | "emails" | "integrations";
-type SortField = "name" | "email" | "totalSpent" | "ordersCount" | "avgCheck" | "lastOrder" | "createdAt";
+type Tab = "dashboard" | "orders" | "shipments" | "inventory" | "finance" | "customers" | "feedback" | "promos" | "bonuses" | "products" | "emails" | "integrations";
+type SortField = "name" | "email" | "totalSpent" | "ordersCount" | "avgCheck" | "lastOrder" | "createdAt" | "bonusPoints";
 type SortDir = "asc" | "desc";
 type OrderSortField = "date" | "total" | "status" | "userName";
 type EmailLog = {
@@ -41,6 +41,23 @@ type AdminPromo = { id: string; code: string; ownerName?: string; discount: numb
 type LoyaltyStats = {
   promos: Array<{ code: string; ownerName: string | null; discountPercent: number; active: boolean; paidOrders: number; revenue: number; recordedUses: number }>;
   referrals: Array<{ ownerId: string; ownerName: string; ownerEmail: string; code: string; discountPercent: number; paidOrders: number; revenue: number }>;
+};
+type BonusStats = {
+  paidOrders: number;
+  expectedAll: number;
+  expectedLinked: number;
+  postedOrderRewards: number;
+  reviewRewards: number;
+  referralRewards: number;
+  spent: number;
+  currentBalance: number;
+  customersWithBalance: number;
+  creditedCustomers: number;
+  balancesByUser: Record<string, number>;
+  unlinkedOrders: number;
+  unlinkedAmount: number;
+  missingOrders: Array<{ id: string; paidAt: string | null; expected: number }>;
+  inconsistentOrders: Array<{ id: string; paidAt: string | null; expected: number; posted: number }>;
 };
 type DeliverySettings = {
   enabled: { pickup: boolean; sdek_pvz: boolean; yandex_pvz: boolean; ozon_pvz: boolean; pochta: boolean };
@@ -242,6 +259,10 @@ export default function AdminPage() {
   const [promoLoadError, setPromoLoadError] = useState("");
   const [loyaltyStats, setLoyaltyStats] = useState<LoyaltyStats | null>(null);
   const [loyaltyStatsError, setLoyaltyStatsError] = useState("");
+  const [bonusStats, setBonusStats] = useState<BonusStats | null>(null);
+  const [bonusBalances, setBonusBalances] = useState<Record<string, number>>({});
+  const [bonusStatsLoading, setBonusStatsLoading] = useState(false);
+  const [bonusStatsError, setBonusStatsError] = useState("");
 
   // Состояние редактора товаров
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
@@ -383,6 +404,23 @@ export default function AdminPage() {
       setLoyaltyStats(data as LoyaltyStats);
     } catch (error) {
       setLoyaltyStatsError(error instanceof Error ? error.message : "Не удалось загрузить статистику");
+    }
+  };
+
+  const loadBonusStats = async (password = pw) => {
+    if (!password) return;
+    setBonusStatsLoading(true);
+    setBonusStatsError("");
+    try {
+      const response = await fetch("/api/admin/bonus-stats", { headers: { "x-admin-password": password }, cache: "no-store" });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok || !Array.isArray(data.missingOrders)) throw new Error(data.error || "Не удалось загрузить бонусы");
+      setBonusStats(data as BonusStats);
+      setBonusBalances(data.balancesByUser && typeof data.balancesByUser === "object" ? data.balancesByUser as Record<string, number> : {});
+    } catch (error) {
+      setBonusStatsError(error instanceof Error ? error.message : "Не удалось загрузить бонусы");
+    } finally {
+      setBonusStatsLoading(false);
     }
   };
 
@@ -574,6 +612,14 @@ export default function AdminPage() {
   }, [authed, tab]);
 
   useEffect(() => {
+    if (authed && tab === "bonuses") void loadBonusStats();
+  }, [authed, tab]);
+
+  useEffect(() => {
+    if (authed && tab === "customers") void loadBonusStats();
+  }, [authed, tab]);
+
+  useEffect(() => {
     if (authed && tab === "feedback") void loadFeedback();
   }, [authed, tab]);
 
@@ -671,9 +717,10 @@ export default function AdminPage() {
         (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
       );
       const lastOrder = sorted.length > 0 ? sorted[0].date : null;
-      return { ...u, totalSpent, ordersCount, avgCheck, lastOrder, userOrders };
+      const bonusOwner = group.profiles.find((profile) => Object.prototype.hasOwnProperty.call(bonusBalances, profile.id));
+      return { ...u, bonusPoints: bonusOwner ? Number(bonusBalances[bonusOwner.id] || 0) : 0, totalSpent, ordersCount, avgCheck, lastOrder, userOrders };
     });
-  }, [users, orders]);
+  }, [users, orders, bonusBalances]);
 
   const paidOrders = orders.filter((o) => o.paymentStatus === "paid");
   const totalRevenue = paidOrders.reduce((s, o) => s + o.total, 0);
@@ -945,8 +992,8 @@ export default function AdminPage() {
       <div className={`${tab === "shipments" || tab === "inventory" || tab === "finance" ? "max-w-[1920px] px-3 sm:px-4 lg:px-5" : "max-w-7xl px-4 sm:px-6 lg:px-8"} mx-auto py-8`}>
         {/* Табы */}
         <div className="flex gap-1.5 sm:gap-2 mb-6 sm:mb-8 bg-[#f5f0ec] p-1.5 rounded-2xl w-full overflow-x-auto">
-          {(["dashboard", "orders", "shipments", "inventory", "finance", "customers", "feedback", "promos", "products", "emails", "integrations"] as const).map((id) => {
-            const labels: Record<typeof id, string> = { dashboard: "Дашборд", orders: "Заказы", shipments: "Отгрузки", inventory: "Склад", finance: "Финансы", customers: "Покупатели", feedback: "Отзывы и вопросы", promos: "Промокоды", products: "Товары", emails: "Письма", integrations: "Интеграции" };
+          {(["dashboard", "orders", "shipments", "inventory", "finance", "customers", "feedback", "promos", "bonuses", "products", "emails", "integrations"] as const).map((id) => {
+            const labels: Record<typeof id, string> = { dashboard: "Дашборд", orders: "Заказы", shipments: "Отгрузки", inventory: "Склад", finance: "Финансы", customers: "Покупатели", feedback: "Отзывы и вопросы", promos: "Промокоды", bonuses: "Бонусы", products: "Товары", emails: "Письма", integrations: "Интеграции" };
             const icons: Record<typeof id, React.ReactNode> = {
               dashboard: <BarChart2 size={15} />,
               orders: <ShoppingBag size={15} />,
@@ -956,6 +1003,7 @@ export default function AdminPage() {
               customers: <Users size={15} />,
               feedback: <MessageCircle size={15} />,
               promos: <Tag size={15} />,
+              bonuses: <CircleDollarSign size={15} />,
               products: <Package size={15} />,
               emails: <Mail size={15} />,
               integrations: <Link2 size={15} />,
@@ -1280,6 +1328,7 @@ export default function AdminPage() {
                           ["ordersCount", "Заказов"],
                           ["totalSpent", "Сумма"],
                           ["avgCheck", "Ср. чек"],
+                          ["bonusPoints", "Бонусы"],
                           ["lastOrder", "Посл. заказ"],
                         ] as [SortField, string][]
                       ).map(([field, label]) => (
@@ -1294,7 +1343,7 @@ export default function AdminPage() {
                   </thead>
                   <tbody>
                     {sortedCustomers.length === 0 ? (
-                      <tr><td colSpan={8} className="text-center py-12 text-[#aaa] text-sm">Покупателей нет</td></tr>
+                      <tr><td colSpan={9} className="text-center py-12 text-[#aaa] text-sm">Покупателей нет</td></tr>
                     ) : sortedCustomers.map((c) => (
                       <tr key={c.id} className="border-b border-[#f0e8e0] last:border-0 hover:bg-[#fdf8f5] transition-colors">
                         <td className="px-5 py-3">
@@ -1313,6 +1362,7 @@ export default function AdminPage() {
                         <td className="px-5 py-3 text-center font-bold">{c.ordersCount}</td>
                         <td className="px-5 py-3 font-bold text-[#E8845A] whitespace-nowrap">{c.totalSpent.toLocaleString("ru-RU")} ₽</td>
                         <td className="px-5 py-3 whitespace-nowrap">{c.avgCheck.toLocaleString("ru-RU")} ₽</td>
+                        <td className="px-5 py-3 text-center font-bold text-[#E8845A]">{c.bonusPoints.toLocaleString("ru-RU")}</td>
                         <td className="px-5 py-3 text-xs text-[#6b6b6b] whitespace-nowrap">
                           {c.lastOrder ? new Date(c.lastOrder).toLocaleDateString("ru-RU") : "—"}
                         </td>
@@ -1932,6 +1982,74 @@ export default function AdminPage() {
                 </div>
               )}
             </div>
+          </div>
+        )}
+
+        {/* БОНУСЫ */}
+        {tab === "bonuses" && (
+          <div className="space-y-6">
+            <div className="flex flex-col sm:flex-row gap-3 sm:items-center sm:justify-between">
+              <div>
+                <h1 className="text-2xl font-black">Бонусы</h1>
+                <p className="text-sm text-[#777] mt-1">Начисления, списания и сверка обещанного кэшбэка 1% по оплаченным заказам.</p>
+              </div>
+              <button onClick={() => void loadBonusStats()} disabled={bonusStatsLoading} className="inline-flex items-center justify-center gap-2 rounded-2xl border border-[#f0e8e0] bg-white px-5 py-3 text-sm font-semibold hover:border-[#E8845A] disabled:opacity-60">
+                <RefreshCw size={16} className={bonusStatsLoading ? "animate-spin" : ""} /> Обновить
+              </button>
+            </div>
+
+            {bonusStatsError && <div className="rounded-2xl border border-red-100 bg-red-50 px-5 py-4 text-sm text-red-600">Не удалось загрузить бонусы: {bonusStatsError}</div>}
+            {!bonusStats && !bonusStatsError ? (
+              <div className="rounded-3xl border border-[#f0e8e0] bg-white px-6 py-12 text-center text-sm text-[#aaa]">Сверяем начисления…</div>
+            ) : bonusStats && (
+              <>
+                <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+                  {[
+                    ["Начислено за заказы", bonusStats.postedOrderRewards, "Фактически записано в журнале"],
+                    ["Бонусы за отзывы и рекомендации", bonusStats.reviewRewards + bonusStats.referralRewards, "Дополнительные начисления"],
+                    ["Потрачено покупателями", bonusStats.spent, "Списано при оплате заказов"],
+                    ["Сейчас на бонусных счетах", bonusStats.currentBalance, `${bonusStats.customersWithBalance} покупател${bonusStats.customersWithBalance === 1 ? "ь" : "ей"} с остатком`],
+                  ].map(([label, value, note]) => (
+                    <div key={String(label)} className="rounded-3xl border border-[#f0e8e0] bg-white p-5">
+                      <p className="text-sm font-semibold text-[#777]">{label}</p>
+                      <p className="mt-2 text-3xl font-black text-[#1a1a1a]">{Number(value).toLocaleString("ru-RU")}</p>
+                      <p className="mt-1 text-xs text-[#aaa]">{note}</p>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="grid gap-6 xl:grid-cols-2">
+                  <div className={`rounded-3xl border p-6 ${bonusStats.missingOrders.length || bonusStats.inconsistentOrders.length ? "border-red-200 bg-red-50" : "border-green-200 bg-green-50"}`}>
+                    <h2 className="font-bold text-lg">Сверка кэшбэка 1%</h2>
+                    <p className="mt-2 text-sm leading-relaxed text-[#6b6b6b]">Бонус считается от суммы оплаченного заказа и начисляется, когда заказ можно связать с подтверждённым аккаунтом.</p>
+                    <div className="mt-5 grid grid-cols-2 gap-3 text-sm">
+                      <div className="rounded-2xl bg-white/80 p-4"><p className="text-[#777]">Должно быть начислено</p><p className="mt-1 text-xl font-black">{bonusStats.expectedLinked.toLocaleString("ru-RU")}</p><p className="text-xs text-[#aaa]">по {bonusStats.paidOrders - bonusStats.unlinkedOrders} связанным заказам</p></div>
+                      <div className="rounded-2xl bg-white/80 p-4"><p className="text-[#777]">Начислено фактически</p><p className="mt-1 text-xl font-black">{bonusStats.postedOrderRewards.toLocaleString("ru-RU")}</p><p className="text-xs text-[#aaa]">заказы с записью в журнале</p></div>
+                    </div>
+                    {bonusStats.missingOrders.length || bonusStats.inconsistentOrders.length ? (
+                      <p className="mt-4 text-sm font-semibold text-red-700">Нужно проверить: {bonusStats.missingOrders.length + bonusStats.inconsistentOrders.length} заказов, бонусы по которым не записались или отличаются от расчёта.</p>
+                    ) : <p className="mt-4 text-sm font-semibold text-green-700">Всё сходится: по связанным заказам кэшбэк начислен полностью.</p>}
+                  </div>
+
+                  <div className="rounded-3xl border border-[#f0e8e0] bg-white p-6">
+                    <h2 className="font-bold text-lg">Заказы без аккаунта</h2>
+                    <p className="mt-2 text-sm leading-relaxed text-[#6b6b6b]">Эти покупатели оплатили заказ, но у них нет подтверждённого личного кабинета с совпадающим email. Бонусы нельзя положить «в воздух» — им нужно сначала зарегистрироваться или подтвердить аккаунт.</p>
+                    <div className="mt-5 grid grid-cols-2 gap-3 text-sm">
+                      <div className="rounded-2xl bg-[#fdf8f5] p-4"><p className="text-[#777]">Таких заказов</p><p className="mt-1 text-xl font-black">{bonusStats.unlinkedOrders}</p></div>
+                      <div className="rounded-2xl bg-[#fdf8f5] p-4"><p className="text-[#777]">Потенциальный кэшбэк</p><p className="mt-1 text-xl font-black">{bonusStats.unlinkedAmount.toLocaleString("ru-RU")}</p></div>
+                    </div>
+                    <p className="mt-4 text-xs text-[#aaa]">Всего по всем {bonusStats.paidOrders} оплаченным заказам кэшбэк 1% составил бы {bonusStats.expectedAll.toLocaleString("ru-RU")} бонусов.</p>
+                  </div>
+                </div>
+
+                {bonusStats.missingOrders.length > 0 && (
+                  <div className="overflow-hidden rounded-3xl border border-[#f0e8e0] bg-white">
+                    <div className="border-b border-[#f0e8e0] px-6 py-4"><h2 className="font-bold">Заказы без начисления</h2><p className="mt-1 text-xs text-[#aaa]">Можно открыть заказ во вкладке «Заказы», чтобы проверить аккаунт покупателя перед доначислением.</p></div>
+                    <div className="overflow-x-auto"><table className="w-full text-sm"><thead className="bg-[#fdf8f5] text-xs text-[#777]"><tr><th className="px-6 py-3 text-left">Заказ</th><th className="px-6 py-3 text-left">Оплачен</th><th className="px-6 py-3 text-right">Нужно начислить</th></tr></thead><tbody>{bonusStats.missingOrders.map((order) => <tr key={order.id} className="border-t border-[#f0e8e0]"><td className="px-6 py-3 font-mono text-xs font-semibold text-[#E8845A]">{order.id}</td><td className="px-6 py-3 text-[#6b6b6b]">{order.paidAt ? new Date(order.paidAt).toLocaleDateString("ru-RU") : "—"}</td><td className="px-6 py-3 text-right font-bold">{order.expected.toLocaleString("ru-RU")}</td></tr>)}</tbody></table></div>
+                  </div>
+                )}
+              </>
+            )}
           </div>
         )}
 
