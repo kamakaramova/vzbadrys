@@ -51,6 +51,7 @@ const dateTime = (value: string) => new Date(value).toLocaleString("ru-RU", { da
 const number = (value: number) => value.toLocaleString("ru-RU");
 const unit = (product?: Product) => product?.category === "seeds" ? "г" : "шт.";
 const today = () => new Date().toLocaleDateString("sv-SE");
+const normalizeSearch = (value: unknown) => String(value ?? "").toLocaleLowerCase("ru-RU").replace(/ё/g, "е").replace(/\s+/g, " ").trim();
 
 export default function InventoryWorkspace({ password }: { password: string }) {
   const [data, setData] = useState<InventoryPayload>({ products: [], batches: [], movements: [], allocations: [], orders: [], supplies: [] });
@@ -109,7 +110,22 @@ export default function InventoryWorkspace({ password }: { password: string }) {
     for (const batch of data.batches) grouped.set(batch.product_id, [...(grouped.get(batch.product_id) || []), batch]);
     return grouped;
   }, [data.batches]);
-  const visibleProducts = data.products.filter((product) => product.name.toLowerCase().includes(search.trim().toLowerCase()));
+  const visibleProducts = useMemo(() => {
+    const query = normalizeSearch(search);
+    if (!query) return data.products;
+    return data.products.filter((product) => {
+      const batches = batchesByProduct.get(product.id) || [];
+      const searchable = [
+        product.id,
+        product.name,
+        ...batches.flatMap((batch) => {
+          const supply = batch.supply_id ? supplyById.get(batch.supply_id) : undefined;
+          return [batch.lot_number, batch.notes, supply?.supply_number, supply?.notes];
+        }),
+      ];
+      return searchable.some((value) => normalizeSearch(value).includes(query));
+    });
+  }, [data.products, batchesByProduct, search, supplyById]);
 
   const post = async (body: Record<string, unknown>, success: string) => {
     setSaving(true); setError(""); setMessage("");
@@ -297,7 +313,7 @@ export default function InventoryWorkspace({ password }: { password: string }) {
       </div>
       <p className="text-xs text-[#999]">Общая поставка объединяет связанные товары одной приёмки. Списания, остатки и сроки годности по каждому товару продолжают учитываться отдельно.</p>
     </div> : tab === "batches" ? <div className="space-y-3">
-      <div className="relative max-w-md"><Search size={16} className="absolute left-3 top-3 text-[#aaa]"/><input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Найти товар" className="w-full rounded-xl border border-[#eadfd8] bg-white pl-9 pr-3 py-2.5 text-sm"/></div>
+      <div className="relative max-w-md"><Search size={16} className="absolute left-3 top-3 text-[#aaa]"/><input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Товар, номер партии или поставки…" className="w-full rounded-xl border border-[#eadfd8] bg-white pl-9 pr-3 py-2.5 text-sm"/></div>
       <div className="rounded-2xl border border-[#eadfd8] bg-white overflow-hidden">
         {visibleProducts.map((product) => {
           const batches = batchesByProduct.get(product.id) || [];
