@@ -158,6 +158,27 @@ function pendingOrdersLabel(count: number) {
   return `есть ещё ${count} неотправленных заказов`;
 }
 
+// Поиск в админке не должен зависеть от регистра, «ё/е» или оформления телефона.
+// Поэтому +7 (999) 123-45-67 и 79991234567 находятся одинаково.
+function normalizeSearch(value: unknown) {
+  return String(value ?? "")
+    .toLocaleLowerCase("ru-RU")
+    .replace(/ё/g, "е")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function matchesSearch(query: string, ...values: unknown[]) {
+  if (!query) return true;
+  const normalizedQuery = normalizeSearch(query);
+  const digitsQuery = normalizedQuery.replace(/\D/g, "");
+  return values.some((value) => {
+    const normalizedValue = normalizeSearch(value);
+    if (normalizedValue.includes(normalizedQuery)) return true;
+    return digitsQuery.length >= 3 && normalizedValue.replace(/\D/g, "").includes(digitsQuery);
+  });
+}
+
 function exportCSV(rows: Record<string, string | number>[], filename: string) {
   if (!rows.length) return;
   const headers = Object.keys(rows[0]);
@@ -753,12 +774,7 @@ export default function AdminPage() {
 
   const sortedCustomers = useMemo(() => {
     const filtered = customerStats.filter((c) => {
-      const q = customerSearch.toLowerCase();
-      return (
-        c.name.toLowerCase().includes(q) ||
-        c.email.toLowerCase().includes(q) ||
-        c.phone.includes(q)
-      );
+      return matchesSearch(customerSearch, c.name, c.email, c.phone);
     });
     return [...filtered].sort((a, b) => {
       let va: number | string;
@@ -786,11 +802,16 @@ export default function AdminPage() {
 
   const sortedOrders = useMemo(() => {
     const filtered = orders.filter((o) => {
-      const q = orderSearch.toLowerCase();
-      return (
-        o.id.toLowerCase().includes(q) ||
-        (o.userName ?? "").toLowerCase().includes(q) ||
-        (o.userEmail ?? "").toLowerCase().includes(q)
+      return matchesSearch(
+        orderSearch,
+        o.id,
+        o.userName,
+        o.userEmail,
+        o.userPhone,
+        o.deliveryAddress,
+        o.deliveryRegion,
+        o.deliveryCity,
+        o.items.map((item) => item.name).join(" "),
       );
     });
     return [...filtered].sort((a, b) => {
@@ -1203,7 +1224,7 @@ export default function AdminPage() {
                 <input
                   value={orderSearch}
                   onChange={(e) => setOrderSearch(e.target.value)}
-                  placeholder="Поиск по номеру, имени, email..."
+                  placeholder="Заказ, покупатель, телефон, город, товар…"
                   className="w-full pl-10 pr-4 py-2.5 rounded-2xl border border-[#f0e8e0] text-sm outline-none focus:border-[#E8845A] bg-white"
                 />
               </div>
