@@ -11,6 +11,7 @@ export type EmailKind =
   | "order_cancelled"
   | "auth_confirmation"
   | "auth_recovery"
+  | "marketing_review_collagen"
   | "manual"
   | "test";
 

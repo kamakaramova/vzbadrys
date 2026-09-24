@@ -257,6 +257,30 @@ export function manualEmail(subject: string, message: string) {
   };
 }
 
+export function reviewAndCollagenEmail(customerName: string) {
+  const name = customerName.trim() || "Здравствуйте";
+  const accountUrl = "https://xn--80abckmj9cj3h.xn--p1ai/account";
+  const surveyUrl = "https://xn--80abckmj9cj3h.xn--p1ai/account?survey=collagen";
+  const subject = "Как у Вас дела с добавкой?";
+  return {
+    subject,
+    html: layout(
+      subject,
+      `${name}, Ваш заказ уже должен быть с Вами. Как Вам добавка? Подошла ли она, заметили ли что-то по самочувствию?`,
+      `<p style="font-size:16px;line-height:1.65;margin:0 0 18px;color:#5f5752">Нам важен честный отзыв. Можно написать несколько предложений: что понравилось, что оказалось не таким, как ожидали, или почему пока рано делать выводы. Фото добавлять необязательно.</p>
+      <div style="margin:0 0 22px;padding:18px;border-radius:16px;background:#fff3ec"><p style="margin:0 0 6px;font-size:17px;font-weight:800;color:#2d2926">20 бонусов за отзыв</p><p style="margin:0;font-size:15px;line-height:1.6;color:#5f5752">За опубликованный отзыв мы начислим <b style="color:#c9693d">20 бонусов</b>. Их можно будет использовать при следующем заказе.</p></div>
+      <p style="font-size:18px;line-height:1.4;margin:0 0 10px;color:#c9693d;font-weight:800">Мы выбираем производство для коллагена</p>
+      <p style="font-size:16px;line-height:1.65;margin:0 0 18px;color:#5f5752">Если всё сложится по качеству, следующей добавкой на сайте может стать коллаген. В личном кабинете появился короткий опрос: для чего Вы хотели бы коллаген, какой вкус выбрали бы и в каком формате его удобнее принимать. Ответы займут меньше минуты.</p>
+      ${actionButton("Оставить отзыв", accountUrl)}
+      ${actionButton("Выбрать коллаген", surveyUrl)}
+      <p style="font-size:14px;line-height:1.6;margin:4px 0 20px;color:#806f65">Если не помните пароль, на странице входа нажмите «Забыли пароль?» и создайте новый.</p>
+      <div style="margin:0;padding:17px 18px;border:1px solid #f0e2da;border-radius:16px;background:#fffdfb"><p style="margin:0 0 6px;font-size:16px;font-weight:800;color:#2d2926">Есть вопрос по приёму добавки?</p><p style="margin:0;font-size:15px;line-height:1.6;color:#5f5752">Пишите нам на почту. Мы на связи, а нутрициолог Кама Карамова поможет сориентироваться в вопросах по приёму.</p></div>
+      <p style="font-size:16px;line-height:1.65;margin:20px 0 0;color:#5f5752">Спасибо, что выбираете «взБАДрись» и помогаете нам становиться лучше.</p>
+      <p style="font-size:12px;line-height:1.55;margin:20px 0 0;color:#806f65">Если Вы больше не хотите получать новости и предложения, ответьте на это письмо словом «Отписаться».</p>`
+    ),
+  };
+}
+
 function actionButton(label: string, url: string) {
   return `<p style="margin:26px 0">
     <a href="${escapeHtml(url)}" style="display:inline-block;background:#e8845a;color:#fff;text-decoration:none;font-weight:700;padding:14px 22px;border-radius:8px">
