@@ -17,7 +17,17 @@ import {
   Star,
 } from "lucide-react";
 
-type Tab = "orders" | "favorites" | "profile" | "bonuses" | "reviews";
+type Tab = "orders" | "favorites" | "profile" | "bonuses" | "reviews" | "survey";
+
+type CollagenSurveyForm = {
+  benefits: string[];
+  flavor: string;
+  format: string;
+};
+
+const COLLAGEN_BENEFITS = ["Кожа", "Волосы", "Ногти", "Суставы", "Комплексный эффект"];
+const COLLAGEN_FLAVORS = ["Нейтральный", "Манго", "Гранат", "Вишня", "Апельсин", "Шиповник", "Женьшень", "Персик", "Киви"];
+const COLLAGEN_FORMATS = ["Порошок в банке", "Порошок в стиках", "Желе в банке", "Желе в стиках"];
 
 const STATUS_COLORS: Record<Order["status"], string> = {
   processing: "bg-yellow-100 text-yellow-700",
@@ -55,6 +65,11 @@ export default function AccountPage() {
   const [reviewForm, setReviewForm] = useState({ productId: "", orderId: "", productName: "", rating: 0, body: "", imageData: "" });
   const [reviewMessage, setReviewMessage] = useState<{ ok: boolean; text: string } | null>(null);
   const [reviewSubmitting, setReviewSubmitting] = useState(false);
+  const [surveyForm, setSurveyForm] = useState<CollagenSurveyForm>({ benefits: [], flavor: "", format: "" });
+  const [surveyLoading, setSurveyLoading] = useState(false);
+  const [surveySubmitting, setSurveySubmitting] = useState(false);
+  const [surveyMessage, setSurveyMessage] = useState<{ ok: boolean; text: string } | null>(null);
+  const [surveyPopupOpen, setSurveyPopupOpen] = useState(false);
 
   // Профиль
   const [editMode, setEditMode] = useState(false);
@@ -72,6 +87,12 @@ export default function AccountPage() {
   useEffect(() => {
     const timer = window.setTimeout(() => setMounted(true), 0);
     return () => window.clearTimeout(timer);
+  }, []);
+
+  useEffect(() => {
+    if (typeof window !== "undefined" && new URLSearchParams(window.location.search).get("survey") === "collagen") {
+      setTab("survey");
+    }
   }, []);
 
   useEffect(() => {
@@ -95,6 +116,33 @@ export default function AccountPage() {
       const payload = await response.json().catch(() => ({}));
       if (response.ok) setLoyalty({ bonusPoints: Number(payload.bonusPoints || 0), referralOrders: Number(payload.referralOrders || 0) });
     })();
+  }, [user]);
+
+  useEffect(() => {
+    if (!user || !supabase) return;
+    let active = true;
+    void (async () => {
+      setSurveyLoading(true);
+      const { data } = await supabase.auth.getSession();
+      const token = data.session?.access_token;
+      if (!token) { if (active) setSurveyLoading(false); return; }
+      const response = await fetch("/api/account/collagen-survey", { headers: { authorization: `Bearer ${token}` }, cache: "no-store" });
+      const payload = await response.json().catch(() => ({}));
+      if (!active) return;
+      setSurveyLoading(false);
+      if (!response.ok) return;
+      if (payload.response) {
+        setSurveyForm({
+          benefits: Array.isArray(payload.response.benefits) ? payload.response.benefits : [],
+          flavor: String(payload.response.flavor || ""),
+          format: String(payload.response.format || ""),
+        });
+        return;
+      }
+      const dismissKey = `vzbadrys:collagen-survey-dismissed:${user.email}`;
+      if (window.sessionStorage.getItem(dismissKey) !== "1") setSurveyPopupOpen(true);
+    })();
+    return () => { active = false; };
   }, [user]);
 
   if (!mounted || !initialized || !user) {
@@ -226,12 +274,68 @@ export default function AccountPage() {
     if (responseLoyalty.ok) setLoyalty({ bonusPoints: Number(loyaltyData.bonusPoints || 0), referralOrders: Number(loyaltyData.referralOrders || 0) });
   };
 
+  const toggleSurveyBenefit = (benefit: string) => {
+    setSurveyMessage(null);
+    setSurveyForm((current) => {
+      if (current.benefits.includes(benefit)) return { ...current, benefits: current.benefits.filter((value) => value !== benefit) };
+      if (current.benefits.length >= 2) return current;
+      return { ...current, benefits: [...current.benefits, benefit] };
+    });
+  };
+
+  const saveSurvey = async () => {
+    if (!supabase || surveySubmitting) return;
+    if (!surveyForm.benefits.length || !surveyForm.flavor || !surveyForm.format) {
+      setSurveyMessage({ ok: false, text: "Ответьте, пожалуйста, на все три вопроса." });
+      return;
+    }
+    setSurveySubmitting(true);
+    setSurveyMessage(null);
+    const { data } = await supabase.auth.getSession();
+    const response = await fetch("/api/account/collagen-survey", {
+      method: "PUT",
+      headers: { "content-type": "application/json", ...(data.session?.access_token ? { authorization: `Bearer ${data.session.access_token}` } : {}) },
+      body: JSON.stringify(surveyForm),
+    });
+    const payload = await response.json().catch(() => ({}));
+    setSurveySubmitting(false);
+    if (!response.ok) { setSurveyMessage({ ok: false, text: payload.error || "Не удалось сохранить голосование" }); return; }
+    setSurveyMessage({ ok: true, text: "Спасибо! Ваш голос учтён. Вы сможете изменить выбор в любое время." });
+    setSurveyPopupOpen(false);
+  };
+
+  const dismissSurvey = () => {
+    if (user) window.sessionStorage.setItem(`vzbadrys:collagen-survey-dismissed:${user.email}`, "1");
+    setSurveyPopupOpen(false);
+  };
+
+  const surveyContent = (popup = false) => (
+    <div className={popup ? "max-h-[85vh] overflow-y-auto rounded-3xl bg-white p-5 sm:p-7" : "rounded-3xl border border-[#f0e8e0] bg-white p-5 sm:p-7"}>
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <p className="text-xs font-bold uppercase tracking-[0.16em] text-[#E8845A]">Выбираем будущий продукт</p>
+          <h2 className="mt-2 text-2xl font-black leading-tight">Помогите нам выбрать коллаген</h2>
+          <p className="mt-3 max-w-2xl text-sm leading-relaxed text-[#6b6b6b]">Мы выбираем производство и хотим опираться на Ваши реальные предпочтения. Голосование займёт меньше минуты.</p>
+        </div>
+        {popup && <button onClick={dismissSurvey} className="shrink-0 rounded-full p-1 text-[#aaa] hover:bg-[#fdf8f5] hover:text-[#E8845A]" aria-label="Закрыть"><XCircle size={24} /></button>}
+      </div>
+      {surveyLoading ? <p className="py-10 text-sm text-[#aaa]">Загружаем голосование…</p> : <>
+        {surveyMessage && <div className={`mt-5 rounded-2xl px-4 py-3 text-sm ${surveyMessage.ok ? "bg-green-50 text-green-700" : "bg-red-50 text-red-600"}`}>{surveyMessage.text}</div>}
+        <fieldset className="mt-7"><legend className="font-bold">1. Для чего Вам был бы интересен коллаген?</legend><p className="mt-1 text-xs text-[#aaa]">Можно выбрать до двух целей.</p><div className="mt-3 flex flex-wrap gap-2">{COLLAGEN_BENEFITS.map((benefit) => <button type="button" key={benefit} onClick={() => toggleSurveyBenefit(benefit)} className={`rounded-full border px-4 py-2.5 text-sm font-semibold transition-colors ${surveyForm.benefits.includes(benefit) ? "border-[#E8845A] bg-[#fff1e9] text-[#C9693D]" : "border-[#f0e8e0] text-[#6b6b6b] hover:border-[#E8845A]"}`}>{benefit}</button>)}</div></fieldset>
+        <fieldset className="mt-7"><legend className="font-bold">2. Какой вкус Вы выбрали бы?</legend><div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-3">{COLLAGEN_FLAVORS.map((flavor) => <button type="button" key={flavor} onClick={() => { setSurveyForm((current) => ({ ...current, flavor })); setSurveyMessage(null); }} className={`rounded-2xl border px-3 py-3 text-sm font-semibold transition-colors ${surveyForm.flavor === flavor ? "border-[#E8845A] bg-[#fff1e9] text-[#C9693D]" : "border-[#f0e8e0] text-[#6b6b6b] hover:border-[#E8845A]"}`}>{flavor}</button>)}</div></fieldset>
+        <fieldset className="mt-7"><legend className="font-bold">3. В каком формате Вам было бы удобнее принимать коллаген?</legend><div className="mt-3 grid gap-2 sm:grid-cols-2">{COLLAGEN_FORMATS.map((format) => <button type="button" key={format} onClick={() => { setSurveyForm((current) => ({ ...current, format })); setSurveyMessage(null); }} className={`rounded-2xl border px-4 py-3 text-left text-sm font-semibold transition-colors ${surveyForm.format === format ? "border-[#E8845A] bg-[#fff1e9] text-[#C9693D]" : "border-[#f0e8e0] text-[#6b6b6b] hover:border-[#E8845A]"}`}>{format}</button>)}</div></fieldset>
+        <div className="mt-7 flex flex-wrap gap-3"><button onClick={() => void saveSurvey()} disabled={surveySubmitting} className="rounded-xl bg-[#E8845A] px-5 py-3 text-sm font-bold text-white hover:bg-[#d4703f] disabled:opacity-60">{surveySubmitting ? "Сохраняем…" : "Учесть мой голос"}</button>{popup && <button onClick={dismissSurvey} className="rounded-xl border border-[#f0e8e0] px-5 py-3 text-sm font-semibold text-[#6b6b6b]">Позже</button>}</div>
+      </>}
+    </div>
+  );
+
   const tabs: { key: Tab; label: string; icon: React.ReactNode; count?: number }[] = [
     { key: "orders",    label: "Мои заказы",  icon: <Package size={16} />, count: orders.length },
     { key: "favorites", label: "Избранное",   icon: <Heart size={16} />,   count: favoriteProducts.length },
     { key: "profile",   label: "Профиль",     icon: <User size={16} /> },
     { key: "bonuses",   label: "Бонусы",      icon: <Gift size={16} /> },
     { key: "reviews",   label: "Отзывы",      icon: <Star size={16} /> },
+    { key: "survey",    label: "Голосование", icon: <Star size={16} /> },
   ];
 
   return (
@@ -422,6 +526,9 @@ export default function AccountPage() {
                   </div>
                 </div>
               )}
+
+              {/* ── ГОЛОСОВАНИЕ ── */}
+              {tab === "survey" && surveyContent()}
 
               {/* ── ИЗБРАННОЕ ── */}
               {tab === "favorites" && (
@@ -662,6 +769,7 @@ export default function AccountPage() {
           </div>
         </div>
       </main>
+      {surveyPopupOpen && <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"><div className="w-full max-w-2xl">{surveyContent(true)}</div></div>}
       <Footer />
     </>
   );

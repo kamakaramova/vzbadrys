@@ -77,6 +77,8 @@ type FeedbackItem = {
   image_url?: string | null;
 };
 type FeedbackResponse = { id: string; feedback_type: "review" | "question"; feedback_id: string; body: string; created_at: string };
+type SurveyStat = { label: string; count: number };
+type CollagenSurveyStats = { participants: number; benefits: SurveyStat[]; flavors: SurveyStat[]; formats: SurveyStat[] };
 const DEFAULT_DELIVERY_SETTINGS: DeliverySettings = {
   enabled: { pickup: true, sdek_pvz: true, yandex_pvz: true, ozon_pvz: true, pochta: true },
   pochtaWidgetId: 62722,
@@ -263,6 +265,9 @@ export default function AdminPage() {
   const [bonusBalances, setBonusBalances] = useState<Record<string, number>>({});
   const [bonusStatsLoading, setBonusStatsLoading] = useState(false);
   const [bonusStatsError, setBonusStatsError] = useState("");
+  const [collagenSurveyStats, setCollagenSurveyStats] = useState<CollagenSurveyStats | null>(null);
+  const [collagenSurveyLoading, setCollagenSurveyLoading] = useState(false);
+  const [collagenSurveyError, setCollagenSurveyError] = useState("");
 
   // Состояние редактора товаров
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
@@ -421,6 +426,22 @@ export default function AdminPage() {
       setBonusStatsError(error instanceof Error ? error.message : "Не удалось загрузить бонусы");
     } finally {
       setBonusStatsLoading(false);
+    }
+  };
+
+  const loadCollagenSurveyStats = async (password = pw) => {
+    if (!password) return;
+    setCollagenSurveyLoading(true);
+    setCollagenSurveyError("");
+    try {
+      const response = await fetch("/api/admin/collagen-survey", { headers: { "x-admin-password": password }, cache: "no-store" });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok || !Array.isArray(data.benefits) || !Array.isArray(data.flavors) || !Array.isArray(data.formats)) throw new Error(data.error || "Не удалось загрузить голосование");
+      setCollagenSurveyStats(data as CollagenSurveyStats);
+    } catch (error) {
+      setCollagenSurveyError(error instanceof Error ? error.message : "Не удалось загрузить голосование");
+    } finally {
+      setCollagenSurveyLoading(false);
     }
   };
 
@@ -620,7 +641,10 @@ export default function AdminPage() {
   }, [authed, tab]);
 
   useEffect(() => {
-    if (authed && tab === "feedback") void loadFeedback();
+    if (authed && tab === "feedback") {
+      void loadFeedback();
+      void loadCollagenSurveyStats();
+    }
   }, [authed, tab]);
 
   useEffect(() => {
@@ -1412,6 +1436,18 @@ export default function AdminPage() {
                 })}</div>}
               </section>
             </div>
+            <section className="overflow-hidden rounded-3xl border border-[#f0e8e0] bg-white">
+              <div className="flex flex-col gap-3 border-b border-[#f0e8e0] px-6 py-5 sm:flex-row sm:items-center sm:justify-between">
+                <div><h3 className="font-bold">Опрос о будущем коллагене</h3><p className="mt-1 text-xs text-[#aaa]">Ответы из личных кабинетов. Покупатель может изменить свой выбор в любой момент.</p></div>
+                <button onClick={() => void loadCollagenSurveyStats()} disabled={collagenSurveyLoading} className="inline-flex items-center justify-center gap-2 self-start rounded-xl border border-[#f0e8e0] px-3.5 py-2 text-xs font-semibold hover:border-[#E8845A] disabled:opacity-60 sm:self-auto"><RefreshCw size={14} className={collagenSurveyLoading ? "animate-spin" : ""} /> Обновить результаты</button>
+              </div>
+              {collagenSurveyError && <div className="m-5 rounded-2xl border border-red-100 bg-red-50 px-4 py-3 text-sm text-red-600">{collagenSurveyError}</div>}
+              {!collagenSurveyStats && !collagenSurveyError ? <p className="px-6 py-10 text-center text-sm text-[#aaa]">Загружаем результаты…</p> : collagenSurveyStats && <div className="p-5 sm:p-6"><div className="mb-6 rounded-2xl bg-[#fff8f4] p-4"><p className="text-sm text-[#777]">Участников голосования</p><p className="mt-1 text-3xl font-black text-[#E8845A]">{collagenSurveyStats.participants}</p><p className="mt-1 text-xs text-[#aaa]">В первом вопросе можно выбрать до двух целей, поэтому сумма ответов может быть больше числа участников.</p></div><div className="grid gap-5 xl:grid-cols-3">{([
+                ["Для чего выбирают коллаген", collagenSurveyStats.benefits],
+                ["Предпочтительный вкус", collagenSurveyStats.flavors],
+                ["Предпочтительный формат", collagenSurveyStats.formats],
+              ] as const).map(([title, rows]) => <div key={title} className="rounded-2xl border border-[#f0e8e0] p-4"><h4 className="text-sm font-bold">{title}</h4><div className="mt-4 space-y-3">{rows.map((row) => { const percent = collagenSurveyStats.participants ? Math.round(row.count / collagenSurveyStats.participants * 100) : 0; return <div key={row.label}><div className="mb-1 flex justify-between gap-3 text-xs"><span className="font-medium text-[#4b4541]">{row.label}</span><span className="shrink-0 text-[#777]">{row.count} · {percent}%</span></div><div className="h-2 overflow-hidden rounded-full bg-[#f5ede8]"><div className="h-full rounded-full bg-[#E8845A]" style={{ width: `${percent}%` }} /></div></div>; })}</div></div>)}</div></div>}
+            </section>
           </div>
         )}
 
