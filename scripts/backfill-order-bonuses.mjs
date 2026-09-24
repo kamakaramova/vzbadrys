@@ -10,12 +10,14 @@ if (!url || !secret) {
 
 const db = createClient(url, secret, { auth: { persistSession: false, autoRefreshToken: false } });
 const usersByEmail = new Map();
+const usersById = new Map();
 let page = 1;
 while (page <= 20) {
   const { data, error } = await db.auth.admin.listUsers({ page, perPage: 1000 });
   if (error) throw error;
   for (const user of data.users) {
-    if (user.email_confirmed_at && user.email) usersByEmail.set(user.email.trim().toLowerCase(), user.id);
+    usersById.set(user.id, user);
+    if (user.email) usersByEmail.set(user.email.trim().toLowerCase(), user);
   }
   if (data.users.length < 1000) break;
   page += 1;
@@ -34,22 +36,38 @@ if (rewardsError) throw rewardsError;
 
 const rewardedOrders = new Set((rewards || []).map((row) => String(row.order_id)));
 const candidates = [];
+const accountsToConfirm = new Map();
 let withoutAccount = 0;
 for (const order of orders || []) {
-  if (rewardedOrders.has(String(order.id))) continue;
   const customer = order.customer || {};
   const email = String(customer.email || "").trim().toLowerCase();
-  const userId = order.user_id ? String(order.user_id) : usersByEmail.get(email);
-  if (!userId) { withoutAccount += 1; continue; }
+  const account = (order.user_id ? usersById.get(String(order.user_id)) : null) || usersByEmail.get(email);
+  if (!account) { withoutAccount += 1; continue; }
+  if (!account.email_confirmed_at && account.email) accountsToConfirm.set(account.id, account);
   const reward = Math.floor((Number(order.amount_kopecks) / 100) * 0.01);
-  if (reward > 0) candidates.push({ orderId: String(order.id), userId, reward, needsLink: !order.user_id });
+  if (!rewardedOrders.has(String(order.id)) && reward > 0) {
+    candidates.push({ orderId: String(order.id), userId: account.id, reward, needsLink: !order.user_id });
+  }
 }
 
-console.info(JSON.stringify({ mode: apply ? "apply" : "audit", paidOrders: orders?.length || 0, missingRewards: candidates.length, bonusTotal: candidates.reduce((sum, item) => sum + item.reward, 0), withoutConfirmedAccount: withoutAccount }));
+console.info(JSON.stringify({
+  mode: apply ? "apply" : "audit",
+  paidOrders: orders?.length || 0,
+  missingRewards: candidates.length,
+  bonusTotal: candidates.reduce((sum, item) => sum + item.reward, 0),
+  accountsToConfirm: accountsToConfirm.size,
+  withoutMatchingAccount: withoutAccount,
+}));
 if (!apply) process.exit(0);
 
 let created = 0;
 let linked = 0;
+let confirmed = 0;
+for (const account of accountsToConfirm.values()) {
+  const { error } = await db.auth.admin.updateUserById(account.id, { email_confirm: true });
+  if (error) throw error;
+  confirmed += 1;
+}
 for (const candidate of candidates) {
   if (candidate.needsLink) {
     const { error } = await db.from("payment_orders").update({ user_id: candidate.userId }).eq("id", candidate.orderId).is("user_id", null);
@@ -63,4 +81,4 @@ for (const candidate of candidates) {
   if (error) throw error;
   created += 1;
 }
-console.info(JSON.stringify({ completed: true, created, linked }));
+console.info(JSON.stringify({ completed: true, created, linked, confirmed }));
