@@ -27,7 +27,7 @@ type CollagenSurveyForm = {
 
 const COLLAGEN_BENEFITS = ["Кожа", "Волосы", "Ногти", "Суставы", "Комплексный эффект"];
 const COLLAGEN_FLAVORS = ["Нейтральный", "Манго", "Гранат", "Вишня", "Чёрная смородина", "Апельсин", "Шиповник", "Женьшень", "Персик", "Киви"];
-const COLLAGEN_FORMATS = ["Порошок в банке", "Порошок в стиках", "Желе в банке", "Желе в стиках"];
+const COLLAGEN_FORMATS = ["Порошок в банке", "Порошок в стиках", "Питьевой в стиках", "Желе в банке", "Желе в стиках"];
 
 const STATUS_COLORS: Record<Order["status"], string> = {
   processing: "bg-yellow-100 text-yellow-700",
