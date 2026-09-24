@@ -9,6 +9,7 @@ export const runtime = "nodejs";
 
 const CAMPAIGN_KEY = "review-collagen-2026-09-24";
 const MIN_DAYS_AFTER_DELIVERY = 7;
+const SEND_CONCURRENCY = 5;
 
 type Recipient = { email: string; name: string };
 
@@ -78,22 +79,26 @@ export async function POST(request: NextRequest) {
     let sent = 0;
     let skipped = 0;
     let failed = 0;
-    for (const recipient of recipients) {
-      const message = reviewAndCollagenEmail(recipient.name);
-      try {
-        const result = await sendEmail({
-          db,
-          to: recipient.email,
-          subject: message.subject,
-          html: message.html,
-          kind: "marketing_review_collagen",
-          dedupeKey: `${CAMPAIGN_KEY}:${recipient.email}`,
-        });
-        if (result.duplicate) skipped += 1;
-        else sent += 1;
-      } catch {
-        failed += 1;
-      }
+    for (let index = 0; index < recipients.length; index += SEND_CONCURRENCY) {
+      const outcomes = await Promise.all(recipients.slice(index, index + SEND_CONCURRENCY).map(async (recipient) => {
+        const message = reviewAndCollagenEmail(recipient.name);
+        try {
+          const result = await sendEmail({
+            db,
+            to: recipient.email,
+            subject: message.subject,
+            html: message.html,
+            kind: "marketing_review_collagen",
+            dedupeKey: `${CAMPAIGN_KEY}:${recipient.email}`,
+          });
+          return result.duplicate ? "skipped" : "sent";
+        } catch {
+          return "failed";
+        }
+      }));
+      sent += outcomes.filter((outcome) => outcome === "sent").length;
+      skipped += outcomes.filter((outcome) => outcome === "skipped").length;
+      failed += outcomes.filter((outcome) => outcome === "failed").length;
     }
     return NextResponse.json({ recipients: recipients.length, sent, skipped, failed });
   } catch {
