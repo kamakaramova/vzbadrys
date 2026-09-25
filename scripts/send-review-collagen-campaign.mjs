@@ -8,6 +8,8 @@ const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const supabaseSecret = process.env.SUPABASE_SECRET_KEY;
 const resendSecret = process.env.RESEND_API_KEY;
 const run = process.argv.includes("--send");
+const controlRecipientIndex = process.argv.indexOf("--control-to");
+const controlRecipient = controlRecipientIndex >= 0 ? String(process.argv[controlRecipientIndex + 1] ?? "").trim().toLowerCase() : "";
 
 if (!url || !supabaseSecret || !resendSecret) {
   console.error("Campaign environment is not configured");
@@ -63,6 +65,16 @@ for (const order of orders ?? []) {
   recipients.set(email, { email, name: [customer.name, customer.surname].filter(Boolean).join(" ").trim() });
 }
 
+// Контрольное письмо запускается только с явным адресом и не смешивается с массовой кампанией.
+if (controlRecipient) {
+  if (!validEmail(controlRecipient)) {
+    console.error("Control recipient is invalid");
+    process.exit(1);
+  }
+  recipients.clear();
+  recipients.set(controlRecipient, { email: controlRecipient, name: "Кама" });
+}
+
 if (!run) {
   console.info(JSON.stringify({ recipients: recipients.size, dryRun: true }));
   process.exit(0);
@@ -74,7 +86,9 @@ let failed = 0;
 for (let index = 0; index < recipients.size; index += SEND_CONCURRENCY) {
   const batch = [...recipients.values()].slice(index, index + SEND_CONCURRENCY);
   const outcomes = await Promise.all(batch.map(async (recipient) => {
-    const dedupeKey = `${CAMPAIGN_KEY}:${recipient.email}`;
+    const dedupeKey = controlRecipient
+      ? `${CAMPAIGN_KEY}:control:${recipient.email}`
+      : `${CAMPAIGN_KEY}:${recipient.email}`;
     const { data: prior, error: priorError } = await db.from("email_logs").select("id").eq("dedupe_key", dedupeKey).eq("status", "sent").maybeSingle();
     if (priorError) throw priorError;
     if (prior) return "skipped";
@@ -88,11 +102,11 @@ for (let index = 0; index < recipients.size; index += SEND_CONCURRENCY) {
         html: emailHtml(recipient.name),
       });
       if (error) throw new Error(error.message);
-      const { error: logError } = await db.from("email_logs").insert({ recipient: recipient.email, subject: "Как у Вас дела с добавкой?", kind: "marketing_review_collagen", dedupe_key: dedupeKey, provider_id: data?.id || null, status: "sent", error: null, created_at: createdAt });
+      const { error: logError } = await db.from("email_logs").insert({ recipient: recipient.email, subject: "Как у Вас дела с добавкой?", kind: controlRecipient ? "marketing_review_collagen_control" : "marketing_review_collagen", dedupe_key: dedupeKey, provider_id: data?.id || null, status: "sent", error: null, created_at: createdAt });
       if (logError) throw logError;
       return "sent";
     } catch (error) {
-      await db.from("email_logs").insert({ recipient: recipient.email, subject: "Как у Вас дела с добавкой?", kind: "marketing_review_collagen", dedupe_key: dedupeKey, provider_id: null, status: "failed", error: error instanceof Error ? error.message : "send_failed", created_at: createdAt });
+      await db.from("email_logs").insert({ recipient: recipient.email, subject: "Как у Вас дела с добавкой?", kind: controlRecipient ? "marketing_review_collagen_control" : "marketing_review_collagen", dedupe_key: dedupeKey, provider_id: null, status: "failed", error: error instanceof Error ? error.message : "send_failed", created_at: createdAt });
       return "failed";
     }
   }));
