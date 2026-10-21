@@ -12,7 +12,7 @@ import {
 import { findReferralOwner, getAuthenticatedUser, getBonusBalance, normalizeCode, REFERRAL_DISCOUNT_PERCENT } from "@/lib/loyalty";
 import { getServerSupabase } from "@/lib/supabaseServer";
 import { getDeliverySettings } from "@/lib/deliverySettings";
-import { getOzonPvzDeliveryPrice, isKaliningradDestination } from "@/lib/deliveryPricing";
+import { getDeliveryRestriction, getDeliveryRestrictionMessage, getOzonPvzDeliveryPrice } from "@/lib/deliveryPricing";
 import { getFiscalProductName } from "@/lib/fiscalProductNames";
 import { rateLimit } from "@/lib/rateLimit";
 
@@ -25,6 +25,7 @@ interface CreateOrderBody {
   customer?: { name?: string; surname?: string; phone?: string; email?: string };
   delivery?: {
     method?: DeliveryMethod;
+    country?: string;
     region?: string;
     city?: string;
     address?: string;
@@ -114,13 +115,17 @@ export async function POST(request: NextRequest) {
   const requestedDeliveryMethod = delivery.method;
   const deliveryRegion = delivery.region?.trim() || "";
   const deliveryCity = delivery.city?.trim() || "";
-  const isKaliningradCdekReplacement = requestedDeliveryMethod === "ozon_pvz"
-    && isKaliningradDestination({ region: deliveryRegion, city: deliveryCity });
-  // В Калининградскую область оформленный через блок Ozon заказ физически
-  // отправляем СДЭКом. Так в админке и письмах всегда указан реальный перевозчик.
-  const deliveryMethod: DeliveryMethod = isKaliningradCdekReplacement ? "sdek_pvz" : requestedDeliveryMethod;
-  const isKaliningradSdekDelivery = deliveryMethod === "sdek_pvz"
-    && isKaliningradDestination({ region: deliveryRegion, city: deliveryCity });
+  const deliveryMethod: DeliveryMethod = requestedDeliveryMethod;
+  if (deliveryMethod !== "pickup" && !delivery.country?.trim()) {
+    return badRequest("Укажите страну доставки");
+  }
+  const restriction = deliveryMethod === "pickup" ? null : getDeliveryRestriction({
+    country: delivery.country,
+    region: deliveryRegion,
+    city: deliveryCity,
+    address: delivery.address,
+  });
+  if (restriction) return badRequest(getDeliveryRestrictionMessage(restriction));
   const deliverySettings = await getDeliverySettings();
   if (!deliverySettings.enabled[deliveryMethod]) return badRequest("Этот способ доставки временно недоступен");
   if (requestedDeliveryMethod === "ozon_pvz" && !deliveryRegion) {
@@ -252,9 +257,7 @@ export async function POST(request: NextRequest) {
     : deliveryMethod === "pochta"
       ? requestedPochtaPriceKopecks
       : (deliveryMethod === "ozon_pvz"
-        ? getOzonPvzDeliveryPrice({ region: deliveryRegion, city: deliveryCity })
-        : isKaliningradSdekDelivery
-          ? getOzonPvzDeliveryPrice({ region: deliveryRegion, city: deliveryCity })
+        ? getOzonPvzDeliveryPrice()
         : DELIVERY_PRICES[deliveryMethod]) * 100;
   const deliveryPrice = deliveryPriceKopecks / 100;
   const productsTotalKopecks = (subtotal - discount) * 100;
@@ -332,6 +335,7 @@ export async function POST(request: NextRequest) {
     items: orderLines,
     delivery: {
       method: deliveryMethod,
+      country: deliveryMethod === "pickup" ? "Россия" : delivery.country?.trim() || "",
       region: deliveryRegion,
       city: deliveryCity,
       address: deliveryAddress,

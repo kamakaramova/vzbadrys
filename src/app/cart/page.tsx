@@ -326,7 +326,7 @@ export default function CartPage() {
                 </button>
 
                 <div className="mt-4 space-y-2">
-                  {["Документы на каждый товар", "Безопасная оплата через Ozon Pay", "Доставка по всей России"].map((t, i) => (
+                  {["Документы на каждый товар", "Безопасная оплата через Ozon Pay", "Доставка по России, кроме Калининградской области"].map((t, i) => (
                     <div key={i} className="flex items-center gap-2 text-xs text-[#6b6b6b]">
                       <Check size={13} className="text-[#E8845A] flex-shrink-0" />
                       {t}

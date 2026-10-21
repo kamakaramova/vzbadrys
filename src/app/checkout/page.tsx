@@ -9,7 +9,7 @@ import { supabase } from "@/lib/supabase";
 import PochtaWidget, { PochtaPoint } from "@/components/PochtaWidget";
 import PaymentLogos from "@/components/PaymentLogos";
 import { productImagePaths } from "@/lib/productImages";
-import { getOzonPvzDeliveryPrice, isKaliningradDestination } from "@/lib/deliveryPricing";
+import { DELIVERY_CONTACT_EMAIL, getDeliveryRestriction, getOzonPvzDeliveryPrice } from "@/lib/deliveryPricing";
 import { Check, MapPin, Package, CreditCard, MessageSquare } from "lucide-react";
 
 type DeliveryMethod = "pickup" | "sdek_pvz" | "yandex_pvz" | "ozon_pvz" | "pochta";
@@ -64,6 +64,7 @@ export default function CheckoutPage() {
     surname: "",
     phone: "",
     email: "",
+    country: "Россия",
     region: "",
     city: "",
     address: "",
@@ -109,20 +110,17 @@ export default function CheckoutPage() {
   const referralDiscountAmount = Math.round((subtotal * referralDiscount) / 100);
   const allowedBonusPayment = Math.min(bonusPointsToSpend, maxBonusPayment, user?.bonusPoints || 0);
   const discountedSubtotal = Math.max(0, subtotal - promoDiscountAmount - referralDiscountAmount - allowedBonusPayment);
-  const isKaliningradOzonDelivery = delivery === "ozon_pvz" && isKaliningradDestination(form);
-  const isKaliningradCdekDelivery = delivery === "sdek_pvz" && isKaliningradDestination(form);
-  const ozonPvzPrice = getOzonPvzDeliveryPrice(form);
+  const deliveryRestriction = delivery === "pickup" ? null : getDeliveryRestriction(form);
+  const ozonPvzPrice = getOzonPvzDeliveryPrice();
 
   const allDeliveryOptions: { id: DeliveryMethod; label: string; desc: string; price: number; days: string; isPvz: boolean }[] = [
     { id: "pickup", label: "Самовывоз — Казань", desc: "г. Казань, ул. Айдарова, 15", price: 0, days: "после готовности заказа", isPvz: false },
-    { id: "sdek_pvz", label: "СДЭК — Пункт выдачи", desc: "Укажите адрес удобного ПВЗ СДЭК", price: discountedSubtotal >= 3000 ? 0 : (isKaliningradCdekDelivery ? 650 : 300), days: "2–5 дней", isPvz: true },
+    { id: "sdek_pvz", label: "СДЭК — Пункт выдачи", desc: "Укажите адрес удобного ПВЗ СДЭК", price: discountedSubtotal >= 3000 ? 0 : 300, days: "2–5 дней", isPvz: true },
     { id: "yandex_pvz", label: "Яндекс — Пункт выдачи", desc: "Укажите адрес удобного ПВЗ Яндекс", price: discountedSubtotal >= 3000 ? 0 : 300, days: "3–6 дней", isPvz: true },
     { id: "ozon_pvz", label: "Ozon — Пункт выдачи", desc: "Укажите адрес удобного ПВЗ Ozon", price: discountedSubtotal >= 3000 ? 0 : ozonPvzPrice, days: "3–7 дней", isPvz: true },
-    { id: "pochta", label: "Почта России", desc: "В любой населённый пункт России", price: discountedSubtotal >= 3000 ? 0 : 250, days: "5–14 дней", isPvz: false },
+    { id: "pochta", label: "Почта России", desc: "В доступные регионы России", price: discountedSubtotal >= 3000 ? 0 : 250, days: "5–14 дней", isPvz: false },
   ];
-  // СДЭК не предлагаем как самостоятельный способ доставки. Он используется
-  // только для Калининградской области после выбора Ozon — с понятной подсказкой
-  // и сохранением заказа как доставки СДЭК на стороне сервера.
+  // СДЭК не предлагаем как самостоятельный способ доставки.
   const deliveryOptions = allDeliveryOptions.filter(
     (option) => option.id !== "sdek_pvz" && deliverySettings.enabled[option.id]
   );
@@ -151,12 +149,13 @@ export default function CheckoutPage() {
     if (!form.surname.trim()) e.surname = "Введите фамилию";
     if (phoneDigits(form.phone) !== 11) e.phone = "Введите номер полностью: +7 и 10 цифр";
     if (!isValidEmail(form.email)) e.email = "Проверьте email — похоже, есть опечатка";
+    if (!form.country.trim()) e.country = "Укажите страну доставки";
     if (delivery === "ozon_pvz" && !form.region.trim()) e.region = "Укажите регион, область или республику";
     if (delivery !== "pickup" && !form.city.trim()) e.city = "Введите город";
     if (selectedDelivery.isPvz && !form.address.trim()) e.address = "Введите адрес пункта выдачи";
     if (delivery === "pochta" && !form.address.trim()) e.address = "Выберите отделение Почты России на карте";
     setErrors(e);
-    return Object.keys(e).length === 0;
+    return Object.keys(e).length === 0 && !deliveryRestriction;
   };
 
   const handleSubmit = async () => {
@@ -179,7 +178,8 @@ export default function CheckoutPage() {
           },
           delivery: {
             method: delivery,
-            region: (delivery === "ozon_pvz" || isKaliningradCdekDelivery) ? form.region : "",
+            country: delivery === "pickup" ? "Россия" : form.country,
+            region: delivery === "pickup" ? "" : form.region,
             city: delivery === "pickup" ? "Казань" : form.city,
             address: delivery === "pickup" ? "ул. Айдарова, 15" : form.address,
             zip: delivery === "pickup" ? "" : form.zip,
@@ -311,6 +311,13 @@ export default function CheckoutPage() {
                   </div>
                 )}
 
+                {delivery !== "pickup" && (
+                  <div className="mb-5">
+                    {renderField({ label: "Страна доставки", name: "country", placeholder: "Россия" })}
+                    <p className="text-xs text-[#aaa] mt-1">Стандартная доставка доступна по России, кроме Калининградской области.</p>
+                  </div>
+                )}
+
                 {delivery === "pickup" ? (
                   <div className="rounded-2xl border border-[#c8e6d4] bg-[#f0f8f4] p-4">
                     <p className="font-semibold text-[#1a7a4a]">Адрес самовывоза</p>
@@ -353,9 +360,9 @@ export default function CheckoutPage() {
                   </div>
                 ) : (
                 <div className="grid sm:grid-cols-2 gap-4">
-                  {(delivery === "ozon_pvz" || delivery === "sdek_pvz") && (
+                  {(delivery === "ozon_pvz" || delivery === "sdek_pvz" || delivery === "yandex_pvz") && (
                     <div>
-                      {renderField({ label: "Регион / область / республика", name: "region", placeholder: "Например: Калининградская область" })}
+                      {renderField({ label: "Регион / область / республика", name: "region", placeholder: "Например: Самарская область" })}
                       <p className="text-xs text-[#aaa] mt-1">Укажите область или республику — это помогает рассчитать доставку верно.</p>
                     </div>
                   )}
@@ -364,33 +371,28 @@ export default function CheckoutPage() {
                   {selectedDelivery.isPvz && (
                     <div className="sm:col-span-2">
                       {renderField({
-                        label: isKaliningradOzonDelivery ? "Адрес пункта выдачи СДЭК" : "Адрес пункта выдачи",
+                        label: "Адрес пункта выдачи",
                         name: "address",
-                        placeholder: isKaliningradOzonDelivery ? "Например: ул. Ленина, 5 — ПВЗ СДЭК" : "Например: ул. Ленина, 5 — ПВЗ на первом этаже",
+                        placeholder: "Например: ул. Ленина, 5 — ПВЗ на первом этаже",
                       })}
                       <p className="text-xs text-[#aaa] mt-1">
-                        {isKaliningradOzonDelivery
-                          ? "Найдите удобный ПВЗ СДЭК на сайте СДЭК и укажите его адрес."
-                          : "Найдите ближайший ПВЗ на сайте службы доставки и введите его адрес"}
+                        Найдите ближайший ПВЗ на сайте службы доставки и введите его адрес
                       </p>
                       {delivery === "ozon_pvz" && (
-                        <>
-                          {isKaliningradOzonDelivery ? (
-                            <div className="mt-3 rounded-xl border border-[#f5d5c0] bg-[#fff8f5] px-3 py-2.5 text-xs leading-relaxed text-[#8b4513]">
-                              <p className="font-semibold mb-1">Для Калининградской области отправляем СДЭКом</p>
-                              <p>К сожалению, доставка Ozon в это направление не отправляется. Укажите выше адрес удобного ПВЗ СДЭК — мы отправим заказ СДЭКом. {discountedSubtotal < 3000 ? "Стоимость доставки — 650 ₽." : "Для Вашего заказа доставка бесплатна."} Спасибо, что выбираете «взБАДрись»!</p>
-                            </div>
-                          ) : (
-                            <div className="mt-3 rounded-xl border border-[#cddfff] bg-[#f4f8ff] px-3 py-2.5 text-xs leading-relaxed text-[#61779e]">
-                              После отправки посылка появится в вашем личном кабинете Ozon — там вы сможете отслеживать её самостоятельно.
-                            </div>
-                          )}
-                        </>
+                        <div className="mt-3 rounded-xl border border-[#cddfff] bg-[#f4f8ff] px-3 py-2.5 text-xs leading-relaxed text-[#61779e]">
+                          После отправки посылка появится в вашем личном кабинете Ozon — там вы сможете отслеживать её самостоятельно.
+                        </div>
                       )}
                     </div>
                   )}
 
                 </div>
+                )}
+                {deliveryRestriction && (
+                  <div role="alert" className="mt-4 rounded-2xl border border-[#f5d5c0] bg-[#fff8f5] p-4 text-sm leading-relaxed text-[#8b4513]">
+                    Нам очень жаль, но пока мы не можем оформить доставку {deliveryRestriction === "kaliningrad" ? "в Калининградскую область" : "за пределы России"} прямо на сайте. Если вы готовы рассмотреть доставку за дополнительную плату, напишите нам на{" "}
+                    <a href={`mailto:${DELIVERY_CONTACT_EMAIL}`} className="font-semibold underline">{DELIVERY_CONTACT_EMAIL}</a>. Мы проверим возможность отправки, заранее сообщим стоимость и согласуем условия с вами.
+                  </div>
                 )}
               </div>
 
@@ -542,9 +544,9 @@ export default function CheckoutPage() {
 
                 <button
                   onClick={handleSubmit}
-                  disabled={submitting || !agreeTerms || (delivery === "pochta" && !pochtaPoint)}
+                  disabled={submitting || !agreeTerms || Boolean(deliveryRestriction) || (delivery === "pochta" && !pochtaPoint)}
                   className={`w-full font-bold py-4 rounded-full text-white text-base transition-all flex items-center justify-center gap-2 ${
-                    submitting || !agreeTerms || (delivery === "pochta" && !pochtaPoint)
+                    submitting || !agreeTerms || Boolean(deliveryRestriction) || (delivery === "pochta" && !pochtaPoint)
                       ? "bg-[#f5c9b0] cursor-not-allowed"
                       : "bg-[#E8845A] hover:bg-[#d4703f] hover:-translate-y-0.5 hover:shadow-lg"
                   }`}
@@ -586,7 +588,7 @@ export default function CheckoutPage() {
                         widgetId={deliverySettings.pochtaWidgetId}
           onSelect={(p) => {
             setPochtaPoint(p);
-            setForm((f) => ({ ...f, city: p.city || f.city, address: p.address, zip: p.index || f.zip }));
+            setForm((f) => ({ ...f, region: p.region || f.region, city: p.city || f.city, address: p.address, zip: p.index || f.zip }));
             setErrors((e) => ({ ...e, address: undefined }));
             setShowPochtaMap(false);
           }}

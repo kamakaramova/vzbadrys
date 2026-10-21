@@ -19,7 +19,7 @@ export default function Home() {
               {[
                 { icon: <FileCheck size={22} />, title: "Документы", desc: "Сертификаты на каждый товар" },
                 { icon: <Shield size={22} />, title: "Честный состав", desc: "Только проверенные формы" },
-                { icon: <Truck size={22} />, title: "Доставка", desc: "По всей России" },
+                { icon: <Truck size={22} />, title: "Доставка", desc: "По России, кроме Калининградской области" },
                 { icon: <Star size={22} />, title: "Эксперт", desc: "Куратор-нутрициолог" },
               ].map((item, i) => (
                 <div key={i} className="flex flex-col items-center text-center p-5 rounded-2xl bg-[#fdf8f5]">

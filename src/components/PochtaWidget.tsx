@@ -7,6 +7,7 @@ export interface PochtaPoint {
   address: string;
   index: string;
   name: string;
+  region: string;
   city: string;
   deliveryPriceKopecks?: number;
   deliveryDescription?: string;
@@ -71,6 +72,7 @@ export default function PochtaWidget({
             address: fullAddress,
             index,
             name,
+            region,
             city,
             deliveryPriceKopecks,
             deliveryDescription: getDeliveryDescription(d.deliveryDescription),
