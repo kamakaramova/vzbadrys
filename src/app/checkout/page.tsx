@@ -143,19 +143,44 @@ export default function CheckoutPage() {
   });
   const finalTotal = Math.max(0, total - allowedBonusPayment) + deliveryPrice;
 
+  const remainingFields: { id: string; label: string }[] = [];
+  if (!form.name.trim()) remainingFields.push({ id: "name", label: "имя" });
+  if (!form.surname.trim()) remainingFields.push({ id: "surname", label: "фамилию" });
+  if (phoneDigits(form.phone) !== 11) remainingFields.push({ id: "phone", label: "телефон полностью" });
+  if (!isValidEmail(form.email)) remainingFields.push({ id: "email", label: "корректный email" });
+  if (delivery !== "pickup") {
+    if (!form.country.trim()) remainingFields.push({ id: "country", label: "страну доставки" });
+    if (delivery === "pochta") {
+      if (!pochtaPoint || !form.city.trim() || !form.address.trim()) {
+        remainingFields.push({ id: "pochta-point", label: "отделение Почты России" });
+      } else if (deliveryPriceKopecks === undefined) {
+        remainingFields.push({ id: "pochta-point", label: "отделение с рассчитанной стоимостью доставки" });
+      }
+    } else {
+      if (!form.region.trim()) remainingFields.push({ id: "region", label: "регион" });
+      if (!form.city.trim()) remainingFields.push({ id: "city", label: "город" });
+      if (!form.address.trim()) remainingFields.push({ id: "address", label: "адрес пункта выдачи" });
+    }
+    if (deliveryRestriction) {
+      remainingFields.push({ id: "delivery-restriction", label: "доступный адрес доставки" });
+    }
+  }
+  if (!agreeTerms) remainingFields.push({ id: "agree-terms", label: "согласие с условиями заказа" });
+  const canProceedToPayment = remainingFields.length === 0;
+
   const validate = () => {
     const e: Partial<typeof form> = {};
     if (!form.name.trim()) e.name = "Введите имя";
     if (!form.surname.trim()) e.surname = "Введите фамилию";
     if (phoneDigits(form.phone) !== 11) e.phone = "Введите номер полностью: +7 и 10 цифр";
     if (!isValidEmail(form.email)) e.email = "Проверьте email — похоже, есть опечатка";
-    if (!form.country.trim()) e.country = "Укажите страну доставки";
-    if (delivery === "ozon_pvz" && !form.region.trim()) e.region = "Укажите регион, область или республику";
+    if (delivery !== "pickup" && !form.country.trim()) e.country = "Укажите страну доставки";
+    if (delivery !== "pickup" && delivery !== "pochta" && !form.region.trim()) e.region = "Укажите регион, область или республику";
     if (delivery !== "pickup" && !form.city.trim()) e.city = "Введите город";
     if (selectedDelivery.isPvz && !form.address.trim()) e.address = "Введите адрес пункта выдачи";
-    if (delivery === "pochta" && !form.address.trim()) e.address = "Выберите отделение Почты России на карте";
+    if (delivery === "pochta" && (!pochtaPoint || !form.address.trim() || deliveryPriceKopecks === undefined)) e.address = "Выберите отделение Почты России на карте";
     setErrors(e);
-    return Object.keys(e).length === 0 && !deliveryRestriction;
+    return Object.keys(e).length === 0 && canProceedToPayment;
   };
 
   const handleSubmit = async () => {
@@ -231,8 +256,9 @@ export default function CheckoutPage() {
   // и курсор не слетал. Вызывается как {renderField({...})}, а не <Field/>.
   const renderField = ({ label, name, type = "text", placeholder }: { label: string; name: keyof typeof form; type?: string; placeholder?: string }) => (
     <div>
-      <label className="block text-xs font-semibold text-[#6b6b6b] mb-1.5 uppercase tracking-wide">{label}</label>
+      <label htmlFor={name} className="block text-xs font-semibold text-[#6b6b6b] mb-1.5 uppercase tracking-wide">{label}</label>
       <input
+        id={name}
         type={type}
         value={form[name]}
         onChange={(e) => { const val = name === "phone" ? formatPhone(e.target.value) : e.target.value; setForm((f) => ({ ...f, [name]: val })); setErrors((err) => ({ ...err, [name]: "" })); }}
@@ -336,12 +362,13 @@ export default function CheckoutPage() {
                             {pochtaPoint.deliveryDescription ? ` · ${pochtaPoint.deliveryDescription}` : ""}
                           </p>
                         </div>
-                        <button type="button" onClick={() => setShowPochtaMap(true)} className="text-xs text-[#E8845A] font-semibold hover:underline whitespace-nowrap">
+                        <button id="pochta-point" type="button" onClick={() => setShowPochtaMap(true)} className="text-xs text-[#E8845A] font-semibold hover:underline whitespace-nowrap">
                           Изменить
                         </button>
                       </div>
                     ) : (
                       <button
+                        id="pochta-point"
                         type="button"
                         onClick={() => setShowPochtaMap(true)}
                         className={`w-full flex items-center justify-center gap-2 py-3 rounded-2xl border-2 border-dashed font-semibold text-sm transition-all ${
@@ -389,7 +416,7 @@ export default function CheckoutPage() {
                 </div>
                 )}
                 {deliveryRestriction && (
-                  <div role="alert" className="mt-4 rounded-2xl border border-[#f5d5c0] bg-[#fff8f5] p-4 text-sm leading-relaxed text-[#8b4513]">
+                  <div id="delivery-restriction" tabIndex={-1} role="alert" className="mt-4 rounded-2xl border border-[#f5d5c0] bg-[#fff8f5] p-4 text-sm leading-relaxed text-[#8b4513]">
                     Нам очень жаль, но пока мы не можем оформить доставку {deliveryRestriction === "kaliningrad" ? "в Калининградскую область" : "за пределы России"} прямо на сайте. Если вы готовы рассмотреть доставку за дополнительную плату, напишите нам на{" "}
                     <a href={`mailto:${DELIVERY_CONTACT_EMAIL}`} className="font-semibold underline">{DELIVERY_CONTACT_EMAIL}</a>. Мы проверим возможность отправки, заранее сообщим стоимость и согласуем условия с вами.
                   </div>
@@ -514,6 +541,7 @@ export default function CheckoutPage() {
                 <div className="space-y-3 mb-5">
                   <label className="flex items-start gap-3 cursor-pointer group">
                     <input
+                      id="agree-terms"
                       type="checkbox"
                       checked={agreeTerms}
                       onChange={(e) => setAgreeTerms(e.target.checked)}
@@ -544,11 +572,12 @@ export default function CheckoutPage() {
 
                 <button
                   onClick={handleSubmit}
-                  disabled={submitting || !agreeTerms || Boolean(deliveryRestriction) || (delivery === "pochta" && !pochtaPoint)}
-                  className={`w-full font-bold py-4 rounded-full text-white text-base transition-all flex items-center justify-center gap-2 ${
-                    submitting || !agreeTerms || Boolean(deliveryRestriction) || (delivery === "pochta" && !pochtaPoint)
-                      ? "bg-[#f5c9b0] cursor-not-allowed"
-                      : "bg-[#E8845A] hover:bg-[#d4703f] hover:-translate-y-0.5 hover:shadow-lg"
+                  disabled={submitting || !canProceedToPayment}
+                  aria-describedby={!canProceedToPayment ? "checkout-readiness" : undefined}
+                  className={`w-full font-bold py-4 rounded-full text-base transition-all flex items-center justify-center gap-2 ${
+                    submitting || !canProceedToPayment
+                      ? "bg-[#f5c9b0] text-[#7a4a36] cursor-not-allowed"
+                      : "bg-[#E8845A] text-white hover:bg-[#d4703f] hover:-translate-y-0.5 hover:shadow-lg"
                   }`}
                 >
                   {submitting ? (
@@ -557,6 +586,31 @@ export default function CheckoutPage() {
                     <>Оплатить заказ {formatPrice(finalTotal)} ₽</>
                   )}
                 </button>
+
+                {remainingFields.length > 0 && (
+                  <div id="checkout-readiness" role="status" aria-live="polite" className="mt-3 rounded-2xl border border-[#f5d5c0] bg-[#fff8f5] p-3 text-sm text-[#8b4513]">
+                    <p className="font-semibold mb-1.5">Чтобы перейти к оплате, проверьте:</p>
+                    <ul className="flex flex-wrap gap-x-3 gap-y-1">
+                      {remainingFields.map((field) => (
+                        <li key={field.id}>
+                          <a
+                            href={`#${field.id}`}
+                            onClick={(event) => {
+                              const target = document.getElementById(field.id);
+                              if (target) {
+                                event.preventDefault();
+                                target.focus();
+                              }
+                            }}
+                            className="underline underline-offset-2 hover:text-[#a9572d]"
+                          >
+                            {field.label}
+                          </a>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
 
                 {submitError && (
                   <p role="alert" className="mt-3 text-sm text-red-600 bg-red-50 border border-red-100 rounded-xl p-3">
