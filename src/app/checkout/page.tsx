@@ -6,6 +6,7 @@ import Footer from "@/components/Footer";
 import { useCartStore } from "@/store/cartStore";
 import { useAuthStore } from "@/store/authStore";
 import { supabase } from "@/lib/supabase";
+import { useBonusBalance } from "@/lib/useBonusBalance";
 import PochtaWidget, { PochtaPoint } from "@/components/PochtaWidget";
 import PaymentLogos from "@/components/PaymentLogos";
 import { productImagePaths } from "@/lib/productImages";
@@ -53,8 +54,10 @@ export default function CheckoutPage() {
   const bonusPointsToSpend = useCartStore((s) => s.bonusPointsToSpend);
   const setBonusPointsToSpend = useCartStore((s) => s.setBonusPointsToSpend);
   const user = useAuthStore((s) => s.user);
+  const bonus = useBonusBalance(user?.id ?? null);
+  const [bonusSkippedForUserId, setBonusSkippedForUserId] = useState<string | null>(null);
 
-  const [delivery, setDelivery] = useState<DeliveryMethod>("sdek_pvz");
+  const [delivery, setDelivery] = useState<DeliveryMethod>("pickup");
   const [comment, setComment] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState("");
@@ -100,15 +103,29 @@ export default function CheckoutPage() {
     fetch("/api/delivery-settings", { cache: "no-store" })
       .then((response) => response.ok ? response.json() : null)
       .then((data) => {
-        if (data?.enabled && typeof data.pochtaWidgetId === "number") setDeliverySettings(data as PublicDeliverySettings);
+        if (data?.enabled && typeof data.pochtaWidgetId === "number") {
+          const settings = data as PublicDeliverySettings;
+          setDeliverySettings(settings);
+          setDelivery((current) =>
+            current !== "sdek_pvz" && settings.enabled[current]
+              ? current
+              : (["pickup", "yandex_pvz", "ozon_pvz", "pochta"] as DeliveryMethod[])
+                .find((method) => settings.enabled[method]) ?? "pickup"
+          );
+        }
       })
       .catch(() => undefined);
   }, []);
 
   const maxBonusPayment = Math.floor(subtotal * 0.3);
+  useEffect(() => {
+    if (bonus.balance === null) return;
+    const maximum = Math.min(maxBonusPayment, bonus.balance);
+    if (bonusPointsToSpend > maximum) setBonusPointsToSpend(maximum);
+  }, [bonus.balance, bonusPointsToSpend, maxBonusPayment, setBonusPointsToSpend]);
   const promoDiscountAmount = Math.round((subtotal * promoDiscount) / 100);
   const referralDiscountAmount = Math.round((subtotal * referralDiscount) / 100);
-  const allowedBonusPayment = Math.min(bonusPointsToSpend, maxBonusPayment, user?.bonusPoints || 0);
+  const allowedBonusPayment = Math.min(bonusPointsToSpend, maxBonusPayment, bonus.balance ?? 0);
   const discountedSubtotal = Math.max(0, subtotal - promoDiscountAmount - referralDiscountAmount - allowedBonusPayment);
   const deliveryRestriction = delivery === "pickup" ? null : getDeliveryRestriction(form);
   const ozonPvzPrice = getOzonPvzDeliveryPrice();
@@ -124,13 +141,6 @@ export default function CheckoutPage() {
   const deliveryOptions = allDeliveryOptions.filter(
     (option) => option.id !== "sdek_pvz" && deliverySettings.enabled[option.id]
   );
-
-  useEffect(() => {
-    if (!deliveryOptions.some((option) => option.id === delivery)) {
-      setDelivery(deliveryOptions[0]?.id ?? "pickup");
-      setPochtaPoint(null);
-    }
-  }, [delivery, deliveryOptions]);
 
   const selectedDelivery = deliveryOptions.find((d) => d.id === delivery) ?? allDeliveryOptions[0];
   const deliveryPriceKopecks = delivery === "pochta"
@@ -166,6 +176,8 @@ export default function CheckoutPage() {
     }
   }
   if (!agreeTerms) remainingFields.push({ id: "agree-terms", label: "согласие с условиями заказа" });
+  if (user && bonus.loading) remainingFields.push({ id: "bonus-loading", label: "загрузку баланса бонусов" });
+  if (user && bonus.error && bonusSkippedForUserId !== user.id) remainingFields.push({ id: "bonus-error", label: "баланс бонусов или продолжение без них" });
   const canProceedToPayment = remainingFields.length === 0;
 
   const validate = () => {
@@ -529,8 +541,18 @@ export default function CheckoutPage() {
 
                 {user ? (
                   <div className="mb-5 rounded-2xl bg-[#fff8f5] border border-[#f5d5c0] p-4">
-                    <div className="flex justify-between gap-3 mb-2"><span className="text-sm font-semibold">Оплатить бонусами</span><span className="text-xs text-[#8b4513]">Доступно: {user.bonusPoints}</span></div>
-                    <input type="number" min="0" max={Math.min(user.bonusPoints, maxBonusPayment)} value={bonusPointsToSpend || ""} onChange={(e) => setBonusPointsToSpend(Math.min(Math.max(0, Number(e.target.value || 0)), user.bonusPoints, maxBonusPayment))} placeholder="0" className="w-full bg-white px-3 py-2.5 rounded-xl border border-[#f0e8e0] text-sm outline-none focus:border-[#E8845A]" />
+                    <div className="flex justify-between gap-3 mb-2"><span className="text-sm font-semibold">Оплатить бонусами</span><span className="text-xs text-[#8b4513]">{bonus.loading ? "Проверяем баланс…" : bonus.error ? "Баланс недоступен" : `Доступно: ${bonus.balance?.toLocaleString("ru-RU") ?? 0}`}</span></div>
+                    {bonus.error ? (
+                      <div role="alert" className="text-sm text-[#8b4513]">
+                        <p>{bonus.error}. Мы не спишем бонусы без проверки баланса.</p>
+                        <div className="mt-2 flex flex-wrap gap-3">
+                          <button type="button" onClick={() => { setBonusSkippedForUserId(null); bonus.refresh(); }} className="font-semibold underline">Повторить проверку</button>
+                          <button type="button" onClick={() => { setBonusPointsToSpend(0); setBonusSkippedForUserId(user.id); }} className="font-semibold underline">Продолжить без бонусов</button>
+                        </div>
+                      </div>
+                    ) : (
+                      <input type="number" min="0" max={Math.min(bonus.balance ?? 0, maxBonusPayment)} disabled={bonus.loading || bonus.balance === null || bonus.balance === 0} value={bonusPointsToSpend || ""} onChange={(e) => setBonusPointsToSpend(Math.min(Math.max(0, Number(e.target.value || 0)), bonus.balance ?? 0, maxBonusPayment))} placeholder="0" className="w-full bg-white px-3 py-2.5 rounded-xl border border-[#f0e8e0] text-sm outline-none focus:border-[#E8845A] disabled:opacity-60" />
+                    )}
                     <p className="text-xs text-[#8b6b5d] mt-2">1 бонус = 1 ₽. Бонусами можно оплатить до 30% стоимости товаров.</p>
                   </div>
                 ) : (

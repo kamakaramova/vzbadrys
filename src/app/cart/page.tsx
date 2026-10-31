@@ -8,6 +8,7 @@ import { useAuthStore } from "@/store/authStore";
 import { Trash2, Tag, ShoppingBag, Check, X, Gift, Percent } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
+import { useBonusBalance } from "@/lib/useBonusBalance";
 import { productImagePaths } from "@/lib/productImages";
 
 export default function CartPage() {
@@ -27,6 +28,7 @@ export default function CartPage() {
   const removePromo = useCartStore((s) => s.removePromo);
   const removeReferral = useCartStore((s) => s.removeReferral);
   const user = useAuthStore((s) => s.user);
+  const bonus = useBonusBalance(user?.id ?? null);
 
   const [promoInput, setPromoInput] = useState("");
   const [referralInput, setReferralInput] = useState("");
@@ -118,6 +120,18 @@ export default function CartPage() {
                   зарегистрируйтесь
                 </Link>
               </p>
+            </div>
+          )}
+
+          {user && (
+            <div className="mb-8 rounded-2xl border border-[#f5d5c0] bg-[#fff8f5] px-5 py-4 text-sm text-[#8b4513]" role="status" aria-live="polite">
+              {bonus.loading ? "Проверяем ваши бонусы…" : bonus.error ? (
+                <>
+                  Не удалось показать бонусы. <button type="button" onClick={bonus.refresh} className="font-semibold underline">Повторить</button>
+                </>
+              ) : (
+                <>На вашем счёте <span className="font-bold">{bonus.balance?.toLocaleString("ru-RU")} бонусов</span>. Их можно использовать при оформлении заказа: 1 бонус = 1 ₽, до 30% стоимости товаров.</>
+              )}
             </div>
           )}
 
