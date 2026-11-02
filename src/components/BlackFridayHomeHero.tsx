@@ -6,7 +6,6 @@ import Link from "next/link";
 import HeroSection from "@/components/HeroSection";
 
 const SALE_START = Date.parse("2026-11-13T00:00:00+03:00");
-const SALE_END = Date.parse("2026-11-14T00:00:00+03:00");
 
 function timeParts(milliseconds: number) {
   const seconds = Math.max(0, Math.ceil(milliseconds / 1000));
@@ -28,11 +27,10 @@ export default function BlackFridayHomeHero() {
     return () => window.clearInterval(interval);
   }, []);
 
-  // После акции главная страница сама возвращается к обычной обложке.
-  if (now !== null && now >= SALE_END) return <HeroSection />;
+  // Не рекламировать цену после старта, пока акционная оплата не настроена.
+  if (now !== null && now >= SALE_START) return <HeroSection />;
 
-  const isLive = now !== null && now >= SALE_START;
-  const remaining = now === null ? null : timeParts((isLive ? SALE_END : SALE_START) - now);
+  const remaining = now === null ? null : timeParts(SALE_START - now);
   const units = ["дней", "часов", "минут", "секунд"];
 
   return (
@@ -96,10 +94,10 @@ export default function BlackFridayHomeHero() {
       <section aria-label="Обратный отсчёт акции" className="bg-[#f8d933] text-[#101011]">
         <div className="mx-auto flex max-w-7xl flex-col items-center justify-between gap-4 px-5 py-5 sm:px-8 lg:min-h-28 lg:flex-row lg:gap-8">
           <div className="text-center lg:text-left">
-            <p className="text-base font-extrabold sm:text-lg">{isLive ? "До конца акции осталось" : "До старта акции осталось"}</p>
-            <p className="mt-1 text-xs font-semibold">{isLive ? "Предложение действует до 23:59 по Москве" : "Начало 13 ноября в 00:00 по Москве"}</p>
+            <p className="text-base font-extrabold sm:text-lg">До старта акции осталось</p>
+            <p className="mt-1 text-xs font-semibold">Начало 13 ноября в 00:00 по Москве</p>
           </div>
-          <div role="timer" aria-label={isLive ? "Время до конца акции" : "Время до начала акции"} className="flex items-start gap-2 font-variant-numeric-tabular sm:gap-3">
+          <div role="timer" aria-label="Время до начала акции" className="flex items-start gap-2 sm:gap-3">
             {units.map((unit, index) => (
               <div key={unit} className="flex items-start gap-2 sm:gap-3">
                 {index > 0 && <span aria-hidden="true" className="pt-0.5 text-xl font-black sm:text-2xl">:</span>}
