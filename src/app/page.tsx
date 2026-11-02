@@ -1,7 +1,7 @@
 import Link from "next/link";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
-import HeroSection from "@/components/HeroSection";
+import BlackFridayHomeHero from "@/components/BlackFridayHomeHero";
 import FeaturedProducts from "@/components/FeaturedProducts";
 import { ArrowRight, Shield, Truck, FileCheck, Star } from "lucide-react";
 
@@ -10,7 +10,7 @@ export default function Home() {
     <>
       <Header />
       <main>
-        <HeroSection />
+        <BlackFridayHomeHero />
 
         {/* ПРЕИМУЩЕСТВА */}
         <section className="py-14 border-b border-[#f0e8e0]">
