@@ -42,7 +42,7 @@ export default function BlackFridayHomeHero() {
           <div className="relative z-10">
             <p className="mb-5 flex items-center gap-3 text-[11px] font-extrabold uppercase tracking-[0.2em] text-[#f8d933] sm:text-xs">
               <span aria-hidden="true" className="h-0.5 w-6 bg-[#f8d933]" />
-              Пятница, 13 ноября · только один день
+              13–15 ноября · три дня акции
             </p>
             <h1 id="black-friday-heading" className="text-[clamp(3.2rem,7vw,6rem)] font-black uppercase leading-[0.9] tracking-[-0.075em] text-[#f8d933]">
               Чёрная<br />пятница
@@ -61,7 +61,7 @@ export default function BlackFridayHomeHero() {
             <p className="mt-3 text-sm text-[#e7e5dc]">
               На остальные товары — <strong className="text-[#f8d933]">−20% по промокоду ПЯТНИЦА</strong>
             </p>
-            <p className="mt-2 text-xs text-[#aaa9a2]">Цены и промокод действуют только 13 ноября по московскому времени.</p>
+            <p className="mt-2 text-xs text-[#aaa9a2]">Цены и промокод действуют с 13 по 15 ноября по московскому времени.</p>
             <Link href="/catalog" className="mt-7 inline-flex min-h-14 items-center justify-center gap-4 rounded bg-[#f8d933] px-7 text-sm font-extrabold text-[#101011] transition-colors hover:bg-[#ffe867] focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#f8d933]">
               Посмотреть товары <span aria-hidden="true" className="text-xl">→</span>
             </Link>
@@ -78,7 +78,7 @@ export default function BlackFridayHomeHero() {
               className="relative aspect-[4/5] w-full rounded object-cover object-[center_37%]"
             />
             <div className="absolute -right-4 top-8 rotate-12 bg-[#f8d933] px-6 py-2 text-xs font-black uppercase tracking-widest text-[#101011] shadow-lg sm:-right-7 sm:text-sm">
-              13 ноября
+              13–15 ноября
             </div>
             <div className="absolute -bottom-2 -left-8 flex h-24 w-24 -rotate-12 flex-col items-center justify-center rounded-full bg-[#f8d933] text-[#101011] shadow-xl sm:-left-12 sm:h-32 sm:w-32">
               <strong className="text-2xl font-black tracking-tighter sm:text-4xl">−40%</strong>
