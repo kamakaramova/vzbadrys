@@ -1,6 +1,7 @@
 "use client";
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
+import { promoDiscountAmount } from "@/lib/promoRules";
 
 export interface CartItem {
   id: string;
@@ -16,6 +17,7 @@ interface CartStore {
   items: CartItem[];
   promoCode: string;
   promoDiscount: number;
+  promoProductIds: string[] | null;
   referralCode: string;
   referralDiscount: number;
   referrerId: string | null;
@@ -24,7 +26,7 @@ interface CartStore {
   removeItem: (id: string) => void;
   updateQty: (id: string, qty: number) => void;
   clearCart: () => void;
-  setPromo: (code: string, discount: number) => void;
+  setPromo: (code: string, discount: number, productIds: string[] | null) => void;
   setReferral: (code: string, discount: number, referrerId?: string | null) => void;
   setBonusPointsToSpend: (points: number) => void;
   removePromo: () => void;
@@ -41,6 +43,7 @@ export const useCartStore = create<CartStore>()(
       items: [],
       promoCode: "",
       promoDiscount: 0,
+      promoProductIds: null,
       referralCode: "",
       referralDiscount: 0,
       referrerId: null,
@@ -70,12 +73,12 @@ export const useCartStore = create<CartStore>()(
         }));
       },
 
-      clearCart: () => set({ items: [], promoCode: "", promoDiscount: 0, referralCode: "", referralDiscount: 0, referrerId: null, bonusPointsToSpend: 0 }),
+      clearCart: () => set({ items: [], promoCode: "", promoDiscount: 0, promoProductIds: null, referralCode: "", referralDiscount: 0, referrerId: null, bonusPointsToSpend: 0 }),
 
-      setPromo: (code, discount) => set({ promoCode: code.trim().toUpperCase(), promoDiscount: discount }),
+      setPromo: (code, discount, productIds) => set({ promoCode: code.trim().toUpperCase(), promoDiscount: discount, promoProductIds: productIds }),
       setReferral: (code, discount, referrerId = null) => set({ referralCode: code.trim().toUpperCase(), referralDiscount: discount, referrerId }),
       setBonusPointsToSpend: (points) => set({ bonusPointsToSpend: Math.max(0, Math.floor(points)) }),
-      removePromo: () => set({ promoCode: "", promoDiscount: 0 }),
+      removePromo: () => set({ promoCode: "", promoDiscount: 0, promoProductIds: null }),
       removeReferral: () => set({ referralCode: "", referralDiscount: 0, referrerId: null }),
 
       totalItems: () => get().items.reduce((s, i) => s + i.quantity, 0),
@@ -83,11 +86,21 @@ export const useCartStore = create<CartStore>()(
       // Округляем каждую скидку отдельно, чтобы итог совпадал с её отображением.
       discount: () => {
         const subtotal = get().subtotal();
-        return Math.round((subtotal * get().promoDiscount) / 100)
+        return promoDiscountAmount(get().items, get().promoDiscount, get().promoProductIds)
           + Math.round((subtotal * get().referralDiscount) / 100);
       },
       total: () => get().subtotal() - get().discount(),
     }),
-    { name: "vzbadrys-cart" }
+    {
+      name: "vzbadrys-cart",
+      version: 2,
+      migrate: (persistedState) => {
+        const state = persistedState as CartStore;
+        return {
+          ...state,
+          promoProductIds: Array.isArray(state.promoProductIds) ? state.promoProductIds : null,
+        };
+      },
+    }
   )
 );

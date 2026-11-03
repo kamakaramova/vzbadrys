@@ -54,7 +54,10 @@ export async function applyOzonPaymentStatus({
   const now = new Date().toISOString();
 
   if (["completed", "paid"].includes(normalizedStatus)) {
-    if (order.status === "paid") return { ok: true, changed: false };
+    if (order.status === "paid") {
+      if (order.promo_code) await db.rpc("promo_sync_usage_count", { p_code: String(order.promo_code) });
+      return { ok: true, changed: false };
+    }
 
     const { data: claimed, error: claimError } = await db
       .from("payment_orders")
@@ -114,8 +117,8 @@ export async function applyOzonPaymentStatus({
         }
       }
       if (order.promo_code) {
-        const { data: promo } = await db.from("promo_codes").select("usage_count").eq("code", order.promo_code).maybeSingle();
-        if (promo) await db.from("promo_codes").update({ usage_count: Number(promo.usage_count) + 1, updated_at: now }).eq("code", order.promo_code);
+        const { error: usageError } = await db.rpc("promo_sync_usage_count", { p_code: String(order.promo_code) });
+        if (usageError) console.warn("Could not sync promo usage count for paid order", order.id);
       }
 
       const emailOrder = toEmailOrder(order as PaymentOrderRow);

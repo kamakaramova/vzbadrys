@@ -14,6 +14,7 @@ import SalesDynamicsChart from "@/components/admin/SalesDynamicsChart";
 import ShipmentsWorkspace from "@/components/admin/ShipmentsWorkspace";
 import InventoryWorkspace from "@/components/admin/InventoryWorkspace";
 import FinanceWorkspace from "@/components/admin/FinanceWorkspace";
+import PromoScopePicker from "@/components/admin/PromoScopePicker";
 import { formatPhoneForDisplay } from "@/lib/phone";
 
 type Tab = "dashboard" | "orders" | "shipments" | "inventory" | "finance" | "customers" | "feedback" | "promos" | "bonuses" | "products" | "emails" | "integrations";
@@ -37,7 +38,7 @@ type MarketingContact = {
   consentAt: string;
   source: "registration" | "order" | "registration_and_order";
 };
-type AdminPromo = { id: string; code: string; ownerName?: string; discount: number; active: boolean; createdAt: string; usageCount: number; expiresAt?: string };
+type AdminPromo = { id: string; code: string; ownerName?: string; discount: number; active: boolean; createdAt: string; usageCount: number; maxUses: number | null; productIds: string[] | null; expiresAt?: string };
 type LoyaltyStats = {
   promos: Array<{ code: string; ownerName: string | null; discountPercent: number; active: boolean; paidOrders: number; revenue: number; recordedUses: number }>;
   referrals: Array<{ ownerId: string; ownerName: string; ownerEmail: string; code: string; discountPercent: number; paidOrders: number; revenue: number }>;
@@ -273,6 +274,8 @@ export default function AdminPage() {
   const [newPromoCode, setNewPromoCode] = useState("");
   const [newPromoOwner, setNewPromoOwner] = useState("");
   const [newPromoDiscount, setNewPromoDiscount] = useState("");
+  const [newPromoMaxUses, setNewPromoMaxUses] = useState<number | null>(null);
+  const [newPromoProductIds, setNewPromoProductIds] = useState<string[] | null>(null);
   const [promoHasExpiry, setPromoHasExpiry] = useState(false);
   const [newPromoExpiry, setNewPromoExpiry] = useState("");
   const [promoFormError, setPromoFormError] = useState("");
@@ -280,6 +283,11 @@ export default function AdminPage() {
   const [dbPromos, setDbPromos] = useState<AdminPromo[]>([]);
   const [promoLoading, setPromoLoading] = useState(false);
   const [promoLoadError, setPromoLoadError] = useState("");
+  const [editingPromoId, setEditingPromoId] = useState<string | null>(null);
+  const [editingPromoMaxUses, setEditingPromoMaxUses] = useState<number | null>(null);
+  const [editingPromoProductIds, setEditingPromoProductIds] = useState<string[] | null>(null);
+  const [promoEditError, setPromoEditError] = useState("");
+  const [promoEditSaving, setPromoEditSaving] = useState(false);
   const [loyaltyStats, setLoyaltyStats] = useState<LoyaltyStats | null>(null);
   const [loyaltyStatsError, setLoyaltyStatsError] = useState("");
   const [bonusStats, setBonusStats] = useState<BonusStats | null>(null);
@@ -330,6 +338,7 @@ export default function AdminPage() {
   const orders = mounted ? dbOrders : [];
   const promos = mounted ? dbPromos : [];
   const allProducts = mounted ? productStore.products : [];
+  const promoProducts = allProducts.filter((product) => product.category === "bads" && (!product.bundleComponents?.length || product.bundleEnabled));
   const { updateProduct, deleteProduct, toggleStock, resetToDefault, setAdminPassword, seedDatabase } = productStore;
 
   const openOrderDetails = (order: Order) => {
@@ -411,7 +420,9 @@ export default function AdminPage() {
       setDbPromos(data.promos.map((promo: Record<string, unknown>) => ({
         id: String(promo.id), code: String(promo.code), ownerName: promo.owner_name ? String(promo.owner_name) : undefined,
         discount: Number(promo.discount_percent), active: Boolean(promo.active), createdAt: String(promo.created_at),
-        usageCount: Number(promo.usage_count), expiresAt: promo.expires_at ? String(promo.expires_at) : undefined,
+        usageCount: Number(promo.usage_count), maxUses: promo.max_uses === null ? null : Number(promo.max_uses),
+        productIds: Array.isArray(promo.product_ids) ? promo.product_ids.map(String) : null,
+        expiresAt: promo.expires_at ? String(promo.expires_at) : undefined,
       })));
     } catch (error) {
       setPromoLoadError(error instanceof Error ? error.message : "Не удалось загрузить промокоды");
@@ -1516,12 +1527,18 @@ export default function AdminPage() {
                         setPromoFormError("Укажите дату окончания");
                         return;
                       }
-                      const response = await fetch("/api/admin/promos", { method: "POST", headers: { "content-type": "application/json", "x-admin-password": pw }, body: JSON.stringify({ code: newPromoCode, ownerName: newPromoOwner, discountPercent: Number(newPromoDiscount), expiresAt: promoHasExpiry ? newPromoExpiry : undefined }) });
+                      if (newPromoProductIds !== null && newPromoProductIds.length === 0) {
+                        setPromoFormError("Отметьте хотя бы один товар или выберите «Все товары»");
+                        return;
+                      }
+                      const response = await fetch("/api/admin/promos", { method: "POST", headers: { "content-type": "application/json", "x-admin-password": pw }, body: JSON.stringify({ code: newPromoCode, ownerName: newPromoOwner, discountPercent: Number(newPromoDiscount), maxUses: newPromoMaxUses, productIds: newPromoProductIds, expiresAt: promoHasExpiry ? newPromoExpiry : undefined }) });
                       const data = await response.json().catch(() => ({}));
                       if (response.ok) {
                         setNewPromoCode("");
                         setNewPromoOwner("");
                         setNewPromoDiscount("");
+                        setNewPromoMaxUses(null);
+                        setNewPromoProductIds(null);
                         setNewPromoExpiry("");
                         setPromoHasExpiry(false);
                         setPromoFormError("");
@@ -1538,6 +1555,16 @@ export default function AdminPage() {
                     {promoAdded ? <><Check size={15} /> Добавлен</> : <>+ Добавить</>}
                   </button>
                 </div>
+              </div>
+              <div className="mt-5 grid gap-4 lg:grid-cols-2">
+                <fieldset className="rounded-2xl border border-[#f0e8e0] p-4">
+                  <legend className="px-1 text-xs font-semibold uppercase tracking-wide text-[#6b6b6b]">Сколько раз можно использовать</legend>
+                  <div className="flex flex-col gap-2 text-sm">
+                    <label className="flex cursor-pointer items-center gap-2"><input type="radio" name="new-promo-uses" checked={newPromoMaxUses === null} onChange={() => setNewPromoMaxUses(null)} className="accent-[#E8845A]" /> Многоразовый — без ограничения</label>
+                    <label className="flex cursor-pointer items-center gap-2"><input type="radio" name="new-promo-uses" checked={newPromoMaxUses === 1} onChange={() => setNewPromoMaxUses(1)} className="accent-[#E8845A]" /> Разовый — один заказ на весь магазин</label>
+                  </div>
+                </fieldset>
+                <PromoScopePicker products={promoProducts} value={newPromoProductIds} onChange={(value) => { setNewPromoProductIds(value); setPromoFormError(""); }} />
               </div>
               {/* Срок действия */}
               <div className="mt-4 flex flex-col sm:flex-row sm:items-center gap-3">
@@ -1567,7 +1594,7 @@ export default function AdminPage() {
                 )}
               </div>
               {promoFormError && <p className="text-xs text-red-400 mt-2">{promoFormError}</p>}
-              <p className="text-xs text-[#aaa] mt-3">Промокод автоматически становится активным и сразу начинает работать в корзине. Владелец необязателен, но поможет видеть результат блогера или партнёра.</p>
+              <p className="text-xs text-[#aaa] mt-3">Промокод становится активным сразу. Разовый код закрепляется за первым начатым заказом и освобождается, если оплата не состоялась. Владелец кода необязателен.</p>
             </div>
 
             {/* Список промокодов */}
@@ -1586,7 +1613,8 @@ export default function AdminPage() {
               ) : (
                 <div className="divide-y divide-[#f0e8e0]">
                   {promos.map((p) => (
-                    <div key={p.id} className="flex items-center gap-4 px-6 py-4">
+                    <div key={p.id}>
+                    <div className="flex items-center gap-4 px-6 py-4">
                       {/* Статус */}
                       <button onClick={async () => { const response = await fetch("/api/admin/promos", { method: "PATCH", headers: { "content-type": "application/json", "x-admin-password": pw }, body: JSON.stringify({ id: p.id, active: !p.active }) }); if (response.ok) void loadPromos(); }} className="flex-shrink-0">
                         {p.active
@@ -1611,6 +1639,10 @@ export default function AdminPage() {
                               до {new Date(p.expiresAt).toLocaleDateString("ru-RU")}
                             </span>
                           )}
+                          <span className="rounded-full bg-[#fff3e8] px-2.5 py-1 text-xs font-semibold text-[#a45730]">
+                            {p.maxUses === 1 ? "Разовый" : p.maxUses === null ? "Многоразовый" : `До ${p.maxUses} применений`}
+                          </span>
+                          {p.maxUses !== null && p.usageCount >= p.maxUses && <span className="rounded-full bg-[#f0e8e0] px-2.5 py-1 text-xs font-semibold text-[#6b6b6b]">Лимит исчерпан</span>}
                         </div>
                         <p className="text-xs text-[#6b6b6b] mt-0.5">
                           Создан {new Date(p.createdAt).toLocaleDateString("ru-RU")} · Использований: {p.usageCount}
@@ -1622,12 +1654,24 @@ export default function AdminPage() {
                           {!p.expiresAt && <span className="ml-2 text-[#aaa]">· Бессрочный</span>}
                         </p>
                         {p.ownerName && <p className="text-xs text-[#E8845A] mt-1">Владелец: {p.ownerName}</p>}
+                        <p className="mt-1 text-xs text-[#6b6b6b]">{p.productIds === null ? "Все товары" : `Выбрано товаров: ${p.productIds.length}`}</p>
                       </div>
                       {/* Скидка */}
                       <div className="text-center flex-shrink-0 w-16">
                         <p className="text-2xl font-black text-[#E8845A]">{p.discount}%</p>
                         <p className="text-xs text-[#aaa]">скидка</p>
                       </div>
+                      <button
+                        onClick={() => {
+                          setEditingPromoId(editingPromoId === p.id ? null : p.id);
+                          setEditingPromoMaxUses(p.maxUses);
+                          setEditingPromoProductIds(p.productIds);
+                          setPromoEditError("");
+                        }}
+                        className="shrink-0 rounded-xl border border-[#f0e8e0] px-3 py-2 text-xs font-semibold text-[#6b6b6b] hover:border-[#E8845A] hover:text-[#E8845A]"
+                      >
+                        Настроить
+                      </button>
                       {/* Удалить */}
                       <button
                         onClick={async () => { if (confirm(`Удалить промокод ${p.code}?`)) { const response = await fetch(`/api/admin/promos?id=${encodeURIComponent(p.id)}`, { method: "DELETE", headers: { "x-admin-password": pw } }); if (response.ok) void loadPromos(); } }}
@@ -1635,6 +1679,48 @@ export default function AdminPage() {
                       >
                         <Trash2 size={16} />
                       </button>
+                    </div>
+                    {editingPromoId === p.id && (
+                      <div className="border-t border-[#f0e8e0] bg-[#fffaf7] px-6 py-5">
+                        <div className="grid gap-4 lg:grid-cols-2">
+                          <fieldset className="rounded-2xl border border-[#f0e8e0] bg-white p-4">
+                            <legend className="px-1 text-xs font-semibold uppercase tracking-wide text-[#6b6b6b]">Количество применений</legend>
+                            <div className="flex flex-col gap-2 text-sm">
+                              <label className="flex cursor-pointer items-center gap-2"><input type="radio" name={`promo-uses-${p.id}`} checked={editingPromoMaxUses === null} onChange={() => setEditingPromoMaxUses(null)} className="accent-[#E8845A]" /> Многоразовый</label>
+                              <label className="flex cursor-pointer items-center gap-2"><input type="radio" name={`promo-uses-${p.id}`} checked={editingPromoMaxUses === 1} onChange={() => setEditingPromoMaxUses(1)} className="accent-[#E8845A]" /> Разовый — один заказ на весь магазин</label>
+                            </div>
+                          </fieldset>
+                          <PromoScopePicker products={promoProducts} value={editingPromoProductIds} onChange={(value) => { setEditingPromoProductIds(value); setPromoEditError(""); }} />
+                        </div>
+                        {promoEditError && <p className="mt-3 text-sm text-red-600">{promoEditError}</p>}
+                        <div className="mt-4 flex flex-wrap gap-2">
+                          <button
+                            disabled={promoEditSaving}
+                            onClick={async () => {
+                              if (editingPromoProductIds !== null && editingPromoProductIds.length === 0) {
+                                setPromoEditError("Отметьте хотя бы один товар или выберите «Все товары»");
+                                return;
+                              }
+                              setPromoEditSaving(true);
+                              setPromoEditError("");
+                              try {
+                                const response = await fetch("/api/admin/promos", { method: "PATCH", headers: { "content-type": "application/json", "x-admin-password": pw }, body: JSON.stringify({ id: p.id, maxUses: editingPromoMaxUses, productIds: editingPromoProductIds }) });
+                                const data = await response.json().catch(() => ({}));
+                                if (!response.ok) throw new Error(data.error || "Не удалось сохранить правила промокода");
+                                setEditingPromoId(null);
+                                await loadPromos();
+                              } catch (error) {
+                                setPromoEditError(error instanceof Error ? error.message : "Не удалось сохранить правила промокода");
+                              } finally {
+                                setPromoEditSaving(false);
+                              }
+                            }}
+                            className="rounded-xl bg-[#E8845A] px-4 py-2 text-sm font-semibold text-white disabled:opacity-60"
+                          >{promoEditSaving ? "Сохраняем…" : "Сохранить правила"}</button>
+                          <button onClick={() => setEditingPromoId(null)} className="rounded-xl border border-[#f0e8e0] px-4 py-2 text-sm font-semibold">Отмена</button>
+                        </div>
+                      </div>
+                    )}
                     </div>
                   ))}
                 </div>

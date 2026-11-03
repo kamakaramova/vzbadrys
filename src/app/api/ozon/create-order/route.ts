@@ -16,6 +16,7 @@ import { getDeliverySettings } from "@/lib/deliverySettings";
 import { getDeliveryRestriction, getDeliveryRestrictionMessage, getOzonPvzDeliveryPrice } from "@/lib/deliveryPricing";
 import { getFiscalProductName } from "@/lib/fiscalProductNames";
 import { rateLimit } from "@/lib/rateLimit";
+import { promoEligibleSubtotal as calculatePromoEligibleSubtotal } from "@/lib/promoRules";
 
 export const runtime = "nodejs";
 
@@ -241,16 +242,23 @@ export async function POST(request: NextRequest) {
   const promoCode = normalizeCode(body.promoCode);
   const referralCode = normalizeCode(body.referralCode);
   let promoPercent = 0;
+  let promoSubtotal = 0;
   let referralPercent = 0;
   let referrerId: string | null = null;
   if (promoCode) {
     const { data: promo, error: promoError } = await db.from("promo_codes")
-      .select("discount_percent, active, max_uses, usage_count, expires_at").eq("code", promoCode).maybeSingle();
+      .select("discount_percent, active, max_uses, usage_count, product_ids, expires_at").eq("code", promoCode).maybeSingle();
     const isExpired = promo?.expires_at && new Date(promo.expires_at).getTime() < Date.now();
     const isExhausted = promo?.max_uses != null && Number(promo.usage_count) >= Number(promo.max_uses);
     if (promoError || !promo || !promo.active || isExpired || isExhausted) {
       return badRequest("Промокод не найден или больше не действует");
     }
+    const productIds = Array.isArray(promo.product_ids) ? promo.product_ids as string[] : null;
+    promoSubtotal = calculatePromoEligibleSubtotal(requestedItems.map((item) => {
+      const product = productMap.get(getBaseProductId(item.id))!;
+      return { id: item.id, quantity: item.quantity, price: resolveProductPrice(product, item.id).price };
+    }), productIds);
+    if (promoSubtotal <= 0) return badRequest("Промокод не действует на товары в корзине");
     promoPercent = Number(promo.discount_percent);
   }
   if (referralCode) {
@@ -266,14 +274,14 @@ export async function POST(request: NextRequest) {
   }
   // Считаем и округляем скидки по отдельности — так сумма на оплате совпадает
   // с двумя строками в корзине покупателя.
-  const percentageDiscount = Math.round((subtotal * promoPercent) / 100)
+  const percentageDiscount = Math.round((promoSubtotal * promoPercent) / 100)
     + Math.round((subtotal * referralPercent) / 100);
   const requestedBonusPoints = Math.max(0, Math.floor(Number(body.bonusPointsToSpend || 0)));
   let bonusSpent = 0;
   if (requestedBonusPoints) {
     if (!authUser) return badRequest("Войдите в личный кабинет, чтобы списать бонусы");
     const balance = await getBonusBalance(db, authUser.id, Number(authUser.user_metadata?.bonusPoints || 0));
-    const maxBonus = Math.floor(subtotal * 0.3);
+    const maxBonus = Math.min(Math.floor(subtotal * 0.3), Math.max(0, subtotal - percentageDiscount));
     if (requestedBonusPoints > balance) return badRequest("Недостаточно бонусов");
     if (requestedBonusPoints > maxBonus) return badRequest(`Бонусами можно оплатить не более ${maxBonus} ₽`);
     bonusSpent = requestedBonusPoints;
@@ -402,6 +410,14 @@ export async function POST(request: NextRequest) {
       { error: "Не удалось сохранить заказ. Проверьте таблицу payment_orders в Supabase" },
       { status: 500 }
     );
+  }
+
+  if (promoCode) {
+    const { data: claimed, error: claimError } = await db.rpc("promo_claim_order", { p_order_id: extId });
+    if (claimError || claimed !== true) {
+      await db.from("payment_orders").update({ status: "creation_failed", updated_at: new Date().toISOString() }).eq("id", extId);
+      return NextResponse.json({ error: claimError ? "Не удалось проверить лимит промокода" : "Промокод уже использован или ожидает оплаты" }, { status: claimError ? 503 : 400 });
+    }
   }
 
   if (bonusSpent && authUser) {

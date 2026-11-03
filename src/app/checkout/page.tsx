@@ -4,6 +4,7 @@ import Link from "next/link";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import { useCartStore } from "@/store/cartStore";
+import { promoDiscountAmount as calculatePromoDiscountAmount } from "@/lib/promoRules";
 import { useAuthStore } from "@/store/authStore";
 import { supabase } from "@/lib/supabase";
 import { useBonusBalance } from "@/lib/useBonusBalance";
@@ -49,6 +50,9 @@ export default function CheckoutPage() {
   const total = useCartStore((s) => s.total());
   const promoCode = useCartStore((s) => s.promoCode);
   const promoDiscount = useCartStore((s) => s.promoDiscount);
+  const promoProductIds = useCartStore((s) => s.promoProductIds);
+  const setPromo = useCartStore((s) => s.setPromo);
+  const removePromo = useCartStore((s) => s.removePromo);
   const referralCode = useCartStore((s) => s.referralCode);
   const referralDiscount = useCartStore((s) => s.referralDiscount);
   const bonusPointsToSpend = useCartStore((s) => s.bonusPointsToSpend);
@@ -61,6 +65,38 @@ export default function CheckoutPage() {
   const [comment, setComment] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState("");
+  const [promoChecking, setPromoChecking] = useState(false);
+  const [promoCheckError, setPromoCheckError] = useState("");
+  const promoCartKey = items.map((item) => `${item.id}:${item.quantity}`).join("|");
+
+  useEffect(() => {
+    if (!promoCode) { setPromoChecking(false); return; }
+    let cancelled = false;
+    setPromoChecking(true);
+    setPromoCheckError("");
+    fetch("/api/loyalty/validate", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ kind: "promo", code: promoCode, items: items.map((item) => ({ id: item.id, quantity: item.quantity })) }),
+    }).then(async (response) => {
+      const data = await response.json().catch(() => ({}));
+      if (cancelled) return;
+      if (!response.ok) {
+        setPromoCheckError(data.error || "Не удалось проверить промокод");
+        if (response.status === 400) removePromo();
+        return;
+      }
+      setPromo(data.code, Number(data.discountPercent), data.productIds ?? null);
+    }).catch(() => {
+      if (!cancelled) setPromoCheckError("Не удалось проверить промокод. Попробуйте позже или уберите его из корзины.");
+    }).finally(() => {
+      if (!cancelled) setPromoChecking(false);
+    });
+    return () => { cancelled = true; };
+    // Состав корзины представлен стабильным ключом; обновление области действия
+    // промокода само по себе не должно повторно отправлять запрос.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [promoCode, promoCartKey, setPromo, removePromo]);
 
   const [form, setForm] = useState({
     name: "",
@@ -117,14 +153,14 @@ export default function CheckoutPage() {
       .catch(() => undefined);
   }, []);
 
-  const maxBonusPayment = Math.floor(subtotal * 0.3);
+  const promoDiscountAmount = calculatePromoDiscountAmount(items, promoDiscount, promoProductIds);
+  const referralDiscountAmount = Math.round((subtotal * referralDiscount) / 100);
+  const maxBonusPayment = Math.min(Math.floor(subtotal * 0.3), Math.max(0, subtotal - promoDiscountAmount - referralDiscountAmount));
   useEffect(() => {
     if (bonus.balance === null) return;
     const maximum = Math.min(maxBonusPayment, bonus.balance);
     if (bonusPointsToSpend > maximum) setBonusPointsToSpend(maximum);
   }, [bonus.balance, bonusPointsToSpend, maxBonusPayment, setBonusPointsToSpend]);
-  const promoDiscountAmount = Math.round((subtotal * promoDiscount) / 100);
-  const referralDiscountAmount = Math.round((subtotal * referralDiscount) / 100);
   const allowedBonusPayment = Math.min(bonusPointsToSpend, maxBonusPayment, bonus.balance ?? 0);
   const discountedSubtotal = Math.max(0, subtotal - promoDiscountAmount - referralDiscountAmount - allowedBonusPayment);
   const deliveryRestriction = delivery === "pickup" ? null : getDeliveryRestriction(form);
@@ -178,6 +214,7 @@ export default function CheckoutPage() {
   if (!agreeTerms) remainingFields.push({ id: "agree-terms", label: "согласие с условиями заказа" });
   if (user && bonus.loading) remainingFields.push({ id: "bonus-loading", label: "загрузку баланса бонусов" });
   if (user && bonus.error && bonusSkippedForUserId !== user.id) remainingFields.push({ id: "bonus-error", label: "баланс бонусов или продолжение без них" });
+  if (promoCode && (promoChecking || promoCheckError)) remainingFields.push({ id: "promo-check", label: "проверку промокода" });
   const canProceedToPayment = remainingFields.length === 0;
 
   const validate = () => {
@@ -511,6 +548,12 @@ export default function CheckoutPage() {
                     <div className="flex justify-between text-sm">
                       <span className="text-green-600">Промокод {promoCode} ({promoDiscount}%)</span>
                       <span className="text-green-600 font-semibold">−{promoDiscountAmount.toLocaleString("ru-RU")} ₽</span>
+                    </div>
+                  )}
+                  {(promoChecking || promoCheckError) && (
+                    <div id="promo-check" className="rounded-xl bg-[#fff8f5] px-3 py-2 text-xs text-[#8b4513]">
+                      {promoChecking ? "Проверяем условия промокода…" : promoCheckError}
+                      {promoCheckError && promoCode && <button type="button" onClick={() => { removePromo(); setPromoCheckError(""); }} className="ml-2 font-semibold underline">Убрать промокод</button>}
                     </div>
                   )}
                   {referralCode && referralDiscountAmount > 0 && (

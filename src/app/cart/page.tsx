@@ -10,6 +10,7 @@ import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import { useBonusBalance } from "@/lib/useBonusBalance";
 import { productImagePaths } from "@/lib/productImages";
+import { promoDiscountAmount as calculatePromoDiscountAmount } from "@/lib/promoRules";
 
 export default function CartPage() {
   const router = useRouter();
@@ -21,6 +22,7 @@ export default function CartPage() {
   const total = useCartStore((s) => s.total());
   const promoCode = useCartStore((s) => s.promoCode);
   const promoDiscount = useCartStore((s) => s.promoDiscount);
+  const promoProductIds = useCartStore((s) => s.promoProductIds);
   const referralCode = useCartStore((s) => s.referralCode);
   const referralDiscount = useCartStore((s) => s.referralDiscount);
   const setPromo = useCartStore((s) => s.setPromo);
@@ -35,7 +37,7 @@ export default function CartPage() {
   const [promoError, setPromoError] = useState("");
   const [referralError, setReferralError] = useState("");
   const freeDeliveryThreshold = 3000;
-  const promoDiscountAmount = Math.round((subtotal * promoDiscount) / 100);
+  const promoDiscountAmount = calculatePromoDiscountAmount(items, promoDiscount, promoProductIds);
   const referralDiscountAmount = Math.round((subtotal * referralDiscount) / 100);
   // Порог бесплатной доставки считаем строго от конечной суммы товаров после
   // всех скидок. Используем тот же итог, который показываем покупателю ниже,
@@ -51,7 +53,7 @@ export default function CartPage() {
     const response = await fetch("/api/loyalty/validate", {
       method: "POST",
       headers: { "content-type": "application/json", ...(token ? { authorization: `Bearer ${token}` } : {}) },
-      body: JSON.stringify({ kind, code: rawCode }),
+      body: JSON.stringify({ kind, code: rawCode, items: items.map((item) => ({ id: item.id, quantity: item.quantity })) }),
     });
     const payload = await response.json().catch(() => ({}));
     if (!response.ok) {
@@ -60,7 +62,7 @@ export default function CartPage() {
       return;
     }
     if (kind === "promo") {
-      setPromo(payload.code, payload.discountPercent);
+      setPromo(payload.code, payload.discountPercent, payload.productIds ?? null);
       setPromoError("");
     } else {
       setReferral(payload.code, payload.discountPercent, payload.ownerId);
