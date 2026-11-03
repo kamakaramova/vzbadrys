@@ -1,9 +1,15 @@
 // Однократная публикация виртуального набора после выпуска серверной логики.
 // Запуск на VPS с уже загруженным production-окружением:
-// node --experimental-strip-types scripts/publish-health-bundle.mjs --apply
-import { mkdir, writeFile } from "node:fs/promises";
+// node scripts/publish-health-bundle.mjs --apply
+import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { createClient } from "@supabase/supabase-js";
-import { products } from "../src/lib/products.ts";
+import ts from "typescript";
+
+const productsSource = await readFile(new URL("../src/lib/products.ts", import.meta.url), "utf8");
+const compiledProducts = ts.transpileModule(productsSource, {
+  compilerOptions: { module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2022 },
+}).outputText;
+const { products } = await import(`data:text/javascript;base64,${Buffer.from(compiledProducts).toString("base64")}`);
 
 const bundleId = "nabor-magniy-tsink-selen";
 const componentIds = ["magniy-citrat-b6", "magniy-bisglitinat", "selen-tsink"];
