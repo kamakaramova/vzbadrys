@@ -1,5 +1,6 @@
 import type { EmailOrder } from "./templates";
 import { deliveryMethodLabel } from "@/lib/orderLabels";
+import { isVisibleOrderLine } from "@/lib/bundle";
 
 export interface PaymentOrderRow {
   id: string;
@@ -25,10 +26,10 @@ export function toEmailOrder(order: PaymentOrderRow): EmailOrder {
     id: order.id,
     customerName,
     total: Number(order.amount_kopecks || 0) / 100,
-    items: (order.items || []).map((item) => ({
+    items: (order.items || []).filter(isVisibleOrderLine).map((item) => ({
       name: String(item.name || "Товар"),
       quantity: Number(item.quantity || 1),
-      price: Number(item.unitPrice || 0),
+      price: Number(item.displayUnitPrice ?? item.unitPrice ?? 0),
     })),
     deliveryMethodCode: String(delivery.method || ""),
     deliveryMethod: deliveryMethodLabel(delivery.method),

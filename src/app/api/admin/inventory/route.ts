@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 
 import { isAdminAuthorized } from "@/lib/adminAuth";
 import { getServerSupabase } from "@/lib/supabaseServer";
+import { HEALTH_BUNDLE_ID } from "@/lib/bundle";
 
 function inventoryError(message: string) {
   const lower = message.toLowerCase();
@@ -27,7 +28,8 @@ export async function GET(request: NextRequest) {
   const error = productsResult.error || batchesResult.error || movementsResult.error || allocationsResult.error || ordersResult.error || suppliesResult.error;
   if (error) return NextResponse.json({ error: inventoryError(error.message) }, { status: 500 });
 
-  const products = (productsResult.data ?? []).map((row) => {
+  // В «Складе» учитываем физические баночки, а не виртуальный комплект.
+  const products = (productsResult.data ?? []).filter((row) => row.id !== HEALTH_BUNDLE_ID).map((row) => {
     const product = (row.data ?? {}) as Record<string, unknown>;
     return {
       id: String(row.id),
@@ -45,7 +47,9 @@ export async function GET(request: NextRequest) {
       createdAt: String(row.created_at ?? ""),
       customerName: [customer.name, customer.surname].filter(Boolean).join(" "),
       orderStatus: String(delivery.orderStatus ?? "processing"),
-      items: ((row.items ?? []) as Record<string, unknown>[]).map((item) => ({
+      items: ((row.items ?? []) as Record<string, unknown>[])
+        .filter((item) => item.bundleDisplayOnly !== true)
+        .map((item) => ({
         productId: String(item.productId ?? ""),
         name: String(item.name ?? "Товар"),
         quantity: Number(item.quantity ?? 1),
@@ -95,6 +99,9 @@ export async function POST(request: NextRequest) {
   try { body = await request.json(); } catch { return NextResponse.json({ error: "bad_json" }, { status: 400 }); }
 
   if (body.action === "receive") {
+    if (body.productId === HEALTH_BUNDLE_ID) {
+      return NextResponse.json({ error: "Набор не имеет собственной партии: принимайте каждую баночку отдельно" }, { status: 400 });
+    }
     const quantity = Number(body.quantity);
     if (!body.productId || !body.lotNumber?.trim() || !Number.isInteger(quantity) || quantity <= 0 || quantity > 10_000_000) {
       return NextResponse.json({ error: "Проверьте товар, номер партии и количество" }, { status: 400 });

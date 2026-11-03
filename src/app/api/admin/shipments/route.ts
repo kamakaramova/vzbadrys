@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { deliveryMethodLabel } from "@/lib/orderLabels";
 import { getServerSupabase } from "@/lib/supabaseServer";
 import { isAdminAuthorized } from "@/lib/adminAuth";
+import { HEALTH_BUNDLE_ID } from "@/lib/bundle";
 
 type WarehouseData = {
   actualDeliveryCost?: number | null;
@@ -30,7 +31,9 @@ function mapShipment(row: Record<string, unknown>, allocations: BatchAllocation[
   const customer = (row.customer ?? {}) as Record<string, string>;
   const delivery = (row.delivery ?? {}) as Record<string, unknown>;
   const warehouse = (delivery.warehouse ?? {}) as WarehouseData;
-  const items = ((row.items ?? []) as Record<string, unknown>[]).map((item) => ({
+  const items = ((row.items ?? []) as Record<string, unknown>[])
+    .filter((item) => item.productId !== HEALTH_BUNDLE_ID || item.bundleDisplayOnly !== true)
+    .map((item) => ({
     id: String(item.cartId ?? item.productId ?? ""),
     productId: String(item.productId ?? ""),
     name: String(item.name ?? "Товар"),

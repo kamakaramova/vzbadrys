@@ -8,6 +8,7 @@ import { deliveryMethodLabel, paymentMethodLabel } from "@/lib/orderLabels";
 import { getBonusBalance } from "@/lib/loyalty";
 import { isAdminAuthorized } from "@/lib/adminAuth";
 import { allocateOrderStock, returnOrderStock } from "@/lib/stock";
+import { isVisibleOrderLine } from "@/lib/bundle";
 
 const ORDER_STATUSES = new Set(["processing", "confirmed", "shipped", "ready_for_pickup", "delivered", "cancelled"]);
 type AdminOrder = ReturnType<typeof mapOrder>;
@@ -20,10 +21,10 @@ let lastKnownOrders: AdminOrder[] | null = null;
 function mapOrder(row: Record<string, unknown>) {
   const customer = (row.customer ?? {}) as Record<string, string>;
   const delivery = (row.delivery ?? {}) as Record<string, unknown>;
-  const items = ((row.items ?? []) as Record<string, unknown>[]).map((item) => ({
+  const items = ((row.items ?? []) as Record<string, unknown>[]).filter(isVisibleOrderLine).map((item) => ({
     id: String(item.cartId ?? item.productId ?? ""),
     name: String(item.name ?? "Товар"),
-    price: Number(item.unitPrice ?? 0),
+    price: Number(item.displayUnitPrice ?? item.unitPrice ?? 0),
     quantity: Number(item.quantity ?? 1),
     category: String(item.category ?? ""),
   }));

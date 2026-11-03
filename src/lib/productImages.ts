@@ -10,6 +10,7 @@ const PRODUCT_GALLERIES: Record<string, { extension: "jpg" | "png"; count: numbe
 };
 
 export function productImagePaths(id: string, max = 8): string[] {
+  if (id === "nabor-magniy-tsink-selen") return ["/hero-products.png"];
   const gallery = PRODUCT_GALLERIES[id];
   const extension = gallery?.extension ?? "jpg";
   const count = gallery ? Math.min(max, gallery.count) : max;

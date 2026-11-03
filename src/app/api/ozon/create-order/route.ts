@@ -2,6 +2,7 @@ import { randomUUID } from "crypto";
 import { NextRequest, NextResponse } from "next/server";
 
 import type { Product } from "@/lib/products";
+import { buildBundleOrderLines, HEALTH_BUNDLE_COMPONENT_IDS, HEALTH_BUNDLE_ID } from "@/lib/bundle";
 import {
   CURRENCY_CODE,
   createOrderSignature,
@@ -152,7 +153,10 @@ export async function POST(request: NextRequest) {
     return badRequest("Корзина пуста или содержит слишком много позиций");
   }
 
-  const productIds = [...new Set(requestedItems.map((item) => getBaseProductId(item.id)))];
+  const productIds = [...new Set(requestedItems.flatMap((item) => {
+    const id = getBaseProductId(item.id);
+    return id === HEALTH_BUNDLE_ID ? [id, ...HEALTH_BUNDLE_COMPONENT_IDS] : [id];
+  }))];
   const { data: productRows, error: productError } = await db
     .from("products")
     .select("id, data")
@@ -172,18 +176,41 @@ export async function POST(request: NextRequest) {
     unitPrice: number;
     stockAmount: number;
     category: string;
+    hiddenInOrder?: boolean;
+    displayUnitPrice?: number;
+    bundleDisplayOnly?: boolean;
+    bundleParentId?: string;
   }[] = [];
+  const stockRequiredByProduct = new Map<string, number>();
+  const requireStock = (id: string, amount: number) => {
+    stockRequiredByProduct.set(id, (stockRequiredByProduct.get(id) ?? 0) + amount);
+  };
 
   try {
     for (const item of requestedItems) {
       const productId = getBaseProductId(item.id);
       const product = productMap.get(productId);
-      if (!product || !product.inStock) return badRequest("Один из товаров закончился. Обновите корзину");
+      if (!product) return badRequest("Один из товаров закончился. Обновите корзину");
+      if (product.category !== "bads") return badRequest("Один из товаров больше недоступен. Удалите его из корзины");
+      if (productId === HEALTH_BUNDLE_ID) {
+        if (product.bundleEnabled !== true || item.id !== HEALTH_BUNDLE_ID) {
+          return badRequest("Набор временно недоступен. Обновите корзину");
+        }
+        const parts = HEALTH_BUNDLE_COMPONENT_IDS.map((id) => productMap.get(id));
+        if (parts.some((part) => !part?.inStock)) {
+          return badRequest("Одна из баночек набора закончилась. Обновите корзину");
+        }
+        orderLines.push(...buildBundleOrderLines(product, parts as Product[], item.quantity,
+          (part) => getFiscalProductName(part.id, part.name)));
+        HEALTH_BUNDLE_COMPONENT_IDS.forEach((partId) => {
+          requireStock(partId, item.quantity);
+        });
+        continue;
+      }
+      if (!product.inStock) return badRequest("Один из товаров закончился. Обновите корзину");
       const resolved = resolveProductPrice(product, item.id);
       const requiredStock = resolved.stockAmount * item.quantity;
-      if (typeof product.stockQty === "number" && product.stockQty < requiredStock) {
-        return badRequest(`Недостаточно товара «${product.name}» в наличии`);
-      }
+      requireStock(productId, requiredStock);
       const grams = item.id.match(/^.+-(\d+)g$/)?.[1];
       orderLines.push({
         cartId: item.id,
@@ -196,6 +223,15 @@ export async function POST(request: NextRequest) {
         stockAmount: requiredStock,
         category: product.category,
       });
+    }
+    for (const [productId, required] of stockRequiredByProduct) {
+      const product = productMap.get(productId);
+      if (!product?.inStock || (typeof product.stockQty === "number" && product.stockQty < required)
+        || (requestedItems.some((item) => item.id === HEALTH_BUNDLE_ID)
+          && HEALTH_BUNDLE_COMPONENT_IDS.includes(productId as typeof HEALTH_BUNDLE_COMPONENT_IDS[number])
+          && typeof product.stockQty !== "number")) {
+        return badRequest(`Недостаточно товара «${product?.name ?? productId}» в наличии`);
+      }
     }
   } catch (error) {
     return badRequest(error instanceof Error ? error.message : "Не удалось проверить фасовку товара");
@@ -288,7 +324,7 @@ export async function POST(request: NextRequest) {
     secretKey: config.secretKey,
   });
 
-  const units = orderLines.flatMap((line) =>
+  const units = orderLines.filter((line) => !line.bundleDisplayOnly).flatMap((line) =>
     Array.from({ length: line.quantity }, (_, index) => ({
       extId: `${line.cartId}-${index + 1}`,
       name: line.fiscalName,

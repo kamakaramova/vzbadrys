@@ -2,6 +2,7 @@
 import { useEffect } from "react";
 import { create } from "zustand";
 import { Product, products as defaultProducts } from "@/lib/products";
+import { withBundleAvailability } from "@/lib/bundle";
 
 type SaveResult = { ok: boolean; error?: string };
 const PRODUCT_CACHE_KEY = "vzbadrys:last-known-products";
@@ -26,7 +27,7 @@ function mergeWithCatalogue(savedProducts: Product[]): Product[] {
   const customProducts = savedProducts.filter(
     (product) => !defaultProducts.some((catalogueProduct) => catalogueProduct.id === product.id),
   );
-  return [...mergedProducts, ...customProducts];
+  return withBundleAvailability([...mergedProducts, ...customProducts]);
 }
 
 function readCachedProducts(): Product[] | null {
@@ -83,7 +84,7 @@ async function persist(product: Product, password: string | null): Promise<SaveR
 export const useProductStore = create<ProductStore>((set, get) => ({
   // Статичный каталог служит мгновенным резервным источником. Благодаря этому
   // товары и ссылки видны даже до загрузки Supabase и клиентского JavaScript.
-  products: defaultProducts,
+  products: withBundleAvailability(defaultProducts),
   initialized: false,
   loading: false,
   adminPassword: null,

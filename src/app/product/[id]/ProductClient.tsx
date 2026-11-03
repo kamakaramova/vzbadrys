@@ -58,6 +58,7 @@ export default function ProductClient({
   };
 
   const handleAddToCart = () => {
+    if (!product.inStock) return;
     for (let i = 0; i < qty; i++) {
       addItem({
         id: selectedVariant ? `${product.id}-${selectedVariant.grams}g` : product.id,
@@ -187,6 +188,20 @@ export default function ProductClient({
           {/* Инфо */}
           <div>
             <h1 className="text-2xl sm:text-3xl font-bold text-[#1a1a1a] mb-2">{product.name}</h1>
+            {product.bundleComponents?.length ? (
+              <div className="mb-5 rounded-2xl border border-[#f0e8e0] bg-[#fff8f5] p-4">
+                <p className="mb-2 text-sm font-bold text-[#1a1a1a]">Что входит в набор</p>
+                <ul className="space-y-1 text-sm text-[#6b6b6b]">
+                  {product.bundleComponents.map((component, index) => (
+                    <li key={component.productId}>
+                      <Link className="underline decoration-[#E8845A] underline-offset-2 hover:text-[#E8845A]" href={`/product/${component.productId}`}>
+                        {product.compositionDetails[index]?.title ?? component.productId}
+                      </Link>{" "}· {component.quantity} шт.
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ) : null}
             <div className="flex flex-wrap items-center justify-between gap-3 mb-5">
               <p className="text-sm text-[#aaa]">
                 {isSeed ? `Фасовки: ${product.weightVariants!.map((v) => v.label).join(" · ")}` : product.weight}
@@ -265,9 +280,10 @@ export default function ProductClient({
               </div>
               <button
                 onClick={handleAddToCart}
-                className={`min-w-[190px] flex-1 flex items-center justify-center gap-2 font-semibold py-3 rounded-full transition-all ${added ? "bg-green-500 text-white" : "bg-[#E8845A] hover:bg-[#d4703f] text-white hover:-translate-y-0.5 hover:shadow-lg"}`}
+                disabled={!product.inStock}
+                className={`min-w-[190px] flex-1 flex items-center justify-center gap-2 font-semibold py-3 rounded-full transition-all disabled:cursor-not-allowed disabled:bg-[#b9b5b2] disabled:text-white ${added ? "bg-green-500 text-white" : "bg-[#E8845A] hover:bg-[#d4703f] text-white hover:-translate-y-0.5 hover:shadow-lg"}`}
               >
-                {added ? <><Check size={18} /> Добавлено!</> : <><ShoppingCart size={18} /> В корзину</>}
+                {!product.inStock ? "Временно нет в наличии" : added ? <><Check size={18} /> Добавлено!</> : <><ShoppingCart size={18} /> В корзину</>}
               </button>
               <button
                 onClick={() => user ? toggleFavorite(product.id) : undefined}
@@ -324,7 +340,7 @@ export default function ProductClient({
 
             {/* Что даёт */}
             <div>
-              <h3 className="text-xl font-bold mb-6">Что даёт регулярный приём</h3>
+              <h3 className="text-xl font-bold mb-6">{product.bundleComponents?.length ? "Что входит и чем отличаются" : "Что даёт регулярный приём"}</h3>
               <div className="grid sm:grid-cols-2 gap-4">
                 {product.benefits.map((b, i) => (
                   <div key={i} className="bg-[#fdf8f5] rounded-2xl p-5">
@@ -337,7 +353,7 @@ export default function ProductClient({
 
             {/* Кому подойдёт */}
             <div className="bg-gradient-to-br from-[#FDDCCA]/40 to-[#fdf8f5] rounded-2xl p-6">
-              <h3 className="text-lg font-bold mb-4">Кому особенно нужен</h3>
+              <h3 className="text-lg font-bold mb-4">{product.bundleComponents?.length ? "Кому подойдёт набор" : "Кому особенно нужен"}</h3>
               <ul className="grid sm:grid-cols-2 gap-2.5">
                 {product.whoNeeds.map((w, i) => (
                   <li key={i} className="flex items-start gap-2 text-sm text-[#1a1a1a]">
