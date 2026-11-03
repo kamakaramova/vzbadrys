@@ -11,9 +11,9 @@ export default function ProductPage() {
   const id = params.id as string;
   const { products, ready } = useProducts();
 
-  const product = products.find((p) => p.id === id);
+  const product = products.find((p) => p.id === id && p.category === "bads");
   const related = product
-    ? products.filter((p) => p.id !== product.id && p.category === product.category && p.inStock).slice(0, 3)
+    ? products.filter((p) => p.id !== product.id && p.category === "bads" && p.inStock).slice(0, 3)
     : [];
 
   if (!ready) {

@@ -12,7 +12,6 @@ import {
   PackageCheck,
   PlayCircle,
   ShieldCheck,
-  Sprout,
 } from "lucide-react";
 import type { Metadata } from "next";
 
@@ -302,68 +301,6 @@ export default function AboutPage() {
                     loading="lazy"
                     className="absolute inset-0 h-full w-full border-0"
                   />
-                </div>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        <section className="py-14 md:py-20">
-          <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
-            <div className="overflow-hidden rounded-[32px] border border-[#edcdbd] bg-[#FBE9DF]">
-              <div className="grid lg:grid-cols-[0.9fr_1.1fr]">
-                <div className="p-7 md:p-10 lg:p-12">
-                  <div className="mb-6 flex h-12 w-12 items-center justify-center rounded-2xl bg-white text-[#c8643c] shadow-sm">
-                    <Sprout size={25} />
-                  </div>
-                  <p className="mb-4 text-xs font-semibold uppercase tracking-[0.22em] text-[#c8643c]">
-                    Что дальше
-                  </p>
-                  <h2 className="mb-5 text-2xl font-bold leading-tight md:text-4xl">
-                    Дальше в «взБАДрись» появится больше семян и продуктов
-                  </h2>
-                  <p className="leading-relaxed text-[#665b55]">
-                    Мы хотим развивать бренд как место, где можно купить добавки и продукты,
-                    качество которых мы проверили сами. Скоро рядом с БАДами в каталоге
-                    появятся семена, а затем это направление будет расширяться. Штирийские
-                    тыквенные семена и нешлифованный кунжут — только первые примеры: мы планируем
-                    искать и добавлять другие продукты, если будем уверены в их качестве.
-                  </p>
-                </div>
-
-                <div className="border-t border-[#edcdbd] bg-white/60 p-7 md:p-10 lg:border-l lg:border-t-0 lg:p-12">
-                  <div className="space-y-8">
-                    <article>
-                      <p className="mb-2 text-xs font-bold uppercase tracking-[0.16em] text-[#E8845A]">01 · Штирийские тыквенные семена</p>
-                      <h3 className="mb-3 text-lg font-bold">Когда важен конкретный сорт, одной надписи «семена тыквы» мало</h3>
-                      <p className="text-sm leading-relaxed text-[#6b6b6b]">
-                        Штирийскую тыкву найти сложнее обычной: у неё тёмно-зелёные семена
-                        без жёсткой оболочки и свой насыщенный вкус. В продаже в основном
-                        встречаются китайские тыквенные семена, в которых практически нет
-                        цинка из-за истощённых почв. Поэтому для нас одной надписи «тыквенные
-                        семена» недостаточно: мы ищем именно штирийский сорт, проверяем его
-                        происхождение, документы, свежесть партии и условия хранения.
-                      </p>
-                    </article>
-
-                    <div className="h-px bg-[#edcdbd]" />
-
-                    <article>
-                      <p className="mb-2 text-xs font-bold uppercase tracking-[0.16em] text-[#E8845A]">02 · Нешлифованный кунжут</p>
-                      <h3 className="mb-3 text-lg font-bold">Мы выбираем цельное семя с сохранённой оболочкой</h3>
-                      <p className="text-sm leading-relaxed text-[#6b6b6b]">
-                        В магазинах чаще встречается очищенный кунжут. Нам нужен нешлифованный:
-                        оболочка остаётся на семени, а вместе с ней сохраняется больше клетчатки
-                        и минеральных веществ. При выборе мы смотрим не только на название,
-                        но и на вкус, свежесть, чистоту партии, документы и условия хранения.
-                      </p>
-                    </article>
-
-                    <p className="rounded-2xl bg-white px-5 py-4 text-sm font-medium leading-relaxed text-[#5b514b] shadow-sm">
-                      Дальше в ассортименте будут появляться другие семена и продукты,
-                      когда мы найдём партии, за качество которых готовы отвечать своим именем.
-                    </p>
-                  </div>
                 </div>
               </div>
             </div>

@@ -160,7 +160,7 @@ export default function AccountPage() {
   const orders = getUserOrders();
   const favoriteProducts = user.favorites
     .map((id) => getProductById(id))
-    .filter(Boolean) as NonNullable<ReturnType<typeof getProductById>>[];
+    .filter((product) => product?.category === "bads") as NonNullable<ReturnType<typeof getProductById>>[];
 
   const handleLogout = async () => { await logout(); router.push("/"); };
 

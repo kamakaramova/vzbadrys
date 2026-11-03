@@ -34,38 +34,6 @@ export default function Home() {
           </div>
         </section>
 
-        {/* КАТЕГОРИИ */}
-        <section className="py-16">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <h2 className="text-2xl md:text-3xl font-bold text-center mb-10">Что вас интересует?</h2>
-            <div className="grid md:grid-cols-2 gap-6">
-              <Link href="/catalog?cat=bads" className="group relative overflow-hidden rounded-3xl bg-gradient-to-br from-[#FDDCCA] to-[#f5b898] p-8 h-52 flex flex-col justify-between hover:shadow-xl transition-all hover:-translate-y-1">
-                <div>
-                  <p className="text-xs font-semibold text-[#c07040] uppercase tracking-widest mb-2">Для здоровья</p>
-                  <h3 className="text-2xl font-bold text-[#1a1a1a]">БАДы</h3>
-                  <p className="text-sm text-[#6b6b6b] mt-2">Магний, цинк, селен и другие</p>
-                </div>
-                <div className="flex items-center gap-2 text-[#E8845A] font-semibold text-sm">
-                  Смотреть <ArrowRight size={16} className="group-hover:translate-x-1 transition-transform" />
-                </div>
-                <div className="absolute right-6 top-1/2 -translate-y-1/2 text-7xl opacity-20">💊</div>
-              </Link>
-
-              <Link href="/catalog?cat=seeds" className="group relative overflow-hidden rounded-3xl bg-gradient-to-br from-[#e8f5e9] to-[#c8e6c9] p-8 h-52 flex flex-col justify-between hover:shadow-xl transition-all hover:-translate-y-1">
-                <div>
-                  <p className="text-xs font-semibold text-[#388e3c] uppercase tracking-widest mb-2">Суперфуды</p>
-                  <h3 className="text-2xl font-bold text-[#1a1a1a]">Семена</h3>
-                  <p className="text-sm text-[#6b6b6b] mt-2">Кунжут, тыква, лён и другие</p>
-                </div>
-                <div className="flex items-center gap-2 text-[#388e3c] font-semibold text-sm">
-                  Смотреть <ArrowRight size={16} className="group-hover:translate-x-1 transition-transform" />
-                </div>
-                <div className="absolute right-6 top-1/2 -translate-y-1/2 text-7xl opacity-20">🌱</div>
-              </Link>
-            </div>
-          </div>
-        </section>
-
         {/* ТОВАРЫ */}
         <section className="py-10 pb-20 bg-[#fdf8f5]">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">

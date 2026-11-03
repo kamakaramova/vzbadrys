@@ -9,7 +9,7 @@ import type { Product } from "@/lib/products";
 let lastKnownProducts: unknown[] | null = null;
 
 // Публичное чтение всех товаров (используется сайтом как запасной путь).
-export async function GET() {
+export async function GET(req: NextRequest) {
   const db = getServerSupabase();
   if (!db) return NextResponse.json({ error: "not_configured" }, { status: 503 });
   try {
@@ -17,11 +17,11 @@ export async function GET() {
     if (error) throw error;
     const products = withBundleAvailability((data ?? []).map((r) => r.data as Product));
     lastKnownProducts = products;
-    return NextResponse.json({ products }, { headers: { "cache-control": "no-store" } });
+    return NextResponse.json({ products: isAdminAuthorized(req) ? products : products.filter((product) => product?.category === "bads") }, { headers: { "cache-control": "no-store" } });
   } catch (error) {
     if (lastKnownProducts) {
       return NextResponse.json(
-        { products: lastKnownProducts, stale: true },
+        { products: isAdminAuthorized(req) ? lastKnownProducts : lastKnownProducts.filter((product) => (product as { category?: string })?.category === "bads"), stale: true },
         { headers: { "cache-control": "no-store", "x-vzbadrys-catalog-source": "last-known-good" } },
       );
     }

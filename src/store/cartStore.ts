@@ -50,6 +50,7 @@ export const useCartStore = create<CartStore>()(
       bonusPointsToSpend: 0,
 
       addItem: (item) => {
+        if (item.category !== "bads") return;
         set((state) => {
           const existing = state.items.find((i) => i.id === item.id);
           if (existing) {
@@ -93,11 +94,12 @@ export const useCartStore = create<CartStore>()(
     }),
     {
       name: "vzbadrys-cart",
-      version: 2,
+      version: 3,
       migrate: (persistedState) => {
         const state = persistedState as CartStore;
         return {
           ...state,
+          items: Array.isArray(state.items) ? state.items.filter((item) => item.category === "bads") : [],
           promoProductIds: Array.isArray(state.promoProductIds) ? state.promoProductIds : null,
         };
       },

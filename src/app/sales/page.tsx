@@ -5,7 +5,7 @@ import type { Metadata } from "next";
 
 export const metadata: Metadata = {
   title: "Акции и скидки — взБАДрись",
-  description: "Актуальные акции и скидки на БАДы и семена. Промокод ВЗБАДРИСЬ10 даёт −10% на первый заказ.",
+  description: "Актуальные акции и скидки на БАДы. Промокод ВЗБАДРИСЬ10 даёт −10% на первый заказ.",
 };
 
 export default function SalesPage() {

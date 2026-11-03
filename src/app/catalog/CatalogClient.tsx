@@ -4,10 +4,9 @@ import { useEffect } from "react";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import ProductCard from "@/components/ProductCard";
-import SeedCard from "@/components/SeedCard";
 import { useProductStore } from "@/store/productStore";
 
-type Category = "bads" | "seeds";
+type Category = "bads";
 
 export default function CatalogClient({ cat, badge }: { cat?: Category; badge?: string }) {
   const { products, init, initialized } = useProductStore();
@@ -16,7 +15,7 @@ export default function CatalogClient({ cat, badge }: { cat?: Category; badge?: 
     if (!initialized) init();
   }, [initialized, init]);
 
-  let filtered = products;
+  let filtered = products.filter((product) => product.category === "bads");
   if (cat) filtered = filtered.filter((product) => product.category === cat);
   if (badge === "new") filtered = filtered.filter((product) => product.badge === "Новинка");
   if (badge === "sale") {
@@ -29,7 +28,6 @@ export default function CatalogClient({ cat, badge }: { cat?: Category; badge?: 
   const tabs: { label: string; value: Category | null }[] = [
     { label: "Все товары", value: null },
     { label: "БАДы", value: "bads" },
-    { label: "Семена", value: "seeds" },
   ];
 
   return (
@@ -70,13 +68,7 @@ export default function CatalogClient({ cat, badge }: { cat?: Category; badge?: 
                   {filtered.length} {filtered.length === 1 ? "товар" : filtered.length < 5 ? "товара" : "товаров"}
                 </p>
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                  {filtered.map((product) =>
-                    product.category === "seeds" && product.weightVariants ? (
-                      <SeedCard key={product.id} product={product} />
-                    ) : (
-                      <ProductCard key={product.id} product={product} />
-                    ),
-                  )}
+                  {filtered.map((product) => <ProductCard key={product.id} product={product} />)}
                 </div>
               </>
             )}

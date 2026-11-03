@@ -109,7 +109,7 @@ export default function ProductClient({
           <Link href="/catalog" className="hover:text-[#E8845A]">Каталог</Link>
           <span>/</span>
           <Link href={`/catalog?cat=${product.category}`} className="hover:text-[#E8845A]">
-            {product.category === "bads" ? "БАДы" : "Семена"}
+            БАДы
           </Link>
           <span>/</span>
           <span className="text-[#1a1a1a]">{product.shortName}</span>

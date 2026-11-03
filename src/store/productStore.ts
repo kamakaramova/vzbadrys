@@ -208,5 +208,5 @@ export function useProducts(): { products: Product[]; ready: boolean } {
     if (!initialized) init();
   }, [initialized, init]);
 
-  return { products, ready: products.length > 0 };
+  return { products: products.filter((product) => product.category === "bads"), ready: products.length > 0 };
 }

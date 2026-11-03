@@ -30,13 +30,12 @@ export default function Header() {
         <div className="flex items-center justify-between h-16">
           {/* Логотип */}
           <Link href="/" className="flex items-center">
-            <img src="/logo.png" alt="взБАДрись — БАДы и суперфуды" className="h-10 sm:h-12 w-auto" />
+            <img src="/logo.png" alt="взБАДрись — магазин БАДов" className="h-10 sm:h-12 w-auto" />
           </Link>
 
           {/* Навигация десктоп */}
           <nav className="hidden md:flex items-center gap-7">
             <Link href="/catalog?cat=bads" className="text-sm font-medium text-[#1a1a1a] hover:text-[#E8845A] transition-colors">БАДы</Link>
-            <Link href="/catalog?cat=seeds" className="text-sm font-medium text-[#1a1a1a] hover:text-[#E8845A] transition-colors">Семена</Link>
             <Link href="/blog" className="text-sm font-medium text-[#1a1a1a] hover:text-[#E8845A] transition-colors">Статьи</Link>
             <Link href="/delivery" className="text-sm font-medium text-[#1a1a1a] hover:text-[#E8845A] transition-colors">Доставка</Link>
             <Link href="/sales" className="text-sm font-semibold text-[#E8845A] hover:text-[#d4703f] transition-colors">Акции 🔥</Link>
@@ -165,7 +164,6 @@ export default function Header() {
       {mobileOpen && (
         <div className="md:hidden bg-white border-t border-[#f0e8e0] px-4 py-4 flex flex-col gap-3">
           <Link href="/catalog?cat=bads" className="py-2 text-sm font-medium" onClick={() => setMobileOpen(false)}>БАДы</Link>
-          <Link href="/catalog?cat=seeds" className="py-2 text-sm font-medium" onClick={() => setMobileOpen(false)}>Семена</Link>
           <Link href="/blog" className="py-2 text-sm font-medium" onClick={() => setMobileOpen(false)}>Статьи</Link>
           <Link href="/delivery" className="py-2 text-sm font-medium" onClick={() => setMobileOpen(false)}>Доставка</Link>
           <Link href="/returns" className="py-2 text-sm font-medium" onClick={() => setMobileOpen(false)}>Возврат</Link>

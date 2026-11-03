@@ -6,14 +6,14 @@ import YandexMetrika from "@/components/YandexMetrika";
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://xn--80abckmj9cj3h.xn--p1ai"),
-  title: "взБАДрись — магазин БАДов и суперфудов",
-  description: "Качественные БАДы и суперфуды с документами. Магний, цинк, селен и семена для здоровья. Доставка по России.",
-  keywords: "БАДы, магний, цинк, селен, семена, нутрициолог, витамины, здоровье",
+  title: "взБАДрись — магазин БАДов",
+  description: "Качественные БАДы с документами. Магний, цинк и селен. Доставка по России.",
+  keywords: "БАДы, магний, цинк, селен, нутрициолог, витамины, здоровье",
   alternates: { canonical: "/" },
   verification: { yandex: "e43c58cf211d68d1" },
   openGraph: {
-    title: "взБАДрись — магазин БАДов и суперфудов",
-    description: "Качественные БАДы и суперфуды с документами. Доставка по России.",
+    title: "взБАДрись — магазин БАДов",
+    description: "Качественные БАДы с документами. Доставка по России.",
     url: "https://xn--80abckmj9cj3h.xn--p1ai",
     siteName: "взБАДрись",
     locale: "ru_RU",

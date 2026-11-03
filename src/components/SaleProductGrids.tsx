@@ -4,7 +4,7 @@ import { useProducts } from "@/store/productStore";
 
 export default function SaleProductGrids() {
   const { products } = useProducts();
-  const inStock = products.filter((p) => p.inStock);
+  const inStock = products.filter((p) => p.category === "bads" && p.inStock);
   const saleProducts = inStock.filter((p) => p.badge === "Скидка" || p.oldPrice);
   const hitProducts = inStock.filter((p) => p.badge === "Хит");
   const discount = (price: number, old: number) => Math.round((1 - price / old) * 100);

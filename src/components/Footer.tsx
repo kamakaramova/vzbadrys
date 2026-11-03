@@ -15,7 +15,7 @@ export default function Footer() {
               <span className="font-bold text-xl">взБАДрись</span>
             </div>
             <p className="text-sm text-[#6b6b6b] leading-relaxed">
-              БАДы и суперфуды с документами. Только проверенные составы и честная информация.
+              БАДы с документами. Только проверенные составы и честная информация.
             </p>
           </div>
 
@@ -24,7 +24,6 @@ export default function Footer() {
             <h4 className="font-semibold text-sm mb-4">Каталог</h4>
             <ul className="flex flex-col gap-2.5">
               <li><Link href="/catalog?cat=bads" className="text-sm text-[#6b6b6b] hover:text-[#E8845A] transition-colors">БАДы</Link></li>
-              <li><Link href="/catalog?cat=seeds" className="text-sm text-[#6b6b6b] hover:text-[#E8845A] transition-colors">Семена</Link></li>
               <li><Link href="/catalog?badge=new" className="text-sm text-[#6b6b6b] hover:text-[#E8845A] transition-colors">Новинки</Link></li>
               <li><Link href="/catalog?badge=sale" className="text-sm text-[#6b6b6b] hover:text-[#E8845A] transition-colors">Акции</Link></li>
             </ul>
