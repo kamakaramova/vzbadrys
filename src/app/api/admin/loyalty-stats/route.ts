@@ -2,15 +2,11 @@ import { NextRequest, NextResponse } from "next/server";
 
 import { getServerSupabase } from "@/lib/supabaseServer";
 import { isAdminAuthorized } from "@/lib/adminAuth";
+import { summarizeReferralOrders, type ReferralOrderRow } from "@/lib/referralOrderSummary";
 
-type OrderRow = {
-  id: string;
-  amount_kopecks: number | null;
+type OrderRow = ReferralOrderRow & {
   promo_code: string | null;
   promo_discount_percent: number | null;
-  referral_code: string | null;
-  referral_owner_id: string | null;
-  referral_discount_percent: number | null;
 };
 
 type PromoRow = {
@@ -29,7 +25,7 @@ export async function GET(request: NextRequest) {
 
   const [{ data: promoRows, error: promoError }, { data: orderRows, error: ordersError }] = await Promise.all([
     db.from("promo_codes").select("code, owner_name, discount_percent, active, usage_count"),
-    db.from("payment_orders").select("id,amount_kopecks,promo_code,promo_discount_percent,referral_code,referral_owner_id,referral_discount_percent").eq("status", "paid"),
+    db.from("payment_orders").select("id,amount_kopecks,customer,paid_at,created_at,promo_code,promo_discount_percent,referral_code,referral_owner_id,referral_discount_percent").eq("status", "paid"),
   ]);
   if (promoError || ordersError) {
     return NextResponse.json({ error: promoError?.message || ordersError?.message || "Не удалось загрузить статистику" }, { status: 500 });
@@ -39,7 +35,7 @@ export async function GET(request: NextRequest) {
   for (const row of (promoRows ?? []) as PromoRow[]) promoByCode.set(row.code, row);
 
   const promoStats = new Map<string, { code: string; ownerName: string | null; discountPercent: number; active: boolean; paidOrders: number; revenue: number; recordedUses: number }>();
-  const referralStats = new Map<string, { ownerId: string; code: string; discountPercent: number; paidOrders: number; revenue: number }>();
+  const referralStats = summarizeReferralOrders((orderRows ?? []) as OrderRow[]);
 
   for (const row of (orderRows ?? []) as OrderRow[]) {
     const total = Number(row.amount_kopecks || 0) / 100;
@@ -57,18 +53,6 @@ export async function GET(request: NextRequest) {
       current.paidOrders += 1;
       current.revenue += total;
       promoStats.set(row.promo_code, current);
-    }
-    if (row.referral_owner_id && row.referral_code) {
-      const current = referralStats.get(row.referral_owner_id) ?? {
-        ownerId: row.referral_owner_id,
-        code: row.referral_code,
-        discountPercent: Number(row.referral_discount_percent || 5),
-        paidOrders: 0,
-        revenue: 0,
-      };
-      current.paidOrders += 1;
-      current.revenue += total;
-      referralStats.set(row.referral_owner_id, current);
     }
   }
 
@@ -103,8 +87,8 @@ export async function GET(request: NextRequest) {
 
   return NextResponse.json({
     promos: [...promoStats.values()].sort((a, b) => b.paidOrders - a.paidOrders || b.revenue - a.revenue || a.code.localeCompare(b.code)),
-    referrals: [...referralStats.values()]
+    referrals: referralStats
       .map((item) => ({ ...item, ownerName: users.get(item.ownerId)?.name || "Покупатель", ownerEmail: users.get(item.ownerId)?.email || "" }))
       .sort((a, b) => b.paidOrders - a.paidOrders || b.revenue - a.revenue || a.code.localeCompare(b.code)),
-  });
+  }, { headers: { "cache-control": "no-store" } });
 }

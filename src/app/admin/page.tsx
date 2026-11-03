@@ -41,7 +41,11 @@ type MarketingContact = {
 type AdminPromo = { id: string; code: string; ownerName?: string; discount: number; active: boolean; createdAt: string; usageCount: number; maxUses: number | null; productIds: string[] | null; expiresAt?: string };
 type LoyaltyStats = {
   promos: Array<{ code: string; ownerName: string | null; discountPercent: number; active: boolean; paidOrders: number; revenue: number; recordedUses: number }>;
-  referrals: Array<{ ownerId: string; ownerName: string; ownerEmail: string; code: string; discountPercent: number; paidOrders: number; revenue: number }>;
+  referrals: Array<{
+    ownerId: string; ownerName: string; ownerEmail: string; code: string; discountPercent: number;
+    paidOrders: number; revenue: number;
+    orders: Array<{ id: string; buyerName: string; buyerEmail: string; amount: number; date: string; code: string }>;
+  }>;
 };
 type BonusStats = {
   paidOrders: number;
@@ -1748,14 +1752,38 @@ export default function AdminPage() {
               <div className="bg-white rounded-3xl border border-[#f0e8e0] overflow-hidden">
                 <div className="px-6 py-4 border-b border-[#f0e8e0]">
                   <h2 className="font-bold">Реферальные коды покупателей</h2>
-                  <p className="text-xs text-[#aaa] mt-1">Кого можно поощрить за приведённых покупателей</p>
+                  <p className="text-xs text-[#aaa] mt-1">Чей код использовали, кто оплатил заказ и на какую сумму</p>
                 </div>
                 {loyaltyStatsError ? <p className="p-6 text-sm text-red-500">{loyaltyStatsError}</p> : !loyaltyStats ? <p className="p-6 text-sm text-[#aaa]">Загружаем статистику…</p> : loyaltyStats.referrals.length === 0 ? <p className="p-6 text-sm text-[#aaa]">Оплаченных реферальных заказов пока нет</p> : (
                   <div className="divide-y divide-[#f5eee8]">
                     {loyaltyStats.referrals.map((referral) => (
-                      <div key={referral.ownerId} className="px-6 py-4 flex items-center gap-4">
-                        <div className="min-w-0 flex-1"><p className="font-semibold truncate">{referral.ownerName}</p><p className="text-xs text-[#6b6b6b] mt-1 font-mono">{referral.code} · скидка {referral.discountPercent}%</p><p className="text-xs text-[#aaa] truncate">{referral.ownerEmail}</p></div>
-                        <div className="text-right shrink-0"><p className="font-bold">{referral.paidOrders} заказ{referral.paidOrders === 1 ? "" : referral.paidOrders < 5 ? "а" : "ов"}</p><p className="text-xs text-[#aaa]">{Math.round(referral.revenue).toLocaleString("ru-RU")} ₽</p></div>
+                      <div key={referral.ownerId} className="px-6 py-5">
+                        <div className="flex flex-wrap items-start justify-between gap-4">
+                          <div className="min-w-0">
+                            <p className="text-[11px] font-bold uppercase tracking-wide text-[#a46950]">Владелец кода</p>
+                            <p className="mt-1 font-semibold">{referral.ownerName}</p>
+                            <p className="mt-1 text-xs text-[#6b6b6b]">Код <span className="font-mono">{referral.code}</span> · скидка покупателю {referral.discountPercent}%</p>
+                            {referral.ownerEmail && <p className="text-xs text-[#aaa] break-all">{referral.ownerEmail}</p>}
+                          </div>
+                          <div className="sm:text-right">
+                            <p className="font-bold">По коду: {referral.paidOrders} заказ{referral.paidOrders === 1 ? "" : referral.paidOrders < 5 ? "а" : "ов"}</p>
+                            <p className="text-xs text-[#777]">Сумма оплат: {referral.revenue.toLocaleString("ru-RU", { maximumFractionDigits: 2 })} ₽</p>
+                          </div>
+                        </div>
+                        <div className="mt-4 rounded-2xl border border-[#f0e8e0] bg-[#fffaf7] divide-y divide-[#f0e8e0]">
+                          {referral.orders.map((order) => (
+                            <div key={order.id} className="px-4 py-3 flex flex-wrap items-start justify-between gap-3 text-sm">
+                              <div className="min-w-0">
+                                <p className="text-[11px] font-bold uppercase tracking-wide text-[#a46950]">Заказ оформил</p>
+                                <p className="mt-0.5 font-semibold">{order.buyerName}</p>
+                                {order.buyerEmail && <p className="text-xs text-[#777] break-all">{order.buyerEmail}</p>}
+                                <p className="mt-1 text-xs text-[#999] break-all">№ {order.id}{order.date && ` · ${new Date(order.date).toLocaleDateString("ru-RU")}`}</p>
+                                {order.code !== referral.code && <p className="mt-1 text-xs text-[#777]">Использован код {order.code}</p>}
+                              </div>
+                              <p className="font-bold text-[#a95f3e] whitespace-nowrap">Оплачено: {order.amount.toLocaleString("ru-RU", { maximumFractionDigits: 2 })} ₽</p>
+                            </div>
+                          ))}
+                        </div>
                       </div>
                     ))}
                   </div>

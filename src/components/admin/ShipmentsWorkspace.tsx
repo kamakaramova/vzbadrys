@@ -273,8 +273,11 @@ export default function ShipmentsWorkspace({ password }: { password: string }) {
         }, {})).map((item, index) => `<tr><td>${index + 1}</td><td><b>${escape(item.name)}</b></td><td class="num">${item.quantity}</td><td>${escape([...new Set(item.lots)].join(", ") || "Партия не указана")}</td><td>${escape(item.orders.join(", "))}</td></tr>`).join("")
       : documentRows.map((row, index) => `<tr><td>${index + 1}</td><td><b>${escape(row.id)}</b><br><small>${new Date(row.createdAt).toLocaleDateString("ru-RU")}</small></td><td>${escape(row.customerName)}<br><small>${escape(formatPhoneForDisplay(row.phone))} · ${escape(row.email)}</small></td><td>${escape(row.deliveryMethod)}<br>${escape(row.deliveryAddress)}</td><td class="num">${escape(money(row.total))}<br><small>доставка: ${escape(money(row.customerDeliveryCost))}</small></td><td>${escape(row.trackNumber || "—")}</td></tr>`).join("");
     const headings = kind === "assembly" ? ["№", "Товар", "Кол-во", "Партия", "Заказы"] : ["№", "Заказ", "Покупатель", "Доставка / адрес", "Сумма", "Трек"];
-    const printWindow = window.open("", "_blank", "noopener,noreferrer");
+    // Для пустого окна нужен WindowProxy: с feature `noopener` window.open()
+    // возвращает null даже при успешном открытии, и документ некуда записать.
+    const printWindow = window.open("", "_blank");
     if (!printWindow) { setError("Разрешите всплывающие окна, чтобы открыть печать"); return; }
+    printWindow.opener = null;
     printWindow.document.write(`<!doctype html><html lang="ru"><head><meta charset="utf-8"><title>${title}</title><style>body{font-family:Arial,sans-serif;color:#211f1e;padding:28px}h1{margin:0 0 6px;font-size:25px}p{margin:0 0 20px;color:#6f6863}table{border-collapse:collapse;width:100%;font-size:12px}th{background:#faefe9;text-align:left}th,td{border:1px solid #dcd3ce;padding:9px;vertical-align:top}.num{white-space:nowrap;font-weight:700}small{color:#746d68}@media print{body{padding:0}}</style></head><body><h1>${title}</h1><p>Период: ${period}. Заказов: ${documentRows.length}${selectedRows.length ? " (выбрано вручную)" : ""}.</p><table><thead><tr>${headings.map((heading) => `<th>${heading}</th>`).join("")}</tr></thead><tbody>${body}</tbody></table><script>window.onload=()=>window.print()</script></body></html>`);
     printWindow.document.close();
   };
@@ -311,7 +314,7 @@ export default function ShipmentsWorkspace({ password }: { password: string }) {
       </div>)}
     </div>
     <div className="rounded-2xl border border-[#eadfd8] bg-[#fffaf7] p-3 sm:p-4 flex flex-col lg:flex-row lg:items-center gap-3">
-      <div className="flex items-center gap-2 min-w-0"><SquareCheckBig size={18} className="shrink-0 text-[#c66d48]"/><div><div className="text-sm font-bold">Работа с выбранными</div><div className="text-xs text-[#8f8782]">Выбрано: {selectedRows.length || "—"}. Если ничего не выделять, в печать попадёт весь текущий список.</div></div></div>
+      <div className="flex items-center gap-2 min-w-0"><SquareCheckBig size={18} className="shrink-0 text-[#c66d48]"/><div><div className="text-sm font-bold">Работа с выбранными</div><div className="text-xs text-[#8f8782]">Выбрано: {selectedRows.length || "—"}. {selectedRows.length ? "Выберите статус и нажмите «Изменить статус»." : "Для изменения статуса отметьте заказы галочками в первом столбце таблицы."} Для печати выбор не обязателен.</div></div></div>
       <div className="lg:ml-auto flex flex-wrap gap-2 items-center">
         <select value={batchStatus} onChange={(e) => setBatchStatus(e.target.value)} disabled={batchSaving || !selectedRows.length} className="rounded-xl border border-[#e8ddd7] bg-white px-3 py-2 text-sm font-semibold disabled:opacity-50">{ORDER_STATUSES.map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select>
         <button onClick={() => void changeSelectedStatus()} disabled={batchSaving || !selectedRows.length} className="inline-flex items-center gap-2 rounded-xl bg-[#e8845a] px-3.5 py-2 text-sm font-bold text-white disabled:cursor-not-allowed disabled:opacity-45"><Send size={15}/>{batchSaving ? "Сохраняем…" : "Изменить статус"}</button>
@@ -320,6 +323,8 @@ export default function ShipmentsWorkspace({ password }: { password: string }) {
         <button onClick={() => printDocument("register")} className="inline-flex items-center gap-2 rounded-xl border border-[#e2c7b9] bg-white px-3.5 py-2 text-sm font-semibold text-[#9d5638]"><Printer size={16}/>Реестр</button>
       </div>
     </div>
+    {error && <p role="alert" className="rounded-xl bg-red-50 text-red-600 px-4 py-3 text-sm">{error}</p>}
+    {statusMessage && <p role="status" className="rounded-xl bg-green-50 text-green-700 px-4 py-3 text-sm">{statusMessage}</p>}
     <div className="bg-white border border-[#eee4de] rounded-2xl p-4 flex flex-wrap items-end gap-3">
       <label className="text-xs font-semibold text-[#756c67]">С даты<input type="date" value={from} onChange={(e) => setFrom(e.target.value)} className="block mt-1 border border-[#e8ddd7] rounded-lg px-3 py-2 text-sm"/></label>
       <label className="text-xs font-semibold text-[#756c67]">По дату<input type="date" value={to} onChange={(e) => setTo(e.target.value)} className="block mt-1 border border-[#e8ddd7] rounded-lg px-3 py-2 text-sm"/></label>
@@ -329,8 +334,6 @@ export default function ShipmentsWorkspace({ password }: { password: string }) {
       <label className="text-xs font-semibold text-[#756c67]">Статус<select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="block mt-1 border border-[#e8ddd7] rounded-lg px-3 py-2 text-sm bg-white"><option value="all">Все статусы</option>{ORDER_STATUSES.map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>
       <label className="flex items-center gap-2 text-sm font-medium"><input type="checkbox" checked={onlyIncomplete} onChange={(e) => setOnlyIncomplete(e.target.checked)} className="accent-[#E8845A]"/>Только незавершённые</label>
     </div>
-    {error && <p className="rounded-xl bg-red-50 text-red-600 px-4 py-3 text-sm">{error}</p>}
-    {statusMessage && <p className="rounded-xl bg-green-50 text-green-700 px-4 py-3 text-sm">{statusMessage}</p>}
     <div ref={tableRef} onScroll={rememberView} className="border border-[#eadfd8] rounded-2xl bg-white overflow-auto max-h-[72vh] [scrollbar-gutter:stable]">
       <table className="min-w-[1855px] w-full text-[12px] border-collapse table-fixed">
         <colgroup>
