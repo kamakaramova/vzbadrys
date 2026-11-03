@@ -121,6 +121,9 @@ export async function PATCH(request: NextRequest) {
     region?: string;
     city?: string;
     address?: string;
+    batchId?: string;
+    undoBatchId?: string;
+    expectedStatus?: string;
   };
   try {
     body = await request.json();
@@ -187,10 +190,16 @@ export async function PATCH(request: NextRequest) {
   if (!body.status || !ORDER_STATUSES.has(body.status)) {
     return NextResponse.json({ error: "invalid_status" }, { status: 400 });
   }
+  const isUndo = body.action === "undo_status";
+  const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  if ((body.batchId && !uuidPattern.test(body.batchId)) ||
+    (isUndo && (!body.undoBatchId || !uuidPattern.test(body.undoBatchId)))) {
+    return NextResponse.json({ error: "invalid_batch" }, { status: 400 });
+  }
 
   const { data: current, error: readError } = await db
     .from("payment_orders")
-    .select("id,status,amount_kopecks,customer,items,delivery,user_id,stock_written_off")
+    .select("id,status,amount_kopecks,customer,items,delivery,user_id,stock_written_off,updated_at")
     .eq("id", body.orderId)
     .maybeSingle();
   if (readError || !current) {
@@ -198,20 +207,47 @@ export async function PATCH(request: NextRequest) {
   }
 
   const delivery = (current.delivery ?? {}) as Record<string, unknown>;
-  const { error } = await db
+  const previousOrderStatus = String(delivery.orderStatus ?? "processing");
+  const history = Array.isArray(delivery.statusHistory) ? delivery.statusHistory as Array<Record<string, unknown>> : [];
+  if (!isUndo && body.expectedStatus && previousOrderStatus !== body.expectedStatus) {
+    return NextResponse.json({ error: "Статус уже изменён другим сотрудником. Обновите список." }, { status: 409 });
+  }
+  if (isUndo) {
+    const lastChange = history.at(-1);
+    if (lastChange?.undoOfBatchId === body.undoBatchId && previousOrderStatus === body.status) {
+      return NextResponse.json({ ok: true, email: "skipped", alreadyUndone: true });
+    }
+    const changedAt = Date.parse(String(lastChange?.at ?? ""));
+    if (!lastChange || lastChange.batchId !== body.undoBatchId ||
+      lastChange.to !== previousOrderStatus || lastChange.from !== body.status ||
+      !Number.isFinite(changedAt) || Date.now() - changedAt > 60 * 60 * 1000) {
+      return NextResponse.json({ error: "Отмена недоступна: статус уже менялся или прошёл час" }, { status: 409 });
+    }
+  }
+  const updatedAt = new Date().toISOString();
+  const nextDelivery = {
+    ...delivery,
+    orderStatus: body.status,
+    trackNumber: isUndo ? delivery.trackNumber ?? null : body.trackNumber?.trim() || null,
+    statusHistory: previousOrderStatus === body.status ? history : [...history, {
+      at: updatedAt, from: previousOrderStatus, to: body.status,
+      ...(body.batchId ? { batchId: body.batchId } : {}),
+      ...(isUndo ? { undoOfBatchId: body.undoBatchId } : {}),
+    }].slice(-100),
+  };
+  const { data: updated, error } = await db
     .from("payment_orders")
     .update({
-      delivery: {
-        ...delivery,
-        orderStatus: body.status,
-        trackNumber: body.trackNumber?.trim() || null,
-      },
-      updated_at: new Date().toISOString(),
+      delivery: nextDelivery,
+      updated_at: updatedAt,
     })
-    .eq("id", body.orderId);
+    .eq("id", body.orderId)
+    .eq("updated_at", current.updated_at)
+    .select("updated_at")
+    .maybeSingle();
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  if (!updated) return NextResponse.json({ error: "Заказ уже изменён другим сотрудником. Обновите список." }, { status: 409 });
 
-  const previousOrderStatus = String(delivery.orderStatus ?? "processing");
   if (current.status === "paid" && body.status !== previousOrderStatus) {
     try {
       if (body.status === "cancelled" && previousOrderStatus !== "cancelled") {
@@ -245,7 +281,7 @@ export async function PATCH(request: NextRequest) {
   // Об отмене сообщаем всегда — в том числе когда покупатель не успел оплатить.
   // Остальные письма о движении заказа имеют смысл только после оплаты.
   const canSendStatusEmail = body.status === "cancelled" || current.status === "paid";
-  if (canSendStatusEmail && shouldNotify && emailStatuses.has(body.status)) {
+  if (!isUndo && canSendStatusEmail && shouldNotify && emailStatuses.has(body.status)) {
     const updatedOrder = {
       ...current,
       delivery: {
@@ -287,7 +323,7 @@ export async function PATCH(request: NextRequest) {
     }
   }
 
-  return NextResponse.json({ ok: true, email: emailResult });
+  return NextResponse.json({ ok: true, email: emailResult, updatedAt: updated.updated_at });
 }
 
 // Администратор может убрать только неоплаченный, отменённый или ошибочный заказ.

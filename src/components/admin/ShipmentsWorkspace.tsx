@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { ArrowDown, ArrowUp, ArrowUpDown, Check, Clipboard, ListChecks, Printer, RefreshCw, Search, Send, SquareCheckBig } from "lucide-react";
+import { ArrowDown, ArrowUp, ArrowUpDown, Check, Clipboard, ListChecks, Printer, RefreshCw, RotateCcw, Search, Send, SquareCheckBig } from "lucide-react";
 import { formatPhoneForDisplay, phoneDigits } from "@/lib/phone";
 
 type Warehouse = {
@@ -17,7 +17,7 @@ type Warehouse = {
   updatedAt: string;
 };
 type Shipment = {
-  id: string; createdAt: string; orderStatus: string; customerName: string; email: string; phone: string;
+  id: string; createdAt: string; updatedAt: string; orderStatus: string; customerName: string; email: string; phone: string;
   items: Array<{ id: string; productId: string; name: string; quantity: number; stockAmount: number; allocations: Array<{ batchId: string | null; lotNumber: string | null; quantity: number }> }>; itemsCount: number; total: number;
   deliveryMethod: string; deliveryAddress: string; customerDeliveryCost: number; trackNumber: string; warehouse: Warehouse;
 };
@@ -44,6 +44,16 @@ const STATUS_ORDER: Record<string, number> = Object.fromEntries(ORDER_STATUSES.m
 const today = () => new Date().toLocaleDateString("sv-SE", { timeZone: "Europe/Moscow" });
 const money = (value: number) => `${value.toLocaleString("ru-RU", { maximumFractionDigits: 2 })} ₽`;
 const STORAGE_KEY = "vzbadrys-admin-shipments-view";
+const UNDO_KEY = "vzbadrys-admin-last-status-batch";
+type UndoBatch = { id: string; at: number; targetStatus: string; rows: Array<{ id: string; previousStatus: string }> };
+
+function savedUndoBatch(): UndoBatch | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const batch = JSON.parse(sessionStorage.getItem(UNDO_KEY) || "null") as UndoBatch | null;
+    return batch && Date.now() - batch.at < 60 * 60 * 1000 ? batch : null;
+  } catch { return null; }
+}
 
 function savedView() {
   if (typeof window === "undefined") return null;
@@ -71,13 +81,18 @@ export default function ShipmentsWorkspace({ password }: { password: string }) {
   const [copiedOrder, setCopiedOrder] = useState<string | null>(null);
   const [copiedPhone, setCopiedPhone] = useState<string | null>(null);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
-  const [batchStatus, setBatchStatus] = useState("confirmed");
+  const [batchStatus, setBatchStatus] = useState("");
   const [batchSaving, setBatchSaving] = useState(false);
+  const [undoBatch, setUndoBatch] = useState<UndoBatch | null>(null);
   const tableRef = useRef<HTMLDivElement>(null);
   const editingRef = useRef(false);
   const savingRef = useRef(false);
   const restoredViewRef = useRef(false);
   const saveTimers = useRef(new Map<string, ReturnType<typeof setTimeout>>());
+  useEffect(() => {
+    const id = window.setTimeout(() => setUndoBatch(savedUndoBatch()), 0);
+    return () => window.clearTimeout(id);
+  }, []);
 
   const load = async (quiet = false) => {
     if (!quiet) setLoading(true);
@@ -175,7 +190,7 @@ export default function ShipmentsWorkspace({ password }: { password: string }) {
   const toggle = (row: Shipment, key: keyof Warehouse) => {
     const value = !Boolean(row.warehouse[key]); updateLocal(row.id, { [key]: value }); save(row.id, { [key]: value });
   };
-  const updateOrderStatus = async (row: Shipment, orderStatus: string) => {
+  const updateOrderStatus = async (row: Shipment, orderStatus: string, batchId?: string) => {
     const previousStatus = row.orderStatus;
     setRows((current) => current.map((item) => item.id === row.id ? { ...item, orderStatus } : item));
     setStatusSaving(row.id); setStatusMessage(""); setError("");
@@ -183,7 +198,7 @@ export default function ShipmentsWorkspace({ password }: { password: string }) {
       const response = await fetch("/api/admin/orders", {
         method: "PATCH",
         headers: { "content-type": "application/json", "x-admin-password": password },
-        body: JSON.stringify({ orderId: row.id, status: orderStatus, trackNumber: row.trackNumber }),
+        body: JSON.stringify({ orderId: row.id, status: orderStatus, expectedStatus: row.orderStatus, trackNumber: row.trackNumber, ...(batchId ? { batchId } : {}) }),
       });
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || "Не удалось изменить статус");
@@ -242,20 +257,59 @@ export default function ShipmentsWorkspace({ password }: { password: string }) {
     return allSelected ? current.filter((id) => !visibleIds.includes(id)) : [...new Set([...current, ...visibleIds])];
   });
   const changeSelectedStatus = async () => {
-    if (!selectedRows.length) return;
+    if (!selectedRows.length || !batchStatus) return;
+    if (selectedRows.some((row) => row.orderStatus === "cancelled")) {
+      setError("Отменённые заказы меняйте по одному: это влияет на складские остатки.");
+      return;
+    }
+    const changingRows = selectedRows.filter((row) => row.orderStatus !== batchStatus);
+    if (!changingRows.length) { setStatusMessage("Все выбранные заказы уже имеют этот статус."); return; }
+    const label = ORDER_STATUSES.find(([value]) => value === batchStatus)?.[1] || batchStatus;
+    if (!window.confirm(`Изменить статус ${changingRows.length} заказов на «${label}»? Покупателям могут уйти письма, которые нельзя отозвать. Отменить потом можно будет только статусы.`)) return;
+    const batch: UndoBatch = { id: crypto.randomUUID(), at: Date.now(), targetStatus: batchStatus,
+      rows: changingRows.map((row) => ({ id: row.id, previousStatus: row.orderStatus })) };
+    sessionStorage.setItem(UNDO_KEY, JSON.stringify(batch));
+    setUndoBatch(batch);
     setBatchSaving(true); setStatusMessage(""); setError("");
+    savingRef.current = true;
     let sent = 0; let failed = 0;
     try {
-      for (const row of selectedRows) {
-        const email = await updateOrderStatus(row, batchStatus);
+      for (const row of changingRows) {
+        const email = await updateOrderStatus(row, batchStatus, batch.id);
         if (email === "sent") sent += 1;
         if (email === "failed") failed += 1;
       }
-      const label = ORDER_STATUSES.find(([value]) => value === batchStatus)?.[1] || "выбран";
-      setStatusMessage(`${selectedRows.length} ${selectedRows.length === 1 ? "заказ переведён" : "заказа переведены"} в статус «${label}»${sent ? `, писем отправлено: ${sent}` : ""}${failed ? `, не отправились: ${failed}` : ""}.`);
+      setStatusMessage(`${changingRows.length} ${changingRows.length === 1 ? "заказ переведён" : "заказа переведены"} в статус «${label}»${sent ? `, писем отправлено: ${sent}` : ""}${failed ? `, не отправились: ${failed}` : ""}. В течение часа можно отменить изменение статусов.`);
       setSelectedIds([]);
-    } catch (e) { setError(e instanceof Error ? e.message : "Не удалось изменить часть заказов"); }
-    finally { setBatchSaving(false); }
+    } catch (e) { setError(`${e instanceof Error ? e.message : "Не удалось изменить часть заказов"}. Уже изменённые статусы можно отменить кнопкой ниже.`); }
+    finally { savingRef.current = false; setBatchSaving(false); }
+  };
+  const undoLastBatch = async () => {
+    if (!undoBatch || Date.now() - undoBatch.at >= 60 * 60 * 1000) return;
+    if (!window.confirm(`Вернуть прежние статусы после последней массовой операции? Письма, если они были отправлены, это не отзовёт.`)) return;
+    setBatchSaving(true); savingRef.current = true; setError(""); setStatusMessage("");
+    const remaining = [...undoBatch.rows];
+    let restored = 0; let skipped = 0;
+    try {
+      for (const row of undoBatch.rows) {
+        try {
+          const response = await fetch("/api/admin/orders", {
+            method: "PATCH", headers: { "content-type": "application/json", "x-admin-password": password },
+            body: JSON.stringify({ action: "undo_status", orderId: row.id, status: row.previousStatus, undoBatchId: undoBatch.id }),
+          });
+          if (!response.ok) { skipped += 1; continue; }
+          restored += 1;
+          const index = remaining.findIndex((item) => item.id === row.id);
+          if (index >= 0) remaining.splice(index, 1);
+          const next = { ...undoBatch, rows: [...remaining] };
+          sessionStorage.setItem(UNDO_KEY, JSON.stringify(next));
+          setUndoBatch(next);
+        } catch { skipped += 1; }
+      }
+      if (!remaining.length) { sessionStorage.removeItem(UNDO_KEY); setUndoBatch(null); }
+      setStatusMessage(`Вернули прежние статусы: ${restored}. ${skipped ? `Не удалось отменить: ${skipped} — возможно, их уже изменили вручную. ` : ""}Новые письма не отправлялись.`);
+      await load(true);
+    } finally { savingRef.current = false; setBatchSaving(false); }
   };
   const printDocument = (kind: "assembly" | "register") => {
     const documentRows = selectedRows.length ? selectedRows : visible;
@@ -316,8 +370,9 @@ export default function ShipmentsWorkspace({ password }: { password: string }) {
     <div className="rounded-2xl border border-[#eadfd8] bg-[#fffaf7] p-3 sm:p-4 flex flex-col lg:flex-row lg:items-center gap-3">
       <div className="flex items-center gap-2 min-w-0"><SquareCheckBig size={18} className="shrink-0 text-[#c66d48]"/><div><div className="text-sm font-bold">Работа с выбранными</div><div className="text-xs text-[#8f8782]">Выбрано: {selectedRows.length || "—"}. {selectedRows.length ? "Выберите статус и нажмите «Изменить статус»." : "Для изменения статуса отметьте заказы галочками в первом столбце таблицы."} Для печати выбор не обязателен.</div></div></div>
       <div className="lg:ml-auto flex flex-wrap gap-2 items-center">
-        <select value={batchStatus} onChange={(e) => setBatchStatus(e.target.value)} disabled={batchSaving || !selectedRows.length} className="rounded-xl border border-[#e8ddd7] bg-white px-3 py-2 text-sm font-semibold disabled:opacity-50">{ORDER_STATUSES.map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select>
-        <button onClick={() => void changeSelectedStatus()} disabled={batchSaving || !selectedRows.length} className="inline-flex items-center gap-2 rounded-xl bg-[#e8845a] px-3.5 py-2 text-sm font-bold text-white disabled:cursor-not-allowed disabled:opacity-45"><Send size={15}/>{batchSaving ? "Сохраняем…" : "Изменить статус"}</button>
+        <select value={batchStatus} onChange={(e) => setBatchStatus(e.target.value)} disabled={batchSaving || !selectedRows.length} className="rounded-xl border border-[#e8ddd7] bg-white px-3 py-2 text-sm font-semibold disabled:opacity-50"><option value="">Выберите статус</option>{ORDER_STATUSES.filter(([value]) => value !== "cancelled").map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select>
+        <button onClick={() => void changeSelectedStatus()} disabled={batchSaving || !selectedRows.length || !batchStatus} className="inline-flex items-center gap-2 rounded-xl bg-[#e8845a] px-3.5 py-2 text-sm font-bold text-white disabled:cursor-not-allowed disabled:opacity-45"><Send size={15}/>{batchSaving ? "Сохраняем…" : "Изменить статус"}</button>
+        {undoBatch && undoBatch.rows.length > 0 && Date.now() - undoBatch.at < 60 * 60 * 1000 && <button onClick={() => void undoLastBatch()} disabled={batchSaving} className="inline-flex items-center gap-2 rounded-xl border border-[#e2c7b9] bg-white px-3.5 py-2 text-sm font-semibold text-[#9d5638] disabled:opacity-45"><RotateCcw size={15}/>Отменить последнее изменение</button>}
         <span className="hidden sm:block h-7 w-px bg-[#eadfd8]"/>
         <button onClick={() => printDocument("assembly")} className="inline-flex items-center gap-2 rounded-xl border border-[#e2c7b9] bg-white px-3.5 py-2 text-sm font-semibold text-[#9d5638]"><ListChecks size={16}/>Лист сборки</button>
         <button onClick={() => printDocument("register")} className="inline-flex items-center gap-2 rounded-xl border border-[#e2c7b9] bg-white px-3.5 py-2 text-sm font-semibold text-[#9d5638]"><Printer size={16}/>Реестр</button>
