@@ -3,7 +3,7 @@ import { useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { Product } from "@/lib/products";
-import { productImagePaths } from "@/lib/productImages";
+import { productImagePaths, productMainImage } from "@/lib/productImages";
 import { ShoppingCart, Heart, FileText, ChevronLeft, ChevronRight, Check, Shield, AlertCircle, Copy, Share2, ExternalLink } from "lucide-react";
 import { useCartStore } from "@/store/cartStore";
 import { useAuthStore } from "@/store/authStore";
@@ -463,7 +463,7 @@ export default function ProductClient({
               <Link key={p.id} href={`/product/${p.id}`} className="block bg-white rounded-3xl border border-[#f0e8e0] p-5 hover:shadow-lg transition-all hover:-translate-y-1">
                 <div className="relative mb-4 aspect-[4/3] overflow-hidden rounded-2xl bg-[#fdf8f5]">
                   <Image
-                    src={p.images[0] || productImagePaths(p.id, 1)[0]}
+                    src={productMainImage(p)}
                     alt=""
                     fill
                     sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"

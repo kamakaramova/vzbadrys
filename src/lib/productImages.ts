@@ -16,3 +16,12 @@ export function productImagePaths(id: string, max = 8): string[] {
   const count = gallery ? Math.min(max, gallery.count) : max;
   return Array.from({ length: count }, (_, i) => `/products/${id}/${i + 1}.${extension}`);
 }
+
+export function productMainImage(product: { id: string; images: string[] }): string {
+  // В базе встречаются старые пути к фото, а файловая галерея у основных БАДов
+  // уже переехала в public/products/<id>/. Для них используем проверенный путь.
+  if (product.id === "nabor-magniy-tsink-selen" || PRODUCT_GALLERIES[product.id]) {
+    return productImagePaths(product.id, 1)[0];
+  }
+  return product.images[0] || productImagePaths(product.id, 1)[0];
+}
