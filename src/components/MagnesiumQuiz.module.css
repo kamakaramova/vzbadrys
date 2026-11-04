@@ -1,0 +1,50 @@
+.miniKamaImage {
+  transform-origin: 50% 88%;
+  animation: miniKamaFloat 3.8s ease-in-out infinite;
+}
+
+.quizPanel {
+  background:
+    radial-gradient(circle at 92% 12%, rgba(253, 220, 202, 0.65), transparent 29%),
+    linear-gradient(145deg, #ffffff 0%, #fffaf7 100%);
+}
+
+.answerButton {
+  position: relative;
+  overflow: hidden;
+}
+
+.answerButton::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: linear-gradient(110deg, transparent 35%, rgba(255, 255, 255, 0.7), transparent 65%);
+  transform: translateX(-130%);
+  transition: transform 500ms ease;
+  pointer-events: none;
+}
+
+.answerButton:hover::after {
+  transform: translateX(130%);
+}
+
+@keyframes miniKamaFloat {
+  0%,
+  100% {
+    transform: translateY(0) rotate(-1deg);
+  }
+  50% {
+    transform: translateY(-0.45rem) rotate(1deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .miniKamaImage {
+    animation: none;
+  }
+
+  .answerButton::after {
+    display: none;
+  }
+}

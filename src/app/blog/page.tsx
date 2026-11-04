@@ -10,12 +10,22 @@ export const metadata: Metadata = {
 
 const articles = [
   {
+    slug: "kakoy-magniy-vybrat",
+    title: "Какая форма магния подойдёт именно вам?",
+    excerpt: "Ответьте на пять вопросов и узнайте, что больше соответствует вашей задаче: бисглицинат или цитрат магния с витамином B6.",
+    tag: "Тест",
+    date: "4 ноября 2026",
+    readTime: "2 мин",
+    emoji: "✨",
+  },
+  {
     slug: "zachem-nuzhen-magniy",
     title: "Зачем нужен магний: дефицит, симптомы и как восполнить",
     excerpt: "Магний участвует в более чем 300 биохимических процессах. Разбираемся, почему он так важен, как проявляется его дефицит и какая форма лучше усваивается.",
     tag: "Магний",
     date: "27 июня 2025",
     readTime: "8 мин",
+    emoji: "💊",
   },
 ];
 
@@ -37,7 +47,7 @@ export default function BlogPage() {
             {articles.map((a) => (
               <Link key={a.slug} href={`/blog/${a.slug}`} className="group block bg-white rounded-3xl border border-[#f0e8e0] overflow-hidden hover:shadow-xl hover:-translate-y-1 transition-all duration-300">
                 <div className="h-44 bg-gradient-to-br from-[#FDDCCA] to-[#f5b898] flex items-center justify-center">
-                  <span className="text-6xl">💊</span>
+                  <span className="text-6xl">{a.emoji}</span>
                 </div>
                 <div className="p-6">
                   <div className="flex items-center gap-3 mb-3">
