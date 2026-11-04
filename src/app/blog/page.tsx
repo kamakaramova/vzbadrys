@@ -11,6 +11,17 @@ export const metadata: Metadata = {
 
 const articles = [
   {
+    slug: "zachem-nuzhny-tsink-i-selen",
+    title: "Почему организму нужны цинк и селен",
+    excerpt: "Пройдите короткий тест и узнайте, как цинк и селен связаны с иммунитетом, кожей, волосами, пищеварением и щитовидной железой.",
+    tag: "Цинк и селен",
+    date: "4 ноября 2026",
+    readTime: "10 мин",
+    image: "/products/selen-tsink/1.png",
+    imageAlt: "Комплекс Цинк и Селен",
+    imageClassName: "object-contain p-5",
+  },
+  {
     slug: "kakoy-magniy-vybrat",
     title: "Какая форма магния подойдёт именно вам?",
     excerpt: "Ответьте на пять вопросов и узнайте, что больше соответствует вашей задаче: бисглицинат или цитрат магния с витамином B6.",
@@ -19,6 +30,7 @@ const articles = [
     readTime: "2 мин",
     image: "/blog/magnesium-quiz-cover.webp",
     imageAlt: "Две формы магния: для расслабления и с цитратом",
+    imageClassName: "object-cover",
   },
   {
     slug: "zachem-nuzhen-magniy",
@@ -29,6 +41,7 @@ const articles = [
     readTime: "8 мин",
     image: "/blog/magnesium-guide-cover.webp",
     imageAlt: "Магний из продуктов и добавки для поддержки энергии",
+    imageClassName: "object-cover",
   },
 ];
 
@@ -56,7 +69,7 @@ export default function BlogPage() {
                     fill
                     priority={a.slug === "kakoy-magniy-vybrat"}
                     sizes="(min-width: 1024px) 33vw, (min-width: 768px) 50vw, 100vw"
-                    className="object-cover transition-transform duration-500 group-hover:scale-[1.03]"
+                    className={`${a.imageClassName} transition-transform duration-500 group-hover:scale-[1.03]`}
                   />
                 </div>
                 <div className="p-6">
