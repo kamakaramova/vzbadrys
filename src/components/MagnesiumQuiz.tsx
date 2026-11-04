@@ -13,6 +13,8 @@ import {
   type MagnesiumQuizAnswers,
   type MagnesiumQuizQuestion,
 } from "@/lib/magnesiumQuiz";
+import { productMainImage } from "@/lib/productImages";
+import { useProducts } from "@/store/productStore";
 import styles from "./MagnesiumQuiz.module.css";
 
 export interface MagnesiumQuizProduct {
@@ -126,7 +128,26 @@ function MiniKama({ state }: { state: keyof typeof companionCopy }) {
   );
 }
 
-export default function MagnesiumQuiz({ products }: MagnesiumQuizProps) {
+export default function MagnesiumQuiz({ products: fallbackProducts }: MagnesiumQuizProps) {
+  const { products: currentProducts } = useProducts();
+  const products = useMemo(
+    () => Object.fromEntries(
+      (Object.entries(fallbackProducts) as [MagnesiumForm, MagnesiumQuizProduct][]).map(([form, fallback]) => {
+        const current = currentProducts.find((product) => product.id === fallback.id);
+
+        return [form, current ? {
+          id: current.id,
+          name: current.name,
+          price: current.price,
+          oldPrice: current.oldPrice,
+          image: productMainImage(current),
+          badge: current.badge,
+          howToTake: current.howToTake,
+        } : fallback];
+      }),
+    ) as Record<MagnesiumForm, MagnesiumQuizProduct>,
+    [currentProducts, fallbackProducts],
+  );
   const [started, setStarted] = useState(false);
   const [step, setStep] = useState(0);
   const [answers, setAnswers] = useState<MagnesiumQuizAnswers>({});
