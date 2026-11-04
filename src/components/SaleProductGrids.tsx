@@ -1,5 +1,7 @@
 "use client";
+import Image from "next/image";
 import Link from "next/link";
+import { productMainImage } from "@/lib/productImages";
 import { useProducts } from "@/store/productStore";
 
 export default function SaleProductGrids() {
@@ -21,8 +23,14 @@ export default function SaleProductGrids() {
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
             {saleProducts.map((product) => (
               <Link key={product.id} href={`/product/${product.id}`} className="group block bg-white rounded-3xl border border-[#f0e8e0] overflow-hidden hover:shadow-xl hover:-translate-y-1 transition-all duration-300">
-                <div className="relative h-48 bg-gradient-to-br from-[#fdf8f5] to-[#FDDCCA]/30 flex items-center justify-center">
-                  <span className="text-6xl">{product.category === "seeds" ? "🌱" : "💊"}</span>
+                <div className="relative aspect-[4/5] bg-[#fdf8f5] overflow-hidden">
+                  <Image
+                    src={productMainImage(product)}
+                    alt={product.name}
+                    fill
+                    sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, (max-width: 1280px) 33vw, 25vw"
+                    className="object-cover transition-transform duration-500 group-hover:scale-[1.02]"
+                  />
                   {product.oldPrice && (
                     <span className="absolute top-3 left-3 bg-[#E8845A] text-white text-xs font-bold px-2.5 py-1 rounded-full">
                       −{discount(product.price, product.oldPrice)}%
@@ -54,8 +62,14 @@ export default function SaleProductGrids() {
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
             {hitProducts.map((product) => (
               <Link key={product.id} href={`/product/${product.id}`} className="group block bg-white rounded-3xl border border-[#f0e8e0] overflow-hidden hover:shadow-xl hover:-translate-y-1 transition-all duration-300">
-                <div className="relative h-48 bg-gradient-to-br from-[#fdf8f5] to-[#FDDCCA]/30 flex items-center justify-center">
-                  <span className="text-6xl">{product.category === "seeds" ? "🌱" : "💊"}</span>
+                <div className="relative aspect-[4/5] bg-[#fdf8f5] overflow-hidden">
+                  <Image
+                    src={productMainImage(product)}
+                    alt={product.name}
+                    fill
+                    sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, (max-width: 1280px) 33vw, 25vw"
+                    className="object-cover transition-transform duration-500 group-hover:scale-[1.02]"
+                  />
                   <span className="absolute top-3 left-3 bg-[#1a1a1a] text-white text-xs font-bold px-2.5 py-1 rounded-full">Хит</span>
                 </div>
                 <div className="p-4">
