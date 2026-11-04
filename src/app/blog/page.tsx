@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import type { Metadata } from "next";
@@ -16,7 +17,8 @@ const articles = [
     tag: "Тест",
     date: "4 ноября 2026",
     readTime: "2 мин",
-    emoji: "✨",
+    image: "/blog/magnesium-quiz-cover.webp",
+    imageAlt: "Две формы магния: для расслабления и с цитратом",
   },
   {
     slug: "zachem-nuzhen-magniy",
@@ -25,7 +27,8 @@ const articles = [
     tag: "Магний",
     date: "27 июня 2025",
     readTime: "8 мин",
-    emoji: "💊",
+    image: "/blog/magnesium-guide-cover.webp",
+    imageAlt: "Магний из продуктов и добавки для поддержки энергии",
   },
 ];
 
@@ -46,8 +49,15 @@ export default function BlogPage() {
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
             {articles.map((a) => (
               <Link key={a.slug} href={`/blog/${a.slug}`} className="group block bg-white rounded-3xl border border-[#f0e8e0] overflow-hidden hover:shadow-xl hover:-translate-y-1 transition-all duration-300">
-                <div className="h-44 bg-gradient-to-br from-[#FDDCCA] to-[#f5b898] flex items-center justify-center">
-                  <span className="text-6xl">{a.emoji}</span>
+                <div className="relative h-44 overflow-hidden bg-gradient-to-br from-[#FDDCCA] to-[#f5b898]">
+                  <Image
+                    src={a.image}
+                    alt={a.imageAlt}
+                    fill
+                    priority={a.slug === "kakoy-magniy-vybrat"}
+                    sizes="(min-width: 1024px) 33vw, (min-width: 768px) 50vw, 100vw"
+                    className="object-cover transition-transform duration-500 group-hover:scale-[1.03]"
+                  />
                 </div>
                 <div className="p-6">
                   <div className="flex items-center gap-3 mb-3">
