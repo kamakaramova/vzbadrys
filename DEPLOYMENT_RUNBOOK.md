@@ -3,14 +3,14 @@
 Этот файл хранит техническую схему production-развёртывания. Пароли, ключи и
 значения переменных окружения сюда **никогда не добавлять**.
 
-## Текущая схема (10 августа 2026)
+## Текущая схема (проверено 4 ноября 2026)
 
 ```text
 GitHub (kamakaramova/vzbadrys, ветка main)
        │
-       ├── Vercel — прежний production, работает до переключения DNS
+       ├── Vercel — вспомогательная сборка, НЕ production основного домена
        │
-       └── VPS REG.Облако, Москва-3 — новая production-копия
+       └── VPS REG.Облако, Москва-3 — текущий production
                 ├── Caddy (HTTPS и обратный прокси)
                 ├── Ozon Delivery Gateway: api.взбадрись.рф → 127.0.0.1:3001
                 └── Магазин Next.js: 127.0.0.1:3000
@@ -34,7 +34,7 @@ Supabase, Ozon Acquiring, Resend и GitHub не переносятся: новы
 
 ## Защита production
 
-- UFW пропускает снаружи только `22`, `80` и `443`; приложение и Ozon Gateway
+- SSH для штатного деплоя доступен на порту `2222`; приложение и Ozon Gateway
   доступны только через Caddy.
 - Fail2ban защищает SSH, автоматические обновления безопасности Ubuntu включены.
 - Вход SSH по паролю отключён; root допускается только по ключу.
@@ -71,7 +71,8 @@ chmod 600 /opt/vzbadrys-backups/*.tar.gz
 4. Проверки на сервере прошли:
    - `http://127.0.0.1:3000/` отвечает `200`;
    - `https://api.xn--80abckmj9cj3h.xn--p1ai/gateway-health` отвечает `200`.
-5. Vercel и DNS старого домена пока не переключались.
+5. Основной домен `взбадрись.рф` направлен на VPS. Успешная сборка Vercel сама
+   по себе не обновляет основной сайт.
 
 ## Переменные окружения
 
@@ -164,12 +165,36 @@ systemctl restart vzbadrys
 постоянный (301) редирект на `https://vzbadris.ru`, когда основной домен будет
 проверен.
 
-## Как обновлять сайт после перехода с Vercel
+## Как обновлять production
 
-На сервере запускайте только защищённый скрипт деплоя:
+Штатный путь не требует входа в панель REG.Облако. После локальных проверок:
+
+1. Закоммитить только относящиеся к задаче файлы и отправить ветку `main`:
 
 ```bash
-/usr/local/sbin/deploy-vzbadrys
+git push origin main
+```
+
+2. Проверить текущий коммит и состояние сервиса на VPS, используя уже
+   настроенный проектный ключ. Содержимое ключа читать или выводить нельзя:
+
+```bash
+ssh -i /Users/kamalakaramova/.ssh/vzbadrys_deploy_ed25519 \
+  -p 2222 -o BatchMode=yes -o ConnectTimeout=15 \
+  root@161.104.19.48 \
+  'git -C /opt/vzbadrys rev-parse --short HEAD; systemctl is-active vzbadrys'
+```
+
+Не использовать порт `22` и не подключаться без `-i`: это не штатное
+подключение проекта и сервер закроет соединение. Не открывать панель REG.Облако
+и не просить пользователя авторизоваться, пока этот SSH-путь работает.
+
+3. Запустить только защищённый скрипт деплоя:
+
+```bash
+ssh -i /Users/kamalakaramova/.ssh/vzbadrys_deploy_ed25519 \
+  -p 2222 -o BatchMode=yes -o ConnectTimeout=15 \
+  root@161.104.19.48 /usr/local/sbin/deploy-vzbadrys
 ```
 
 Скрипт сам собирает приложение с `/etc/vzbadrys/vzbadrys.env`. Это критично:
@@ -177,12 +202,21 @@ systemctl restart vzbadrys
 Не запускать `npm run build` вручную без этого окружения — иначе могут перестать
 работать авторизация, личный кабинет и другие клиентские интеграции.
 
-Проверки:
+4. Проверить коммит, сервис, витрину и Ozon Gateway:
 
 ```bash
-curl -fsS -o /dev/null -w 'storefront=%{http_code}\n' http://127.0.0.1:3000/
-curl -fsS -o /dev/null -w 'ozon-gateway=%{http_code}\n' https://api.xn--80abckmj9cj3h.xn--p1ai/gateway-health
+ssh -i /Users/kamalakaramova/.ssh/vzbadrys_deploy_ed25519 \
+  -p 2222 -o BatchMode=yes -o ConnectTimeout=15 \
+  root@161.104.19.48 \
+  'git -C /opt/vzbadrys rev-parse --short HEAD; \
+   systemctl is-active vzbadrys; \
+   curl -fsS -o /dev/null -w "storefront=%{http_code}\n" http://127.0.0.1:3000/; \
+   curl -fsS -o /dev/null -w "ozon-gateway=%{http_code}\n" https://api.xn--80abckmj9cj3h.xn--p1ai/gateway-health'
 ```
+
+После этого отдельно открыть изменённую публичную страницу на основном домене
+и проверить её пользовательский сценарий. Только тогда считать публикацию
+завершённой.
 
 Если нужен откат к последнему коммиту, который был рабочим, сначала создать
 снимок VPS в панели REG.Облако, затем переключить Git на нужный коммит,
