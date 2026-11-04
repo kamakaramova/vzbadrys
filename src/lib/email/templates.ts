@@ -1,3 +1,5 @@
+import { siteUrl } from "@/lib/siteUrl";
+
 export type OrderEmailStatus =
   | "paid"
   | "payment_failed"
@@ -91,8 +93,8 @@ export function orderEmail(
 ): { subject: string; html: string } {
   const name = order.customerName || "Здравствуйте";
   const escapedName = escapeHtml(name);
-  const accountUrl = "https://xn--80abckmj9cj3h.xn--p1ai/account";
-  const cartUrl = "https://xn--80abckmj9cj3h.xn--p1ai/cart";
+  const accountUrl = siteUrl("/account");
+  const cartUrl = siteUrl("/cart");
   const deliveryCode = order.deliveryMethodCode || "";
   const trackBlock = order.trackNumber
     ? `<div style="background:#fff3ec;border-radius:14px;padding:16px;margin-bottom:20px">
@@ -259,8 +261,8 @@ export function manualEmail(subject: string, message: string) {
 
 export function reviewAndCollagenEmail(customerName: string) {
   const name = customerName.trim() || "Здравствуйте";
-  const accountUrl = "https://xn--80abckmj9cj3h.xn--p1ai/account";
-  const surveyUrl = "https://xn--80abckmj9cj3h.xn--p1ai/account?survey=collagen";
+  const accountUrl = siteUrl("/account");
+  const surveyUrl = siteUrl("/account?survey=collagen");
   const subject = "Как у Вас дела с добавкой?";
   return {
     subject,

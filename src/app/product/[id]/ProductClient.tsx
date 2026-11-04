@@ -7,6 +7,7 @@ import { productImagePaths, productMainImage } from "@/lib/productImages";
 import { ShoppingCart, Heart, FileText, ChevronLeft, ChevronRight, Check, Shield, AlertCircle, Copy, Share2, ExternalLink } from "lucide-react";
 import { useCartStore } from "@/store/cartStore";
 import { useAuthStore } from "@/store/authStore";
+import { siteUrl } from "@/lib/siteUrl";
 import ProductReviews from "./ProductReviews";
 
 type Tab = "description" | "composition" | "howto" | "docs" | "reviews";
@@ -76,7 +77,7 @@ export default function ProductClient({
     setTimeout(() => setAdded(false), 2000);
   };
 
-  const shareUrl = () => `https://взбадрись.рф/product/${encodeURIComponent(product.id)}`;
+  const shareUrl = () => siteUrl(`/product/${encodeURIComponent(product.id)}`);
   const copyLink = async () => {
     await navigator.clipboard.writeText(shareUrl());
     setLinkCopied(true);

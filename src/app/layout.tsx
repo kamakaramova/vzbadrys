@@ -3,9 +3,10 @@ import "./globals.css";
 import CookieBanner from "@/components/CookieBanner";
 import AuthBootstrap from "@/components/AuthBootstrap";
 import YandexMetrika from "@/components/YandexMetrika";
+import { SITE_URL } from "@/lib/siteUrl";
 
 export const metadata: Metadata = {
-  metadataBase: new URL("https://xn--80abckmj9cj3h.xn--p1ai"),
+  metadataBase: new URL(SITE_URL),
   title: "взБАДрись — магазин БАДов",
   description: "Качественные БАДы с документами. Магний, цинк и селен. Доставка по России.",
   keywords: "БАДы, магний, цинк, селен, нутрициолог, витамины, здоровье",
