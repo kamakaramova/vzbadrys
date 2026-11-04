@@ -17,9 +17,9 @@ const articles = [
     tag: "Цинк и селен",
     date: "4 ноября 2026",
     readTime: "10 мин",
-    image: "/products/selen-tsink/1.png",
-    imageAlt: "Комплекс Цинк и Селен",
-    imageClassName: "object-contain p-5",
+    image: "/blog/zinc-selenium-cover.jpg",
+    imageAlt: "Цинк и селен в продуктах питания",
+    imageClassName: "object-cover",
   },
   {
     slug: "kakoy-magniy-vybrat",
