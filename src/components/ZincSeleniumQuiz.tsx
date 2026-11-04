@@ -25,12 +25,12 @@ const results: Record<ZincSeleniumQuizLevel, { title: string; text: string; tone
   },
   medium: {
     title: "Цинка и селена может не хватать",
-    text: "У вас есть несколько факторов, которые могут снижать поступление или усвоение этих микроэлементов. Можно рассмотреть комплекс «Цинк + Селен» курсом на один месяц.",
+    text: "По вашим ответам есть несколько признаков, что цинка и селена может не хватать. Можно рассмотреть комплекс «Цинк + Селен» курсом на один месяц.",
     tone: "#c06f43",
   },
   high: {
     title: "Вероятность нехватки выше",
-    text: "По вашим ответам совпало сразу несколько факторов. Можно рассмотреть комплекс «Цинк + Селен» курсом на один месяц, если вы не получаете цинк и селен из других добавок.",
+    text: "У вас совпало сразу несколько признаков нехватки цинка и селена. Я бы рассмотрела комплекс курсом на один месяц, если этих минералов нет в других ваших добавках.",
     tone: "#a9523b",
   },
 };
@@ -142,7 +142,7 @@ export default function ZincSeleniumQuiz({ fallbackProduct }: ZincSeleniumQuizPr
           <div>
             <p className="text-xs font-bold uppercase tracking-[0.16em] text-[#E8845A]">Тест нутрициолога · 2 минуты</p>
             <h2 id="zinc-quiz-title" className="mt-3 max-w-2xl text-2xl font-extrabold leading-tight sm:text-3xl">Может ли вам не хватать цинка и селена?</h2>
-            <p className="mt-4 max-w-2xl leading-relaxed text-[#625954]">Пять простых вопросов помогут оценить рацион и факторы риска. В конце вы получите понятный результат без попытки поставить диагноз по одному симптому.</p>
+            <p className="mt-4 max-w-2xl leading-relaxed text-[#625954]">Пять простых вопросов помогут посмотреть на питание и симптомы вместе. В конце вы получите понятный результат и мой комментарий.</p>
             <button type="button" onClick={start} className="mt-7 inline-flex min-h-12 items-center justify-center gap-2 rounded-full bg-[#E8845A] px-6 text-sm font-bold text-white shadow-[0_10px_25px_rgba(232,132,90,0.24)] transition hover:bg-[#d8734b] focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#E8845A]">
               Начать тест <ArrowRight size={17} aria-hidden="true" />
             </button>

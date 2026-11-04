@@ -16,7 +16,7 @@ const articles = [
     excerpt: "Пройдите короткий тест и узнайте, как цинк и селен связаны с иммунитетом, кожей, волосами, пищеварением и щитовидной железой.",
     tag: "Цинк и селен",
     date: "4 ноября 2026",
-    readTime: "10 мин",
+    readTime: "7 мин",
     image: "/blog/zinc-selenium-cover.jpg",
     imageAlt: "Цинк и селен в продуктах питания",
     imageClassName: "object-cover",
