@@ -6,6 +6,11 @@ import Link from "next/link";
 
 const SALE_START = Date.parse("2026-11-13T00:00:00+03:00");
 const SALE_END = Date.parse("2026-11-16T00:00:00+03:00");
+// Обычные цены трёх отдельных баночек в каталоге на 4 ноября 2026 года.
+const REGULAR_INDIVIDUAL_TOTAL = 715 + 901 + 868;
+const SALE_BUNDLE_PRICE = 1499;
+const BUNDLE_SAVINGS = REGULAR_INDIVIDUAL_TOTAL - SALE_BUNDLE_PRICE;
+const rubles = (amount: number) => `${amount.toLocaleString("ru-RU")} ₽`;
 
 function timeParts(milliseconds: number) {
   const seconds = Math.max(0, Math.ceil(milliseconds / 1000));
@@ -57,9 +62,9 @@ export default function BlackFridayHomeHero() {
                   {phase === "active" ? "Цена набора в дни акции" : "Цена набора с 13 ноября"}
                 </p>
                 <div className="mt-1 flex flex-wrap items-baseline gap-x-4 gap-y-1">
-                  <strong className="text-[clamp(2.5rem,4vw,3.4rem)] font-black tracking-[-0.06em] text-[#f8d933]">1 499 ₽</strong>
-                  <span className="text-lg font-semibold text-[#9c9b95] line-through">1 990 ₽</span>
-                  <span className="rounded border border-[#f8d933]/60 px-2 py-1 text-xs font-bold text-[#f8d933]">Экономия 491 ₽</span>
+                  <strong className="text-[clamp(2.5rem,4vw,3.4rem)] font-black tracking-[-0.06em] text-[#f8d933]">{rubles(SALE_BUNDLE_PRICE)}</strong>
+                  <span className="flex flex-col text-[#9c9b95]"><span className="text-[10px] font-semibold uppercase tracking-wide">Обычная цена по отдельности</span><span className="text-lg font-semibold line-through">{rubles(REGULAR_INDIVIDUAL_TOTAL)}</span></span>
+                  <span className="rounded border border-[#f8d933]/60 px-2 py-1 text-xs font-bold text-[#f8d933]">Экономия {rubles(BUNDLE_SAVINGS)}</span>
                 </div>
                 <p className="mt-3 text-sm text-[#e7e5dc]">
                   На остальные товары — <strong className="text-[#f8d933]">−20% в дни акции</strong>
@@ -93,7 +98,7 @@ export default function BlackFridayHomeHero() {
             {phase !== "ended" && (
               <>
                 <div className="absolute -bottom-2 -left-8 flex h-24 w-24 -rotate-12 flex-col items-center justify-center rounded-full bg-[#f8d933] text-[#101011] shadow-xl sm:-left-12 sm:h-32 sm:w-32">
-                  <strong className="text-xl font-black tracking-tighter sm:text-3xl">−491 ₽</strong>
+                  <strong className="text-xl font-black tracking-tighter sm:text-3xl">−{rubles(BUNDLE_SAVINGS)}</strong>
                   <span className="text-[9px] font-extrabold uppercase tracking-wide sm:text-[10px]">на набор</span>
                 </div>
                 <div className="absolute -bottom-4 -right-5 flex h-20 w-20 rotate-12 flex-col items-center justify-center rounded-full bg-[#e8845a] text-white shadow-xl sm:-right-8 sm:h-24 sm:w-24">
