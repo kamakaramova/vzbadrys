@@ -28,6 +28,8 @@ type CollagenSurveyForm = {
 const COLLAGEN_BENEFITS = ["Кожа", "Волосы", "Ногти", "Суставы", "Комплексный эффект"];
 const COLLAGEN_FLAVORS = ["Нейтральный", "Манго", "Гранат", "Вишня", "Чёрная смородина", "Апельсин", "Шиповник", "Женьшень", "Персик", "Киви"];
 const COLLAGEN_FORMATS = ["Порошок в банке", "Порошок в стиках", "Питьевой в стиках", "Желе в банке", "Желе в стиках"];
+// Опрос завершён. Сохраняем прошлые ответы и статистику, но больше не показываем покупателям.
+const COLLAGEN_SURVEY_ENABLED = false;
 
 const STATUS_COLORS: Record<Order["status"], string> = {
   processing: "bg-yellow-100 text-yellow-700",
@@ -90,7 +92,7 @@ export default function AccountPage() {
   }, []);
 
   useEffect(() => {
-    if (typeof window !== "undefined" && new URLSearchParams(window.location.search).get("survey") === "collagen") {
+    if (COLLAGEN_SURVEY_ENABLED && typeof window !== "undefined" && new URLSearchParams(window.location.search).get("survey") === "collagen") {
       setTab("survey");
     }
   }, []);
@@ -119,7 +121,7 @@ export default function AccountPage() {
   }, [user]);
 
   useEffect(() => {
-    if (!user || !supabase) return;
+    if (!COLLAGEN_SURVEY_ENABLED || !user || !supabase) return;
     let active = true;
     void (async () => {
       setSurveyLoading(true);
@@ -335,7 +337,7 @@ export default function AccountPage() {
     { key: "profile",   label: "Профиль",     icon: <User size={16} /> },
     { key: "bonuses",   label: "Бонусы",      icon: <Gift size={16} /> },
     { key: "reviews",   label: "Отзывы",      icon: <Star size={16} /> },
-    { key: "survey",    label: "Голосование", icon: <Star size={16} /> },
+    ...(COLLAGEN_SURVEY_ENABLED ? [{ key: "survey" as const, label: "Голосование", icon: <Star size={16} /> }] : []),
   ];
 
   return (
@@ -528,7 +530,7 @@ export default function AccountPage() {
               )}
 
               {/* ── ГОЛОСОВАНИЕ ── */}
-              {tab === "survey" && surveyContent()}
+              {COLLAGEN_SURVEY_ENABLED && tab === "survey" && surveyContent()}
 
               {/* ── ИЗБРАННОЕ ── */}
               {tab === "favorites" && (
@@ -769,7 +771,7 @@ export default function AccountPage() {
           </div>
         </div>
       </main>
-      {surveyPopupOpen && <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"><div className="w-full max-w-2xl">{surveyContent(true)}</div></div>}
+      {COLLAGEN_SURVEY_ENABLED && surveyPopupOpen && <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"><div className="w-full max-w-2xl">{surveyContent(true)}</div></div>}
       <Footer />
     </>
   );
