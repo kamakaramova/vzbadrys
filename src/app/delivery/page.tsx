@@ -1,5 +1,6 @@
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
+import { getOzonPvzDeliveryPrice } from "@/lib/deliveryPricing";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
@@ -8,6 +9,8 @@ export const metadata: Metadata = {
 };
 
 export default function DeliveryPage() {
+  const ozonDeliveryPrice = getOzonPvzDeliveryPrice();
+
   return (
     <>
       <Header />
@@ -42,37 +45,10 @@ export default function DeliveryPage() {
                     icon: "🟠",
                     title: "Ozon — Пункт выдачи",
                     time: "3–7 рабочих дней",
-                    price: "200 ₽",
-                    desc: "Самый выгодный вариант. Пункты выдачи Ozon есть практически в каждом городе. Выберите удобный ПВЗ и заберите в любое время.",
+                    price: `${ozonDeliveryPrice} ₽ · Бесплатно от 3 000 ₽`,
+                    desc: "Укажите адрес удобного ПВЗ Ozon и номер телефона, который привязан к вашему аккаунту Ozon. После отправки посылка появится в личном кабинете.",
                     badge: "Выгоднее всего",
                     badgeColor: "bg-[#FDDCCA] text-[#8b4513]",
-                  },
-                  {
-                    icon: "📦",
-                    title: "СДЭК — Пункт выдачи",
-                    time: "2–5 рабочих дней",
-                    price: "от 300 ₽ · Бесплатно от 3 000 ₽",
-                    desc: "Широкая сеть пунктов выдачи. Укажите адрес удобного ПВЗ при оформлении заказа.",
-                    badge: "Популярно",
-                    badgeColor: "bg-[#FDDCCA] text-[#8b4513]",
-                  },
-                  {
-                    icon: "⚡",
-                    title: "Яндекс — Пункт выдачи",
-                    time: "3–6 рабочих дней",
-                    price: "от 300 ₽ · Бесплатно от 3 000 ₽",
-                    desc: "Доставка в пункты выдачи Яндекса. Отправляем из Казани.",
-                    badge: null,
-                    badgeColor: "",
-                  },
-                  {
-                    icon: "🚚",
-                    title: "Почта России",
-                    time: "5–14 рабочих дней",
-                    price: "от 250 ₽ · Бесплатно от 3 000 ₽",
-                    desc: "Доставка в доступные населённые пункты России.",
-                    badge: null,
-                    badgeColor: "",
                   },
                 ].map((item, i) => (
                   <div key={i} className="bg-white border border-[#f0e8e0] rounded-3xl p-6 relative">
@@ -98,7 +74,7 @@ export default function DeliveryPage() {
               <div className="mt-6 bg-gradient-to-r from-[#FDDCCA]/60 to-[#fdf8f5] rounded-3xl p-6 border border-[#f5d5c0]">
                 <p className="text-2xl mb-2">🎁</p>
                 <p className="font-bold text-base mb-1">Бесплатная доставка от 3 000 ₽</p>
-                <p className="text-sm text-[#6b6b6b]">Самовывоз в Казани бесплатный при любой сумме заказа. При заказе от 3 000 ₽ доставка в пункты выдачи Ozon, СДЭК, Яндекс и Почтой России также бесплатна.</p>
+                <p className="text-sm text-[#6b6b6b]">Самовывоз в Казани бесплатный при любой сумме заказа. При заказе от 3 000 ₽ доставка в пункт выдачи Ozon также бесплатна.</p>
               </div>
             </div>
 
@@ -167,7 +143,7 @@ export default function DeliveryPage() {
                 { n: "1", t: "Оформляете заказ", d: "Добавляете товары в корзину и заполняете данные для доставки." },
                 { n: "2", t: "Переходите к оплате", d: "Нажимаете «Оплатить» — открывается защищённая платёжная страница Ozon Pay." },
                 { n: "3", t: "Оплачиваете картой или СБП", d: "Вводите данные карты или сканируете QR-код. Платёж проходит через банк по протоколу 3-D Secure." },
-                { n: "4", t: "Получаете подтверждение", d: "На email приходит электронный чек (54-ФЗ), а после отправки — трек-номер." },
+                { n: "4", t: "Получаете подтверждение", d: "На email приходит электронный чек (54-ФЗ), а после отправки заказ появляется в личном кабинете Ozon." },
               ].map((s, i) => (
                 <div key={i} className="bg-white border border-[#f0e8e0] rounded-3xl p-6">
                   <div className="w-9 h-9 rounded-full bg-[#E8845A] text-white font-bold flex items-center justify-center mb-3">{s.n}</div>
@@ -210,7 +186,7 @@ export default function DeliveryPage() {
             <h2 className="text-2xl font-bold mb-6">Частые вопросы</h2>
             <div className="grid md:grid-cols-2 gap-4">
               {[
-                { q: "Как отследить посылку?", a: "После отправки вы получите трек-номер на email. Отслеживание доступно на сайте выбранной службы доставки — Ozon, СДЭК, Яндекс или Почты России." },
+                { q: "Как отследить посылку?", a: "После отправки заказ появится в вашем личном кабинете Ozon. Там можно следить за статусом доставки до пункта выдачи." },
                 { q: "Можно ли вернуть товар?", a: "Да, в течение 14 дней с момента получения при условии сохранности упаковки и товарного вида. Исключение: вскрытые упаковки БАДов." },
                 { q: "Что делать, если пришёл повреждённый товар?", a: "Сфотографируйте упаковку и напишите нам в течение 48 часов. Мы решим вопрос в кратчайшие сроки." },
                 { q: "Можно ли забрать самовывозом?", a: "Да, заказ можно забрать в Казани. Адрес и условия указаны при оформлении заказа." },
