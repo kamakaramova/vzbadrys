@@ -339,7 +339,7 @@ export default function CheckoutPage() {
 
           <div className="grid lg:grid-cols-3 gap-8">
             {/* Форма — левая часть */}
-            <div className="lg:col-span-2 space-y-6">
+            <div className="min-w-0 lg:col-span-2 space-y-6">
 
               {/* Контактные данные */}
               <div className="bg-white rounded-3xl border border-[#f0e8e0] p-6">
@@ -514,7 +514,7 @@ export default function CheckoutPage() {
             </div>
 
             {/* Правая часть — итог */}
-            <div className="lg:col-span-1">
+            <div className="min-w-0 lg:col-span-1">
               <div className="bg-white rounded-3xl border border-[#f0e8e0] p-6 sticky top-24">
                 <h2 className="font-bold text-lg mb-4 flex items-center gap-2">
                   <Package size={18} className="text-[#E8845A]" />
