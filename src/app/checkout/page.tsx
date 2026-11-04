@@ -25,6 +25,8 @@ const DEFAULT_DELIVERY_SETTINGS: PublicDeliverySettings = {
   pochtaWidgetId: 62722,
 };
 
+const CUSTOMER_DELIVERY_METHODS: DeliveryMethod[] = ["pickup", "ozon_pvz"];
+
 // Приводит ввод к российскому формату: 8… или 9… автоматически становятся +7…
 function formatPhone(input: string): string {
   let d = input.replace(/\D/g, "");
@@ -143,9 +145,9 @@ export default function CheckoutPage() {
           const settings = data as PublicDeliverySettings;
           setDeliverySettings(settings);
           setDelivery((current) =>
-            current !== "sdek_pvz" && settings.enabled[current]
+            CUSTOMER_DELIVERY_METHODS.includes(current) && settings.enabled[current]
               ? current
-              : (["pickup", "yandex_pvz", "ozon_pvz", "pochta"] as DeliveryMethod[])
+              : CUSTOMER_DELIVERY_METHODS
                 .find((method) => settings.enabled[method]) ?? "pickup"
           );
         }
@@ -173,9 +175,10 @@ export default function CheckoutPage() {
     { id: "ozon_pvz", label: "Ozon — Пункт выдачи", desc: "Укажите адрес удобного ПВЗ Ozon", price: discountedSubtotal >= 3000 ? 0 : ozonPvzPrice, days: "3–7 дней", isPvz: true },
     { id: "pochta", label: "Почта России", desc: "В доступные регионы России", price: discountedSubtotal >= 3000 ? 0 : 250, days: "5–14 дней", isPvz: false },
   ];
-  // СДЭК не предлагаем как самостоятельный способ доставки.
+  // Покупателям сейчас доступны только самовывоз и доставка в ПВЗ Ozon.
+  // Старые способы сохраняем в типах и обработчиках для истории прежних заказов.
   const deliveryOptions = allDeliveryOptions.filter(
-    (option) => option.id !== "sdek_pvz" && deliverySettings.enabled[option.id]
+    (option) => CUSTOMER_DELIVERY_METHODS.includes(option.id) && deliverySettings.enabled[option.id]
   );
 
   const selectedDelivery = deliveryOptions.find((d) => d.id === delivery) ?? allDeliveryOptions[0];

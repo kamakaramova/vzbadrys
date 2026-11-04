@@ -558,6 +558,7 @@ export default function AccountPage() {
                                 {product.name}
                               </Link>
                               <p className="text-xs text-[#aaa] mt-0.5">{product.weight}</p>
+                              <p className="mt-1 text-[9px] leading-snug text-[#9a918c]">БАД — не является лекарственным средством.</p>
                             </div>
                             <div className="flex items-center justify-between mt-2">
                               <span className="font-bold text-[#E8845A]">{product.price.toLocaleString("ru-RU")} ₽</span>

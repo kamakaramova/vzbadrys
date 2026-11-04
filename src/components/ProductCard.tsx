@@ -75,7 +75,8 @@ export default function ProductCard({ product }: { product: Product }) {
         <a href={`/product/${product.id}`}>
           <h3 className="font-semibold text-sm text-[#1a1a1a] hover:text-[#E8845A] transition-colors leading-snug mb-1">{product.name}</h3>
         </a>
-        <p className="text-xs text-[#aaa] mb-3">{product.weight}</p>
+        <p className="text-xs text-[#aaa] mb-1">{product.weight}</p>
+        <p className="mb-3 text-[10px] leading-snug text-[#9a918c]">БАД — не является лекарственным средством.</p>
         <div className="flex items-center justify-between">
           <div>
             <span className="font-bold text-lg text-[#1a1a1a]">{product.price.toLocaleString("ru-RU")} ₽</span>

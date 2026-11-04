@@ -39,6 +39,7 @@ export default function SaleProductGrids() {
                 </div>
                 <div className="p-4">
                   <p className="font-bold text-sm leading-snug mb-2 group-hover:text-[#E8845A] transition-colors line-clamp-2">{product.name}</p>
+                  <p className="mb-3 text-[10px] leading-snug text-[#9a918c]">БАД — не является лекарственным средством.</p>
                   <div className="flex items-baseline gap-2">
                     <span className="text-lg font-black text-[#E8845A]">{product.price.toLocaleString("ru-RU")} ₽</span>
                     {product.oldPrice && (
@@ -74,6 +75,7 @@ export default function SaleProductGrids() {
                 </div>
                 <div className="p-4">
                   <p className="font-bold text-sm leading-snug mb-2 group-hover:text-[#E8845A] transition-colors line-clamp-2">{product.name}</p>
+                  <p className="mb-3 text-[10px] leading-snug text-[#9a918c]">БАД — не является лекарственным средством.</p>
                   <span className="text-lg font-black text-[#E8845A]">{product.price.toLocaleString("ru-RU")} ₽</span>
                 </div>
               </Link>

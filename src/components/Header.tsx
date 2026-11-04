@@ -21,9 +21,23 @@ export default function Header() {
 
   return (
     <header className="sticky top-0 z-50 bg-white border-b border-[#f0e8e0]">
+      {/* Доставка в Ozon — самая верхняя плашка */}
+      <div
+        className="relative overflow-hidden bg-[#2563EB] px-4 py-2 text-center text-xs font-extrabold text-white sm:py-2.5 sm:text-sm"
+        style={{
+          backgroundImage: "repeating-linear-gradient(135deg, transparent 0, transparent 18px, rgba(255,255,255,0.08) 18px, rgba(255,255,255,0.08) 34px)",
+        }}
+      >
+        <Link href="/delivery" className="relative inline-flex items-center justify-center gap-1.5 rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/80">
+          <span>Доставляем заказы в ПВЗ</span>
+          <span className="font-black tracking-wide">Ozon</span>
+        </Link>
+      </div>
+
       {/* Верхняя полоска */}
       <div className="bg-[#FDDCCA] py-2 px-4 text-center text-[11px] leading-4 sm:text-xs font-medium text-[#8b4513]">
-        Скидка 10% на первый заказ по промокоду ВЗБАДРИСЬ10&nbsp;&nbsp;🌿&nbsp;&nbsp;Бесплатная доставка от 3 000 ₽
+        <span className="sm:hidden">−10% на первый заказ · ВЗБАДРИСЬ10</span>
+        <span className="hidden sm:inline">Скидка 10% на первый заказ по промокоду ВЗБАДРИСЬ10&nbsp;&nbsp;🌿&nbsp;&nbsp;Бесплатная доставка от 3 000 ₽</span>
       </div>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -75,7 +89,7 @@ export default function Header() {
               {cartOpen && (
                 <>
                   <div className="fixed inset-0 z-40" onClick={() => setCartOpen(false)} />
-                  <div className="fixed inset-x-3 top-[5.25rem] max-h-[calc(100dvh-6rem)] overflow-y-auto bg-white rounded-3xl shadow-2xl border border-[#f0e8e0] z-50 sm:absolute sm:inset-x-auto sm:right-0 sm:top-full sm:mt-2 sm:w-80 sm:max-h-none sm:overflow-hidden">
+                  <div className="fixed inset-x-3 top-[8.5rem] max-h-[calc(100dvh-9.25rem)] overflow-y-auto bg-white rounded-3xl shadow-2xl border border-[#f0e8e0] z-50 sm:absolute sm:inset-x-auto sm:right-0 sm:top-full sm:mt-2 sm:w-80 sm:max-h-none sm:overflow-hidden">
                     <div className="px-5 py-4 border-b border-[#f0e8e0] flex items-center justify-between">
                       <p className="font-bold text-base">Корзина</p>
                       <button onClick={() => setCartOpen(false)}><X size={18} className="text-[#aaa] hover:text-[#1a1a1a]" /></button>
@@ -162,7 +176,7 @@ export default function Header() {
 
       {/* Мобильное меню */}
       {mobileOpen && (
-        <div className="md:hidden bg-white border-t border-[#f0e8e0] px-4 py-4 flex flex-col gap-3">
+        <div className="md:hidden max-h-[calc(100dvh-8.5rem)] overflow-y-auto bg-white border-t border-[#f0e8e0] px-4 py-4 flex flex-col gap-3">
           <Link href="/catalog?cat=bads" className="py-2 text-sm font-medium" onClick={() => setMobileOpen(false)}>БАДы</Link>
           <Link href="/blog" className="py-2 text-sm font-medium" onClick={() => setMobileOpen(false)}>Статьи</Link>
           <Link href="/delivery" className="py-2 text-sm font-medium" onClick={() => setMobileOpen(false)}>Доставка</Link>
