@@ -15,6 +15,9 @@ export default function ProductPage() {
   const related = product
     ? products.filter((p) => p.id !== product.id && p.category === "bads" && p.inStock).slice(0, 3)
     : [];
+  const bundleProducts = product?.bundleComponents
+    ?.map(({ productId }) => products.find((item) => item.id === productId))
+    .filter((item): item is NonNullable<typeof item> => Boolean(item)) ?? [];
 
   if (!ready) {
     return (
@@ -48,7 +51,7 @@ export default function ProductPage() {
   return (
     <>
       <Header />
-      <ProductClient product={product} related={related} />
+      <ProductClient product={product} related={related} bundleProducts={bundleProducts} />
       <Footer />
     </>
   );

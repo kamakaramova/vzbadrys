@@ -1,6 +1,7 @@
 "use client";
 import { useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { Product } from "@/lib/products";
 import { productImagePaths } from "@/lib/productImages";
 import { ShoppingCart, Heart, FileText, ChevronLeft, ChevronRight, Check, Shield, AlertCircle, Copy, Share2, ExternalLink } from "lucide-react";
@@ -13,9 +14,11 @@ type Tab = "description" | "composition" | "howto" | "docs" | "reviews";
 export default function ProductClient({
   product,
   related,
+  bundleProducts,
 }: {
   product: Product;
   related: Product[];
+  bundleProducts: Product[];
 }) {
   const [activeTab, setActiveTab] = useState<Tab>("description");
   const [imageIndex, setImageIndex] = useState(0);
@@ -338,18 +341,43 @@ export default function ProductClient({
               <p className="text-[#1a1a1a] leading-relaxed text-base">{product.description}</p>
             </div>
 
-            {/* Что даёт */}
-            <div>
-              <h3 className="text-xl font-bold mb-6">{product.bundleComponents?.length ? "Что входит и чем отличаются" : "Что даёт регулярный приём"}</h3>
-              <div className="grid sm:grid-cols-2 gap-4">
-                {product.benefits.map((b, i) => (
-                  <div key={i} className="bg-[#fdf8f5] rounded-2xl p-5">
-                    <p className="font-semibold text-sm text-[#E8845A] mb-2">{b.title}</p>
-                    <p className="text-sm text-[#6b6b6b] leading-relaxed">{b.desc}</p>
-                  </div>
+            {bundleProducts.length > 0 ? (
+              <div className="space-y-8">
+                {bundleProducts.map((item) => (
+                  <section key={item.id} className="rounded-2xl border border-[#f0e8e0] bg-[#fffaf7] p-5 sm:p-6">
+                    <h3 className="mb-3 text-xl font-bold">{item.name}</h3>
+                    <p className="mb-5 text-sm leading-relaxed text-[#6b6b6b]">{item.description}</p>
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      {item.benefits.map((benefit) => (
+                        <div key={benefit.title} className="rounded-xl bg-white p-4">
+                          <p className="mb-1 font-semibold text-[#E8845A]">{benefit.title}</p>
+                          <p className="text-sm leading-relaxed text-[#6b6b6b]">{benefit.desc}</p>
+                        </div>
+                      ))}
+                    </div>
+                    <p className="mt-5 mb-2 text-sm font-semibold">Когда может пригодиться</p>
+                    <ul className="space-y-1 text-sm text-[#6b6b6b]">
+                      {item.whoNeeds.map((need) => <li key={need}>• {need}</li>)}
+                    </ul>
+                    <Link href={`/product/${item.id}`} className="mt-5 inline-block text-sm font-semibold text-[#E8845A] underline underline-offset-4 hover:text-[#d4703f]">
+                      Открыть карточку {item.shortName}
+                    </Link>
+                  </section>
                 ))}
               </div>
-            </div>
+            ) : (
+              <div>
+                <h3 className="text-xl font-bold mb-6">Что даёт регулярный приём</h3>
+                <div className="grid sm:grid-cols-2 gap-4">
+                  {product.benefits.map((b, i) => (
+                    <div key={i} className="bg-[#fdf8f5] rounded-2xl p-5">
+                      <p className="font-semibold text-sm text-[#E8845A] mb-2">{b.title}</p>
+                      <p className="text-sm text-[#6b6b6b] leading-relaxed">{b.desc}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
 
             {/* Кому подойдёт */}
             <div className="bg-gradient-to-br from-[#FDDCCA]/40 to-[#fdf8f5] rounded-2xl p-6">
@@ -376,7 +404,7 @@ export default function ProductClient({
               <p className="text-xs font-semibold text-[#aaa] uppercase tracking-widest mb-2">Полный состав</p>
               <p className="text-[#1a1a1a] leading-relaxed">{product.composition}</p>
             </div>
-            <h3 className="text-lg font-bold">Почему именно такие формы</h3>
+            <h3 className="text-lg font-bold">{product.bundleComponents?.length ? "Состав каждой баночки" : "Почему именно такие формы"}</h3>
             <div className="flex flex-col gap-4">
               {product.compositionDetails.map((c, i) => (
                 <div key={i} className="border border-[#f0e8e0] rounded-2xl p-5">
@@ -433,7 +461,15 @@ export default function ProductClient({
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
             {related.map((p) => (
               <Link key={p.id} href={`/product/${p.id}`} className="block bg-white rounded-3xl border border-[#f0e8e0] p-5 hover:shadow-lg transition-all hover:-translate-y-1">
-                <div className="text-5xl text-center mb-3">{p.category === "bads" ? "💊" : "🌱"}</div>
+                <div className="relative mb-4 aspect-[4/3] overflow-hidden rounded-2xl bg-[#fdf8f5]">
+                  <Image
+                    src={p.images[0] || productImagePaths(p.id, 1)[0]}
+                    alt=""
+                    fill
+                    sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
+                    className="object-contain"
+                  />
+                </div>
                 <p className="font-semibold text-sm mb-1">{p.name}</p>
                 <p className="text-xs text-[#aaa] mb-3">{p.weight}</p>
                 <p className="font-bold text-[#E8845A]">{p.price.toLocaleString("ru-RU")} ₽</p>
