@@ -1,6 +1,7 @@
 // Обновляет только редакционные поля существующей карточки набора в production.
 // Запуск на VPS с уже загруженным окружением: node scripts/update-health-bundle-copy.mjs --apply
 import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { isDeepStrictEqual } from "node:util";
 import { createClient } from "@supabase/supabase-js";
 import ts from "typescript";
 
@@ -25,7 +26,7 @@ if (row.data?.sku !== updatedProduct.sku) throw new Error("Артикул наб
 
 const editorialFields = ["description", "compositionDetails", "benefits", "whoNeeds"];
 const changedFields = editorialFields.filter((field) =>
-  JSON.stringify(row.data[field]) !== JSON.stringify(updatedProduct[field]));
+  !isDeepStrictEqual(row.data[field], updatedProduct[field]));
 console.log(`bundle=${id} changed_fields=${changedFields.join(",") || "none"}`);
 if (!process.argv.includes("--apply") || changedFields.length === 0) {
   console.log("Проверка завершена без записи. Для обновления передайте --apply.");
@@ -47,7 +48,7 @@ const { data: saved, error: writeError } = await db.from("products")
   .eq("id", id).eq("updated_at", row.updated_at)
   .select("id,data").maybeSingle();
 if (writeError || !saved) throw new Error("Карточка изменилась с момента чтения либо запись не удалась");
-if (editorialFields.some((field) => JSON.stringify(saved.data[field]) !== JSON.stringify(updatedProduct[field]))) {
+if (editorialFields.some((field) => !isDeepStrictEqual(saved.data[field], updatedProduct[field]))) {
   throw new Error("Обновлённый текст не прошёл проверку");
 }
 console.log(`updated=${saved.id} fields=${changedFields.join(",")}`);
