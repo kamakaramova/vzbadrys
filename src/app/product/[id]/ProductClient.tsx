@@ -461,13 +461,13 @@ export default function ProductClient({
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
             {related.map((p) => (
               <Link key={p.id} href={`/product/${p.id}`} className="block bg-white rounded-3xl border border-[#f0e8e0] p-5 hover:shadow-lg transition-all hover:-translate-y-1">
-                <div className="relative mb-4 aspect-[4/3] overflow-hidden rounded-2xl bg-[#fdf8f5]">
+                <div className="relative mb-4 aspect-[4/5] overflow-hidden rounded-2xl bg-[#fdf8f5]">
                   <Image
                     src={productMainImage(p)}
                     alt=""
                     fill
                     sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
-                    className="object-contain"
+                    className="object-cover"
                   />
                 </div>
                 <p className="font-semibold text-sm mb-1">{p.name}</p>
