@@ -8,8 +8,9 @@ type SaveResult = { ok: boolean; error?: string };
 const PRODUCT_CACHE_KEY = "vzbadrys:last-known-products";
 
 function mergeWithCatalogue(savedProducts: Product[]): Product[] {
+  const activeSavedProducts = savedProducts.filter((product) => product.category === "bads");
   const savedById = new Map<string, Product>(
-    savedProducts.map((product): [string, Product] => [product.id, product]),
+    activeSavedProducts.map((product): [string, Product] => [product.id, product]),
   );
   const mergedProducts = defaultProducts.map((catalogueProduct) => {
     const savedProduct = savedById.get(catalogueProduct.id);
@@ -24,7 +25,7 @@ function mergeWithCatalogue(savedProducts: Product[]): Product[] {
         }
       : catalogueProduct;
   });
-  const customProducts = savedProducts.filter(
+  const customProducts = activeSavedProducts.filter(
     (product) => !defaultProducts.some((catalogueProduct) => catalogueProduct.id === product.id),
   );
   return withBundleAvailability([...mergedProducts, ...customProducts]);
@@ -105,7 +106,7 @@ export const useProductStore = create<ProductStore>((set, get) => ({
       const payload = await response.json();
       if (response.ok && Array.isArray(payload.products)) {
         const products = mergeWithCatalogue(payload.products as Product[]);
-        cacheProducts(payload.products as Product[]);
+        cacheProducts((payload.products as Product[]).filter((product) => product.category === "bads"));
         set({ products, initialized: true, loading: false });
         return;
       }

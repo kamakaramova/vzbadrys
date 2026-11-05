@@ -16,3 +16,11 @@ This version has breaking changes — APIs, conventions, and file structure may 
   project SSH key works.
 - Whenever a deployment or maintenance problem reveals a corrected command,
   port, path, or recovery step, update `DEPLOYMENT_RUNBOOK.md` in the same task.
+
+## Product assortment
+
+- «взБАДрись» sells only dietary supplements (БАДы).
+- Seeds are discontinued, are not sold, and are not planned for the future.
+- Never add seed products, a seed category, seed cards, navigation links, SEO
+  pages, promotions, or checkout support. Legacy seed data may be retained only
+  when required for historical orders and must never surface as an active item.

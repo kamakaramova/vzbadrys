@@ -9,19 +9,20 @@ import type { Product } from "@/lib/products";
 let lastKnownProducts: unknown[] | null = null;
 
 // Публичное чтение всех товаров (используется сайтом как запасной путь).
-export async function GET(req: NextRequest) {
+export async function GET() {
   const db = getServerSupabase();
   if (!db) return NextResponse.json({ error: "not_configured" }, { status: 503 });
   try {
     const { data, error } = await db.from("products").select("data");
     if (error) throw error;
     const products = withBundleAvailability((data ?? []).map((r) => r.data as Product));
-    lastKnownProducts = products;
-    return NextResponse.json({ products: isAdminAuthorized(req) ? products : products.filter((product) => product?.category === "bads") }, { headers: { "cache-control": "no-store" } });
+    const activeProducts = products.filter((product) => product?.category === "bads");
+    lastKnownProducts = activeProducts;
+    return NextResponse.json({ products: activeProducts }, { headers: { "cache-control": "no-store" } });
   } catch (error) {
     if (lastKnownProducts) {
       return NextResponse.json(
-        { products: isAdminAuthorized(req) ? lastKnownProducts : lastKnownProducts.filter((product) => (product as { category?: string })?.category === "bads"), stale: true },
+        { products: lastKnownProducts, stale: true },
         { headers: { "cache-control": "no-store", "x-vzbadrys-catalog-source": "last-known-good" } },
       );
     }
@@ -50,7 +51,8 @@ export async function POST(req: NextRequest) {
   const now = new Date().toISOString();
 
   if (body.op === "upsert" && body.product) {
-    const p = body.product as { id: string };
+    const p = body.product as { id: string; category?: string };
+    if (p.category !== "bads") return NextResponse.json({ error: "Разрешены только товары категории БАД" }, { status: 400 });
     const { data: current } = await db.from("products").select("data").eq("id", p.id).maybeSingle();
     const currentProduct = (current?.data ?? {}) as Record<string, unknown>;
     const nextProduct = {
@@ -95,10 +97,11 @@ export async function POST(req: NextRequest) {
   }
 
   if (body.op === "seed" && Array.isArray(body.products)) {
-    const ids = (body.products as { id: string }[]).map((product) => product.id);
+    const activeProducts = (body.products as { id: string; category?: string }[]).filter((product) => product.category === "bads");
+    const ids = activeProducts.map((product) => product.id);
     const { data: currentRows } = await db.from("products").select("id,data").in("id", ids);
     const currentById = new Map((currentRows ?? []).map((row) => [String(row.id), (row.data ?? {}) as Record<string, unknown>]));
-    const rows = (body.products as { id: string }[]).map((product) => {
+    const rows = activeProducts.map((product) => {
       const currentProduct = currentById.get(product.id) ?? {};
       return {
         id: product.id,

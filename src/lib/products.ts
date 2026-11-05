@@ -39,7 +39,7 @@ export interface Product {
   weightVariants?: WeightVariant[];
 }
 
-export const products: Product[] = [
+const legacyCatalogue: Product[] = [
   {
     id: "magniy-bisglitinat",
     sku: "VZB-MGB-120",
@@ -590,10 +590,15 @@ export const products: Product[] = [
   },
 ];
 
+// «взБАДрись» больше не продаёт семена и не планирует возвращать их в
+// ассортимент. Старые описания пока остаются только как исторические данные,
+// но ни один публичный или административный каталог не должен их экспортировать.
+export const products: Product[] = legacyCatalogue.filter((product) => product.category === "bads");
+
 export const getProductById = (id: string) =>
   products.find((p) => p.id === id);
 
-export const getProductsByCategory = (category: "bads" | "seeds") =>
+export const getProductsByCategory = (category: "bads") =>
   products.filter((p) => p.category === category);
 
 export const getProducts = () => products;

@@ -94,7 +94,9 @@ export const useCartStore = create<CartStore>()(
     }),
     {
       name: "vzbadrys-cart",
-      version: 3,
+      // Версия 4 повторно прогоняет миграцию у всех покупателей и удаляет из
+      // старых сохранённых корзин семена, которые больше не продаются.
+      version: 4,
       migrate: (persistedState) => {
         const state = persistedState as CartStore;
         return {
