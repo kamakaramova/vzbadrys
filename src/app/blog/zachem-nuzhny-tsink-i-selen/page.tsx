@@ -182,7 +182,7 @@ export default function ZincSeleniumArticlePage() {
                 <Link href="/product/selen-tsink" className="mt-6 inline-flex min-h-12 items-center justify-center gap-2 rounded-full bg-[#E8845A] px-6 text-sm font-bold text-white transition hover:bg-[#d8734b] focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#E8845A]">
                   Посмотреть «Цинк + Селен» <ChevronRight size={17} aria-hidden="true" />
                 </Link>
-                <p className="mt-3 text-xs text-[#81766f]">БАД — не является лекарственным средством</p>
+                <p className="mt-3 text-xs text-[#81766f]">БАД. Не является лекарственным средством.</p>
               </section>
 
               <section aria-labelledby="sources">

@@ -50,7 +50,7 @@ export default function Footer() {
               <li className="text-sm text-[#6b6b6b]">Почта: <a href="mailto:vzbadris@yandex.ru" className="hover:text-[#E8845A] transition-colors">vzbadris@yandex.ru</a></li>
             </ul>
             <div className="mt-6">
-              <p className="text-xs text-[#aaa]">Не является лекарственным средством. Перед применением проконсультируйтесь со специалистом.</p>
+              <p className="text-xs text-[#aaa]">БАД. Не является лекарственным средством. Перед применением проконсультируйтесь со специалистом.</p>
             </div>
           </div>
         </div>

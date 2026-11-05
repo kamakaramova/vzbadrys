@@ -153,6 +153,9 @@ export default function CartPage() {
                     <Link href={`/product/${item.id}`} className="font-semibold text-sm hover:text-[#E8845A] transition-colors line-clamp-2 leading-snug">
                       {item.name}
                     </Link>
+                    {item.category === "bads" && (
+                      <p className="mt-1 text-[10px] leading-snug text-[#9a918c]">БАД. Не является лекарственным средством.</p>
+                    )}
                     {item.unit && <p className="text-xs text-[#aaa] mt-0.5">{item.unit}</p>}
                     <p className="text-sm font-bold text-[#E8845A] mt-1">{item.price.toLocaleString("ru-RU")} ₽ / шт.</p>
                   </div>

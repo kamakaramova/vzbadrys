@@ -116,6 +116,9 @@ export default function Header() {
                               </div>
                               <div className="flex-1 min-w-0">
                                 <p className="text-xs font-semibold line-clamp-2 leading-snug">{item.name}</p>
+                                {item.category === "bads" && (
+                                  <p className="mt-0.5 text-[9px] leading-snug text-[#9a918c]">БАД. Не является лекарственным средством.</p>
+                                )}
                                 <div className="flex items-center gap-2 mt-1">
                                   <button onClick={() => updateQty(item.id, item.quantity - 1)} className="w-5 h-5 rounded-full bg-[#f0e8e0] text-xs flex items-center justify-center hover:bg-[#FDDCCA]">−</button>
                                   <span className="text-xs font-bold w-4 text-center">{item.quantity}</span>

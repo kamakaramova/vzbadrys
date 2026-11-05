@@ -535,6 +535,9 @@ export default function CheckoutPage() {
                       </div>
                       <div className="flex-1 min-w-0">
                         <p className="text-xs font-medium line-clamp-2 leading-snug">{item.name}</p>
+                        {item.category === "bads" && (
+                          <p className="mt-0.5 text-[9px] leading-snug text-[#9a918c]">БАД. Не является лекарственным средством.</p>
+                        )}
                         <p className="text-xs text-[#aaa]">{item.quantity} шт.</p>
                       </div>
                       <p className="text-sm font-bold flex-shrink-0">{(item.price * item.quantity).toLocaleString("ru-RU")} ₽</p>

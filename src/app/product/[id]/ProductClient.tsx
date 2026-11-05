@@ -274,7 +274,9 @@ export default function ProductClient({
               {activeOldPrice && <span className="text-lg text-[#aaa] line-through">{activeOldPrice.toLocaleString("ru-RU")} ₽</span>}
               {activeOldPrice && <span className="bg-[#FF6B6B] text-white text-sm font-bold px-2.5 py-1 rounded-full">-{Math.round(((activeOldPrice - activePrice) / activeOldPrice) * 100)}%</span>}
             </div>
-            <p className="-mt-2 mb-5 text-xs leading-relaxed text-[#8f8782]">БАД — не является лекарственным средством.</p>
+            {!isSeed && (
+              <p className="-mt-2 mb-5 text-xs font-medium leading-relaxed text-[#756c67]">БАД. Не является лекарственным средством.</p>
+            )}
 
             {/* Количество + корзина */}
             <div className="flex flex-wrap sm:flex-nowrap items-center gap-3 sm:gap-4 mb-4">
@@ -424,7 +426,9 @@ export default function ProductClient({
               <p className="text-xs font-semibold text-[#aaa] uppercase tracking-widest mb-3">Схема приёма</p>
               <p className="text-[#1a1a1a] leading-relaxed">{product.howToTake}</p>
             </div>
-            <p className="text-xs text-[#aaa] mt-4 leading-relaxed">БАД — не является лекарственным средством. Перед применением проконсультируйтесь со специалистом.</p>
+            {!isSeed && (
+              <p className="mt-4 text-xs leading-relaxed text-[#8f8782]">БАД. Не является лекарственным средством. Перед применением проконсультируйтесь со специалистом.</p>
+            )}
           </div>
         )}
 
@@ -474,7 +478,9 @@ export default function ProductClient({
                 </div>
                 <p className="font-semibold text-sm mb-1">{p.name}</p>
                 <p className="text-xs text-[#aaa] mb-1">{p.weight}</p>
-                <p className="mb-3 text-[10px] leading-snug text-[#9a918c]">БАД — не является лекарственным средством.</p>
+                {p.category === "bads" && (
+                  <p className="mb-3 text-[10px] leading-snug text-[#9a918c]">БАД. Не является лекарственным средством.</p>
+                )}
                 <p className="font-bold text-[#E8845A]">{p.price.toLocaleString("ru-RU")} ₽</p>
               </Link>
             ))}

@@ -264,7 +264,7 @@ export default function MagnesiumQuiz({ products: fallbackProducts }: MagnesiumQ
                 </div>
                 <div className="p-5">
                   <p className="text-lg font-extrabold transition-colors group-hover:text-[#E8845A]">{product.name}</p>
-                  <p className="mt-2 text-[10px] leading-snug text-[#9a918c]">БАД — не является лекарственным средством.</p>
+                  <p className="mt-2 text-[10px] leading-snug text-[#9a918c]">БАД. Не является лекарственным средством.</p>
                   <div className="mt-4 flex items-end justify-between gap-3 border-t border-[#f0e8e0] pt-4">
                     <div>
                       <span className="text-xl font-black text-[#E8845A]">{product.price.toLocaleString("ru-RU")} ₽</span>

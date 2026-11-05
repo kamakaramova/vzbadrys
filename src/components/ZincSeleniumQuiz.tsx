@@ -127,7 +127,7 @@ export default function ZincSeleniumQuiz({ fallbackProduct }: ZincSeleniumQuizPr
               <span className="mt-4 inline-flex w-full min-h-12 items-center justify-center gap-2 rounded-full bg-[#E8845A] px-5 text-sm font-bold text-white transition group-hover:bg-[#d8734b]">
                 Посмотреть комплекс <ArrowRight size={17} aria-hidden="true" />
               </span>
-              <p className="mt-3 text-center text-xs text-[#8a817c]">БАД — не является лекарственным средством</p>
+              <p className="mt-3 text-center text-xs text-[#8a817c]">БАД. Не является лекарственным средством.</p>
             </div>
           </Link>
         </div>
