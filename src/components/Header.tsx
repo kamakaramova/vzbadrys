@@ -6,7 +6,10 @@ import { useCartStore } from "@/store/cartStore";
 import { useAuthStore } from "@/store/authStore";
 import { products } from "@/lib/products";
 import { productImagePaths } from "@/lib/productImages";
-import { SHOW_HEADER_ANNOUNCEMENTS } from "@/lib/campaignVisibility";
+import {
+  SHOW_FIRST_ORDER_HEADER_ANNOUNCEMENT,
+  SHOW_OZON_HEADER_ANNOUNCEMENT,
+} from "@/lib/campaignVisibility";
 
 export default function Header() {
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -19,30 +22,41 @@ export default function Header() {
   const subtotal = useCartStore((s) => s.subtotal());
   const removeItem = useCartStore((s) => s.removeItem);
   const updateQty = useCartStore((s) => s.updateQty);
+  const headerAnnouncementCount = Number(SHOW_OZON_HEADER_ANNOUNCEMENT) + Number(SHOW_FIRST_ORDER_HEADER_ANNOUNCEMENT);
+  const mobileCartPosition = headerAnnouncementCount === 2
+    ? "top-[8.5rem] max-h-[calc(100dvh-9.25rem)]"
+    : headerAnnouncementCount === 1
+      ? "top-[6.5rem] max-h-[calc(100dvh-7.25rem)]"
+      : "top-[4.75rem] max-h-[calc(100dvh-5.5rem)]";
+  const mobileMenuHeight = headerAnnouncementCount === 2
+    ? "max-h-[calc(100dvh-8.5rem)]"
+    : headerAnnouncementCount === 1
+      ? "max-h-[calc(100dvh-6rem)]"
+      : "max-h-[calc(100dvh-4rem)]";
 
   return (
     <header className="sticky top-0 z-50 bg-white border-b border-[#f0e8e0]">
-      {SHOW_HEADER_ANNOUNCEMENTS && (
-        <>
-          {/* Доставка в Ozon — самая верхняя плашка */}
-          <div
-            className="relative overflow-hidden bg-[#2563EB] px-4 py-2 text-center text-xs font-extrabold text-white sm:py-2.5 sm:text-sm"
-            style={{
-              backgroundImage: "repeating-linear-gradient(135deg, transparent 0, transparent 18px, rgba(255,255,255,0.08) 18px, rgba(255,255,255,0.08) 34px)",
-            }}
-          >
-            <Link href="/delivery" className="relative inline-flex items-center justify-center gap-1.5 rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/80">
-              <span>Доставляем заказы в ПВЗ</span>
-              <span className="font-black tracking-wide">Ozon</span>
-            </Link>
-          </div>
+      {/* Доставка в Ozon — самая верхняя плашка */}
+      {SHOW_OZON_HEADER_ANNOUNCEMENT && (
+        <div
+          className="relative overflow-hidden bg-[#2563EB] px-4 py-2 text-center text-xs font-extrabold text-white sm:py-2.5 sm:text-sm"
+          style={{
+            backgroundImage: "repeating-linear-gradient(135deg, transparent 0, transparent 18px, rgba(255,255,255,0.08) 18px, rgba(255,255,255,0.08) 34px)",
+          }}
+        >
+          <Link href="/delivery" className="relative inline-flex items-center justify-center gap-1.5 rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/80">
+            <span>Доставляем заказы в ПВЗ</span>
+            <span className="font-black tracking-wide">Ozon</span>
+          </Link>
+        </div>
+      )}
 
-          {/* Верхняя полоска */}
-          <div className="bg-[#FDDCCA] py-2 px-4 text-center text-[11px] leading-4 sm:text-xs font-medium text-[#8b4513]">
-            <span className="sm:hidden">−10% на первый заказ · ВЗБАДРИСЬ10</span>
-            <span className="hidden sm:inline">Скидка 10% на первый заказ по промокоду ВЗБАДРИСЬ10&nbsp;&nbsp;🌿&nbsp;&nbsp;Бесплатная доставка от 3 000 ₽</span>
-          </div>
-        </>
+      {/* Скидка на первый заказ временно скрыта на период Чёрной пятницы */}
+      {SHOW_FIRST_ORDER_HEADER_ANNOUNCEMENT && (
+        <div className="bg-[#FDDCCA] py-2 px-4 text-center text-[11px] leading-4 sm:text-xs font-medium text-[#8b4513]">
+          <span className="sm:hidden">−10% на первый заказ · ВЗБАДРИСЬ10</span>
+          <span className="hidden sm:inline">Скидка 10% на первый заказ по промокоду ВЗБАДРИСЬ10&nbsp;&nbsp;🌿&nbsp;&nbsp;Бесплатная доставка от 3 000 ₽</span>
+        </div>
       )}
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -95,7 +109,7 @@ export default function Header() {
               {cartOpen && (
                 <>
                   <div className="fixed inset-0 z-40" onClick={() => setCartOpen(false)} />
-                  <div className={`fixed inset-x-3 overflow-y-auto bg-white rounded-3xl shadow-2xl border border-[#f0e8e0] z-50 sm:absolute sm:inset-x-auto sm:right-0 sm:top-full sm:mt-2 sm:w-80 sm:max-h-none sm:overflow-hidden ${SHOW_HEADER_ANNOUNCEMENTS ? "top-[8.5rem] max-h-[calc(100dvh-9.25rem)]" : "top-[4.75rem] max-h-[calc(100dvh-5.5rem)]"}`}>
+                  <div className={`fixed inset-x-3 overflow-y-auto bg-white rounded-3xl shadow-2xl border border-[#f0e8e0] z-50 sm:absolute sm:inset-x-auto sm:right-0 sm:top-full sm:mt-2 sm:w-80 sm:max-h-none sm:overflow-hidden ${mobileCartPosition}`}>
                     <div className="px-5 py-4 border-b border-[#f0e8e0] flex items-center justify-between">
                       <p className="font-bold text-base">Корзина</p>
                       <button onClick={() => setCartOpen(false)}><X size={18} className="text-[#aaa] hover:text-[#1a1a1a]" /></button>
@@ -185,7 +199,7 @@ export default function Header() {
 
       {/* Мобильное меню */}
       {mobileOpen && (
-        <div className={`lg:hidden overflow-y-auto bg-white border-t border-[#f0e8e0] px-4 py-4 flex flex-col gap-3 ${SHOW_HEADER_ANNOUNCEMENTS ? "max-h-[calc(100dvh-8.5rem)]" : "max-h-[calc(100dvh-4rem)]"}`}>
+        <div className={`lg:hidden overflow-y-auto bg-white border-t border-[#f0e8e0] px-4 py-4 flex flex-col gap-3 ${mobileMenuHeight}`}>
           <Link href="/catalog?cat=bads" className="py-2 text-sm font-medium" onClick={() => setMobileOpen(false)}>БАДы</Link>
           <Link href="/blog" className="py-2 text-sm font-medium" onClick={() => setMobileOpen(false)}>Статьи</Link>
           <Link href="/delivery" className="py-2 text-sm font-medium" onClick={() => setMobileOpen(false)}>Доставка</Link>

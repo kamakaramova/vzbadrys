@@ -1,4 +1,5 @@
-// Временные переключатели кампаний. После Чёрной пятницы, 16 ноября,
-// верхние объявления и промо первого заказа можно вернуть одной правкой.
-export const SHOW_HEADER_ANNOUNCEMENTS = false;
+// Временные переключатели кампаний. Доставка в ПВЗ Ozon остаётся видимой,
+// а промо первого заказа скрыто только на период Чёрной пятницы.
+export const SHOW_OZON_HEADER_ANNOUNCEMENT = true;
+export const SHOW_FIRST_ORDER_HEADER_ANNOUNCEMENT = false;
 export const SHOW_FIRST_ORDER_PROMO = false;
