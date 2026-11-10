@@ -6,6 +6,7 @@ import {
   BadgeCheck,
   Camera,
   Check,
+  Dumbbell,
   FileCheck2,
   Handshake,
   MessageCircle,
@@ -20,7 +21,7 @@ const FORM_URL = "https://forms.yandex.ru/u/6aec74382c4f892b2b7e11be/";
 export const metadata: Metadata = {
   title: "Сотрудничество с брендом — взБАДрись",
   description:
-    "Приглашаем нутрициологов, экспертов и авторов контента к сотрудничеству с брендом БАДов «взБАДрись». Заполните анкету, чтобы обсудить формат и условия.",
+    "Приглашаем нутрициологов, фитнес-тренеров, экспертов и авторов контента к сотрудничеству с брендом БАДов «взБАДрись». Заполните анкету, чтобы обсудить формат и условия.",
   alternates: { canonical: "/cooperation" },
   openGraph: {
     title: "Сотрудничество с брендом «взБАДрись»",
@@ -35,6 +36,11 @@ const partnerTypes = [
     icon: BadgeCheck,
     title: "Нутрициологи и эксперты",
     text: "Если вы умеете объяснять сложное простым языком и внимательно относитесь к рекомендациям, нам будет о чём поговорить.",
+  },
+  {
+    icon: Dumbbell,
+    title: "Фитнес-тренеры",
+    text: "Если вы помогаете людям выстраивать нагрузку, восстановление и полезные привычки без крайностей, нам близок такой подход.",
   },
   {
     icon: Camera,
@@ -113,10 +119,10 @@ export default function CooperationPage() {
                 Давайте делать полезный контент вместе
               </h1>
               <p className="mt-6 max-w-2xl text-base leading-relaxed text-[#68615d] md:text-lg">
-                Мы открыты к сотрудничеству с нутрициологами, экспертами и авторами,
-                которые бережно относятся к доверию своей аудитории. Если вам близки
-                честные составы, понятные объяснения и рекомендации без громких обещаний,
-                заполните короткую анкету.
+                Мы открыты к сотрудничеству с нутрициологами, фитнес-тренерами,
+                экспертами и авторами, которые бережно относятся к доверию своей
+                аудитории. Если вам близки честные составы, понятные объяснения и
+                рекомендации без громких обещаний, заполните короткую анкету.
               </p>
 
               <div className="mt-8 flex flex-col items-start gap-4 sm:flex-row sm:items-center">
@@ -190,7 +196,7 @@ export default function CooperationPage() {
               </p>
             </div>
 
-            <div className="grid gap-5 md:grid-cols-3">
+            <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-4">
               {partnerTypes.map((item) => (
                 <article key={item.title} className="rounded-[28px] border border-[#eddfd7] bg-[#fdf8f5] p-6 md:p-7">
                   <div className="mb-5 flex h-12 w-12 items-center justify-center rounded-2xl bg-white text-[#C86840] shadow-sm">

@@ -6,7 +6,7 @@ import type { Metadata } from "next";
 
 export const metadata: Metadata = {
   title: "Акции и скидки — взБАДрись",
-  description: "Актуальные акции и скидки на БАДы. Промокод ВЗБАДРИСЬ10 даёт −10% на первый заказ.",
+  description: "Актуальные акции и скидки на БАДы. Промокод ВЗБАДРИСЬ10 даёт −10% на первый заказ, доставка от 3 000 ₽ — бесплатно.",
 };
 
 export default function SalesPage() {
@@ -19,7 +19,7 @@ export default function SalesPage() {
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center text-white">
             <p className="text-sm font-semibold uppercase tracking-widest opacity-80 mb-4">Специальные предложения</p>
             <h1 className="text-4xl md:text-5xl font-black mb-4">Акции и скидки</h1>
-            <p className="text-lg opacity-90 max-w-md mx-auto">Промокоды, скидки на хиты продаж и выгодные комплекты — всё в одном месте.</p>
+            <p className="text-lg opacity-90 max-w-lg mx-auto">Промокоды, скидки на БАДы и бесплатная доставка — всё в одном месте.</p>
           </div>
         </section>
 
@@ -57,7 +57,7 @@ export default function SalesPage() {
           </section>
 
           {/* Промокод */}
-          <div className="mb-14">
+          <div className="mb-8">
             <div className="bg-[#1a1a1a] rounded-3xl p-8 md:p-12 relative overflow-hidden">
               {/* Декоративные элементы */}
               <div className="absolute -top-10 -right-10 w-48 h-48 rounded-full bg-[#E8845A]/20 blur-3xl pointer-events-none" />
@@ -77,6 +77,42 @@ export default function SalesPage() {
               </div>
             </div>
           </div>
+
+          {/* Бесплатная доставка */}
+          <section className="mb-14 overflow-hidden rounded-3xl border border-[#cfe1f7] bg-[#edf6ff] relative">
+            <div className="absolute -right-16 -top-20 h-56 w-56 rounded-full bg-[#8fc5ff]/35 blur-3xl pointer-events-none" />
+            <div className="relative z-10 grid gap-8 p-8 md:grid-cols-[1fr_auto] md:items-center md:p-12">
+              <div className="flex items-start gap-5">
+                <div className="hidden h-14 w-14 flex-shrink-0 items-center justify-center rounded-2xl bg-white text-[#2866a8] shadow-sm sm:flex">
+                  <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" className="h-7 w-7" stroke="currentColor" strokeWidth="1.8">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 7.5 12 3l8.25 4.5L12 12 3.75 7.5Z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 7.5V16.5L12 21l8.25-4.5V7.5M12 12v9" />
+                  </svg>
+                </div>
+                <div>
+                  <span className="inline-flex rounded-full bg-white px-3 py-1 text-xs font-bold uppercase tracking-widest text-[#2866a8] shadow-sm">
+                    Доставка за 0 ₽
+                  </span>
+                  <h2 className="mt-4 text-3xl font-black leading-tight text-[#17212c] md:text-4xl">Бесплатная доставка от 3 000 ₽</h2>
+                  <p className="mt-3 max-w-2xl leading-relaxed text-[#506070]">
+                    Соберите заказ на сумму от 3 000 ₽, и мы бесплатно доставим его в пункт выдачи Ozon. Условие применится автоматически при оформлении.
+                  </p>
+                </div>
+              </div>
+              <div className="flex flex-col items-start gap-4 md:items-end">
+                <div className="md:text-right">
+                  <p className="text-sm font-semibold text-[#60758d]">Стоимость доставки</p>
+                  <p className="text-4xl font-black text-[#2866a8]">0 ₽</p>
+                </div>
+                <Link
+                  href="/catalog"
+                  className="inline-flex items-center justify-center rounded-full bg-[#2866a8] px-7 py-3.5 font-bold text-white transition-transform hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2866a8] focus-visible:ring-offset-2"
+                >
+                  Собрать заказ →
+                </Link>
+              </div>
+            </div>
+          </section>
 
           <SaleProductGrids />
 
