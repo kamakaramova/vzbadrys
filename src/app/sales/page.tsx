@@ -32,7 +32,7 @@ export default function SalesPage() {
             <div className="relative z-10 grid gap-8 p-8 md:grid-cols-[1fr_auto] md:items-center md:p-12">
               <div>
                 <span className="inline-flex rounded-full bg-[#ffd84d] px-4 py-1.5 text-xs font-black uppercase tracking-widest text-[#151515]">
-                  13–15 ноября
+                  11–15 ноября
                 </span>
                 <p className="mt-5 text-sm font-bold uppercase tracking-[0.25em] text-[#ffd84d]">Чёрная пятница</p>
                 <h2 className="mt-2 text-3xl font-black leading-tight md:text-5xl">Три баночки за 1 499 ₽</h2>
@@ -44,7 +44,7 @@ export default function SalesPage() {
               <div className="flex flex-col items-start gap-3 md:items-end">
                 <div className="text-left md:text-right">
                   <p className="text-sm text-[#a3a3a3]">Срок акции</p>
-                  <p className="text-lg font-bold">13–15 ноября · МСК</p>
+                  <p className="text-lg font-bold">11–15 ноября · МСК</p>
                 </div>
                 <Link
                   href="/catalog"
@@ -122,7 +122,7 @@ export default function SalesPage() {
             <div className="grid md:grid-cols-2 gap-4">
               {[
                 { icon: "🎟️", title: "Промокод ВЗБАДРИСЬ10", desc: "Действует для новых покупателей. Одноразовый, применяется в корзине." },
-                { icon: "🖤", title: "Чёрная пятница", desc: "С 13 по 15 ноября: три баночки за 1 499 ₽, на остальные товары — скидка 20%." },
+                { icon: "🖤", title: "Чёрная пятница", desc: "С 11 по 15 ноября: три баночки за 1 499 ₽, на остальные товары — скидка 20%." },
                 { icon: "📦", title: "Бесплатная доставка", desc: "При заказе от 3 000 ₽ доставка в пункт выдачи Ozon — бесплатно." },
                 { icon: "🏷️", title: "Цены со скидкой", desc: "Финальная цена всегда указана в карточке товара и корзине." },
                 { icon: "💬", title: "Вопросы по акциям", desc: "Напишите нам в Telegram @vzbadris — ответим быстро." },

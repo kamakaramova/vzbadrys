@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 
-const SALE_START = Date.parse("2026-11-13T00:00:00+03:00");
+const SALE_START = Date.parse("2026-11-11T00:00:00+03:00");
 const SALE_END = Date.parse("2026-11-16T00:00:00+03:00");
 // Обычные цены трёх отдельных баночек в каталоге на 4 ноября 2026 года.
 const REGULAR_INDIVIDUAL_TOTAL = 715 + 901 + 868;
@@ -40,12 +40,12 @@ export default function BlackFridayHomeHero() {
     <>
       <section aria-labelledby="black-friday-heading" className="relative overflow-hidden bg-[#101011] text-white">
         <div aria-hidden="true" className="absolute inset-x-0 top-0 h-2 bg-[repeating-linear-gradient(135deg,#f8d933_0px,#f8d933_14px,#101011_14px,#101011_28px)]" />
-        <div aria-hidden="true" className="pointer-events-none absolute -right-8 top-20 hidden text-[28rem] font-black leading-none text-white/[0.025] lg:block">13</div>
+        <div aria-hidden="true" className="pointer-events-none absolute -right-8 top-20 hidden text-[28rem] font-black leading-none text-white/[0.025] lg:block">11</div>
         <div className="relative mx-auto grid max-w-7xl items-center gap-8 px-5 pb-12 pt-16 sm:px-8 lg:min-h-[630px] lg:grid-cols-[1.12fr_0.88fr] lg:gap-14 lg:py-14">
           <div className="relative z-10">
             <p className="mb-5 flex items-center gap-3 text-[11px] font-extrabold uppercase tracking-[0.2em] text-[#f8d933] sm:text-xs">
               <span aria-hidden="true" className="h-0.5 w-6 bg-[#f8d933]" />
-              {phase === "active" ? "Акция идёт · до 15 ноября включительно" : phase === "ended" ? "Акция завершилась" : "13–15 ноября · три дня акции"}
+              {phase === "active" ? "Акция идёт · до 15 ноября включительно" : phase === "ended" ? "Акция завершилась" : "11–15 ноября · пять дней акции"}
             </p>
             <h1 id="black-friday-heading" className="text-[clamp(3.2rem,7vw,6rem)] font-black uppercase leading-[0.9] tracking-[-0.075em] text-[#f8d933]">
               Чёрная<br />пятница
@@ -59,7 +59,7 @@ export default function BlackFridayHomeHero() {
             {phase !== "ended" && (
               <>
                 <p className="mt-5 text-xs font-bold uppercase tracking-wider text-[#f8d933]">
-                  {phase === "active" ? "Цена набора в дни акции" : "Цена набора с 13 ноября"}
+                  {phase === "active" ? "Цена набора в дни акции" : "Цена набора с 11 ноября"}
                 </p>
                 <div className="mt-1 flex flex-wrap items-baseline gap-x-4 gap-y-1">
                   <strong className="text-[clamp(2.5rem,4vw,3.4rem)] font-black tracking-[-0.06em] text-[#f8d933]">{rubles(SALE_BUNDLE_PRICE)}</strong>
@@ -72,7 +72,7 @@ export default function BlackFridayHomeHero() {
                 <p className="mt-2 text-xs text-[#aaa9a2]">
                   {phase === "active"
                     ? "Акция действует до 15 ноября включительно по московскому времени."
-                    : "Акция действует с 13 по 15 ноября по московскому времени. Цены обновятся к началу акции."}
+                    : "Акция действует с 11 по 15 ноября по московскому времени. Цены обновятся к началу акции."}
                 </p>
               </>
             )}
@@ -93,7 +93,7 @@ export default function BlackFridayHomeHero() {
               className="relative aspect-[4/5] w-full rounded object-cover object-[center_37%]"
             />
             <div className="absolute -right-4 top-8 rotate-12 bg-[#f8d933] px-6 py-2 text-xs font-black uppercase tracking-widest text-[#101011] shadow-lg sm:-right-7 sm:text-sm">
-              13–15 ноября
+              11–15 ноября
             </div>
             {phase !== "ended" && (
               <>
@@ -114,7 +114,7 @@ export default function BlackFridayHomeHero() {
         <div className="mx-auto flex max-w-7xl flex-col items-center justify-between gap-4 px-5 py-5 sm:px-8 lg:min-h-28 lg:flex-row lg:gap-8">
           <div className="text-center lg:text-left">
             <p className="text-base font-extrabold sm:text-lg">{phase === "active" ? "До конца акции осталось" : phase === "ended" ? "Акция завершилась" : "До старта акции осталось"}</p>
-            <p className="mt-1 text-xs font-semibold">{phase === "active" ? "Окончание 16 ноября в 00:00 по Москве" : phase === "ended" ? "Следите за новыми предложениями" : "Начало 13 ноября в 00:00 по Москве"}</p>
+            <p className="mt-1 text-xs font-semibold">{phase === "active" ? "Окончание 16 ноября в 00:00 по Москве" : phase === "ended" ? "Следите за новыми предложениями" : "Начало 11 ноября в 00:00 по Москве"}</p>
           </div>
           {phase !== "ended" && <div role="timer" aria-label={phase === "active" ? "Время до конца акции" : "Время до начала акции"} className="flex items-start gap-2 sm:gap-3">
             {units.map((unit, index) => (
