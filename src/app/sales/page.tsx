@@ -3,10 +3,12 @@ import Footer from "@/components/Footer";
 import SaleProductGrids from "@/components/SaleProductGrids";
 import Link from "next/link";
 import type { Metadata } from "next";
+import { SHOW_FIRST_ORDER_PROMO } from "@/lib/campaignVisibility";
 
 export const metadata: Metadata = {
   title: "Акции и скидки — взБАДрись",
-  description: "Актуальные акции и скидки на БАДы. Промокод ВЗБАДРИСЬ10 даёт −10% на первый заказ, доставка от 3 000 ₽ — бесплатно.",
+  description: "Актуальные акции и скидки на БАДы: Чёрная пятница и бесплатная доставка в ПВЗ Ozon от 3 000 ₽.",
+  alternates: { canonical: "/sales" },
 };
 
 export default function SalesPage() {
@@ -19,7 +21,7 @@ export default function SalesPage() {
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center text-white">
             <p className="text-sm font-semibold uppercase tracking-widest opacity-80 mb-4">Специальные предложения</p>
             <h1 className="text-4xl md:text-5xl font-black mb-4">Акции и скидки</h1>
-            <p className="text-lg opacity-90 max-w-lg mx-auto">Промокоды, скидки на БАДы и бесплатная доставка — всё в одном месте.</p>
+            <p className="text-lg opacity-90 max-w-lg mx-auto">Скидки на БАДы и бесплатная доставка — всё в одном месте.</p>
           </div>
         </section>
 
@@ -56,8 +58,8 @@ export default function SalesPage() {
             </div>
           </section>
 
-          {/* Промокод */}
-          <div className="mb-8">
+          {/* Промокод временно скрыт на период Чёрной пятницы */}
+          {SHOW_FIRST_ORDER_PROMO && <div className="mb-8">
             <div className="bg-[#1a1a1a] rounded-3xl p-8 md:p-12 relative overflow-hidden">
               {/* Декоративные элементы */}
               <div className="absolute -top-10 -right-10 w-48 h-48 rounded-full bg-[#E8845A]/20 blur-3xl pointer-events-none" />
@@ -76,7 +78,7 @@ export default function SalesPage() {
                 </div>
               </div>
             </div>
-          </div>
+          </div>}
 
           {/* Бесплатная доставка */}
           <section className="mb-14 overflow-hidden rounded-3xl border border-[#cfe1f7] bg-[#edf6ff] relative">
@@ -121,7 +123,7 @@ export default function SalesPage() {
             <h2 className="text-xl font-bold mb-5">Условия акций</h2>
             <div className="grid md:grid-cols-2 gap-4">
               {[
-                { icon: "🎟️", title: "Промокод ВЗБАДРИСЬ10", desc: "Действует для новых покупателей. Одноразовый, применяется в корзине." },
+                ...(SHOW_FIRST_ORDER_PROMO ? [{ icon: "🎟️", title: "Промокод ВЗБАДРИСЬ10", desc: "Действует для новых покупателей. Одноразовый, применяется в корзине." }] : []),
                 { icon: "🖤", title: "Чёрная пятница", desc: "С 11 по 15 ноября: три баночки за 1 499 ₽, на остальные товары — скидка 20%." },
                 { icon: "📦", title: "Бесплатная доставка", desc: "При заказе от 3 000 ₽ доставка в пункт выдачи Ozon — бесплатно." },
                 { icon: "🏷️", title: "Цены со скидкой", desc: "Финальная цена всегда указана в карточке товара и корзине." },

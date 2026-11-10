@@ -1,9 +1,15 @@
 import Link from "next/link";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
+import { SHOW_FIRST_ORDER_PROMO } from "@/lib/campaignVisibility";
 import BlackFridayHomeHero from "@/components/BlackFridayHomeHero";
 import FeaturedProducts from "@/components/FeaturedProducts";
 import { ArrowRight, Shield, Truck, FileCheck, Star } from "lucide-react";
+import type { Metadata } from "next";
+
+export const metadata: Metadata = {
+  alternates: { canonical: "/" },
+};
 
 export default function Home() {
   return (
@@ -137,8 +143,8 @@ export default function Home() {
           </div>
         </section>
 
-        {/* ПРОМОКОД БАННЕР */}
-        <section className="py-10 pb-20">
+        {/* Промокод временно скрыт на период Чёрной пятницы */}
+        {SHOW_FIRST_ORDER_PROMO && <section className="py-10 pb-20">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="bg-[#1a1a1a] rounded-3xl p-10 md:p-14 text-center text-white">
               <p className="text-[#E8845A] text-sm font-semibold uppercase tracking-widest mb-3">Первый заказ</p>
@@ -154,7 +160,7 @@ export default function Home() {
               </div>
             </div>
           </div>
-        </section>
+        </section>}
       </main>
       <Footer />
     </>

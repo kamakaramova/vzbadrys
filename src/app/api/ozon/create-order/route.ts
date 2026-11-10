@@ -17,6 +17,7 @@ import { getDeliveryRestriction, getDeliveryRestrictionMessage, getOzonPvzDelive
 import { getFiscalProductName } from "@/lib/fiscalProductNames";
 import { rateLimit } from "@/lib/rateLimit";
 import { promoEligibleSubtotal as calculatePromoEligibleSubtotal } from "@/lib/promoRules";
+import { getBlackFridayCardPrice } from "@/lib/blackFridayPricing";
 
 export const runtime = "nodejs";
 
@@ -69,7 +70,10 @@ function getBaseProductId(cartId: string) {
 
 function resolveProductPrice(product: Product, cartId: string) {
   const match = cartId.match(/^(.+)-(\d+)g$/);
-  if (!match) return { price: product.price, stockAmount: 1 };
+  if (!match) {
+    const blackFridayPrice = getBlackFridayCardPrice(product.id, product.price);
+    return { price: blackFridayPrice?.salePrice ?? product.price, stockAmount: 1 };
+  }
   const grams = Number(match[2]);
   const variant = product.weightVariants?.find((item) => item.grams === grams);
   if (!variant) throw new Error(`Не найдена фасовка товара ${product.name}`);
@@ -201,7 +205,8 @@ export async function POST(request: NextRequest) {
         if (parts.some((part) => !part?.inStock)) {
           return badRequest("Одна из баночек набора закончилась. Обновите корзину");
         }
-        orderLines.push(...buildBundleOrderLines(product, parts as Product[], item.quantity,
+        const bundlePrice = getBlackFridayCardPrice(product.id, product.price)?.salePrice ?? product.price;
+        orderLines.push(...buildBundleOrderLines({ ...product, price: bundlePrice }, parts as Product[], item.quantity,
           (part) => getFiscalProductName(part.id, part.name)));
         HEALTH_BUNDLE_COMPONENT_IDS.forEach((partId) => {
           requireStock(partId, item.quantity);

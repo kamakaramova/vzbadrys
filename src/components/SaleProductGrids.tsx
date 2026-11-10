@@ -1,15 +1,22 @@
 "use client";
-import Image from "next/image";
-import Link from "next/link";
-import { productMainImage } from "@/lib/productImages";
+import ProductCard from "@/components/ProductCard";
+import { HEALTH_BUNDLE_ID } from "@/lib/bundle";
+import { getBlackFridayCardPrice } from "@/lib/blackFridayPricing";
 import { useProducts } from "@/store/productStore";
 
 export default function SaleProductGrids() {
   const { products } = useProducts();
   const inStock = products.filter((p) => p.category === "bads" && p.inStock);
-  const saleProducts = inStock.filter((p) => p.badge === "Скидка" || p.oldPrice);
+  const blackFridayProducts = products.filter(
+    (product) => product.category === "bads"
+      && (product.inStock || (process.env.NODE_ENV === "development" && product.id === HEALTH_BUNDLE_ID))
+      && getBlackFridayCardPrice(product.id, product.price),
+  );
+  const blackFridayActive = blackFridayProducts.length > 0;
+  const saleProducts = blackFridayActive
+    ? blackFridayProducts
+    : inStock.filter((p) => p.badge === "Скидка" || p.oldPrice);
   const hitProducts = inStock.filter((p) => p.badge === "Хит");
-  const discount = (price: number, old: number) => Math.round((1 - price / old) * 100);
 
   return (
     <>
@@ -17,69 +24,24 @@ export default function SaleProductGrids() {
       {saleProducts.length > 0 && (
         <section className="mb-14">
           <div className="flex items-center gap-3 mb-6">
-            <h2 className="text-2xl font-bold">Скидки</h2>
+            <h2 className="text-2xl font-bold">{blackFridayActive ? "Цены Чёрной пятницы" : "Скидки"}</h2>
             <span className="text-xs font-semibold bg-[#ffeee6] text-[#E8845A] px-3 py-1 rounded-full">{saleProducts.length} товара</span>
           </div>
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
-            {saleProducts.map((product) => (
-              <Link key={product.id} href={`/product/${product.id}`} className="group block bg-white rounded-3xl border border-[#f0e8e0] overflow-hidden hover:shadow-xl hover:-translate-y-1 transition-all duration-300">
-                <div className="relative aspect-[4/5] bg-[#fdf8f5] overflow-hidden">
-                  <Image
-                    src={productMainImage(product)}
-                    alt={product.name}
-                    fill
-                    sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, (max-width: 1280px) 33vw, 25vw"
-                    className="object-cover transition-transform duration-500 group-hover:scale-[1.02]"
-                  />
-                  {product.oldPrice && (
-                    <span className="absolute top-3 left-3 bg-[#E8845A] text-white text-xs font-bold px-2.5 py-1 rounded-full">
-                      −{discount(product.price, product.oldPrice)}%
-                    </span>
-                  )}
-                </div>
-                <div className="p-4">
-                  <p className="font-bold text-sm leading-snug mb-2 group-hover:text-[#E8845A] transition-colors line-clamp-2">{product.name}</p>
-                  <p className="mb-3 text-[10px] leading-snug text-[#9a918c]">БАД. Не является лекарственным средством.</p>
-                  <div className="flex items-baseline gap-2">
-                    <span className="text-lg font-black text-[#E8845A]">{product.price.toLocaleString("ru-RU")} ₽</span>
-                    {product.oldPrice && (
-                      <span className="text-sm text-[#aaa] line-through">{product.oldPrice.toLocaleString("ru-RU")} ₽</span>
-                    )}
-                  </div>
-                </div>
-              </Link>
-            ))}
+            {saleProducts.map((product) => <ProductCard key={product.id} product={product} />)}
           </div>
         </section>
       )}
 
       {/* Хиты продаж */}
-      {hitProducts.length > 0 && (
+      {!blackFridayActive && hitProducts.length > 0 && (
         <section className="mb-14">
           <div className="flex items-center gap-3 mb-6">
             <h2 className="text-2xl font-bold">Хиты продаж</h2>
             <span className="text-xs font-semibold bg-[#fff3e0] text-[#e65100] px-3 py-1 rounded-full">🔥 Топ</span>
           </div>
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
-            {hitProducts.map((product) => (
-              <Link key={product.id} href={`/product/${product.id}`} className="group block bg-white rounded-3xl border border-[#f0e8e0] overflow-hidden hover:shadow-xl hover:-translate-y-1 transition-all duration-300">
-                <div className="relative aspect-[4/5] bg-[#fdf8f5] overflow-hidden">
-                  <Image
-                    src={productMainImage(product)}
-                    alt={product.name}
-                    fill
-                    sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, (max-width: 1280px) 33vw, 25vw"
-                    className="object-cover transition-transform duration-500 group-hover:scale-[1.02]"
-                  />
-                  <span className="absolute top-3 left-3 bg-[#1a1a1a] text-white text-xs font-bold px-2.5 py-1 rounded-full">Хит</span>
-                </div>
-                <div className="p-4">
-                  <p className="font-bold text-sm leading-snug mb-2 group-hover:text-[#E8845A] transition-colors line-clamp-2">{product.name}</p>
-                  <p className="mb-3 text-[10px] leading-snug text-[#9a918c]">БАД. Не является лекарственным средством.</p>
-                  <span className="text-lg font-black text-[#E8845A]">{product.price.toLocaleString("ru-RU")} ₽</span>
-                </div>
-              </Link>
-            ))}
+            {hitProducts.map((product) => <ProductCard key={product.id} product={product} />)}
           </div>
         </section>
       )}

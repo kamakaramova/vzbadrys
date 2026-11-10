@@ -2,6 +2,7 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import { promoDiscountAmount } from "@/lib/promoRules";
+import { getBlackFridayCardPrice } from "@/lib/blackFridayPricing";
 
 export interface CartItem {
   id: string;
@@ -56,7 +57,7 @@ export const useCartStore = create<CartStore>()(
           if (existing) {
             return {
               items: state.items.map((i) =>
-                i.id === item.id ? { ...i, quantity: i.quantity + 1 } : i
+                i.id === item.id ? { ...i, ...item, quantity: i.quantity + 1 } : i
               ),
             };
           }
@@ -94,14 +95,22 @@ export const useCartStore = create<CartStore>()(
     }),
     {
       name: "vzbadrys-cart",
-      // Версия 4 повторно прогоняет миграцию у всех покупателей и удаляет из
-      // старых сохранённых корзин семена, которые больше не продаются.
-      version: 4,
+      // Версия 5 обновляет сохранённые корзины до цен Чёрной пятницы и по-прежнему
+      // удаляет семена, которые больше не продаются.
+      version: 5,
       migrate: (persistedState) => {
         const state = persistedState as CartStore;
         return {
           ...state,
-          items: Array.isArray(state.items) ? state.items.filter((item) => item.category === "bads") : [],
+          items: Array.isArray(state.items)
+            ? state.items
+              .filter((item) => item.category === "bads")
+              .map((item) => {
+                const productId = item.id.match(/^(.+)-(\d+)g$/)?.[1] ?? item.id;
+                const blackFridayPrice = getBlackFridayCardPrice(productId, item.price);
+                return blackFridayPrice ? { ...item, price: blackFridayPrice.salePrice } : item;
+              })
+            : [],
           promoProductIds: Array.isArray(state.promoProductIds) ? state.promoProductIds : null,
         };
       },

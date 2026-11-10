@@ -2466,6 +2466,7 @@ export default function AdminPage() {
                     <option value="Хит">Хит</option>
                     <option value="Новинка">Новинка</option>
                     <option value="Скидка">Скидка</option>
+                    <option value="Осталось мало">Осталось мало</option>
                   </select>
                 </div>
                 <div>

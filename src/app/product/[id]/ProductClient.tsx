@@ -8,6 +8,7 @@ import { ShoppingCart, Heart, FileText, ChevronLeft, ChevronRight, Check, Shield
 import { useCartStore } from "@/store/cartStore";
 import { useAuthStore } from "@/store/authStore";
 import { siteUrl } from "@/lib/siteUrl";
+import { getBlackFridayCardPrice } from "@/lib/blackFridayPricing";
 import ProductReviews from "./ProductReviews";
 
 type Tab = "description" | "composition" | "howto" | "docs" | "reviews";
@@ -53,6 +54,8 @@ export default function ProductClient({
 
   const activePrice = selectedVariant ? selectedVariant.price : product.price;
   const activeOldPrice = selectedVariant ? selectedVariant.oldPrice : product.oldPrice;
+  const blackFridayPrice = !isSeed ? getBlackFridayCardPrice(product.id, activePrice) : null;
+  const effectivePrice = blackFridayPrice?.salePrice ?? activePrice;
   // Счётчик вкладки и список ниже используют один и тот же набор файлов.
   const documents = product.documents.filter((document) => document.name.trim() && document.url.trim());
   const documentDescription = (name: string) => {
@@ -67,7 +70,7 @@ export default function ProductClient({
       addItem({
         id: selectedVariant ? `${product.id}-${selectedVariant.grams}g` : product.id,
         name: selectedVariant ? `${product.name} ${selectedVariant.label}` : product.name,
-        price: activePrice,
+        price: effectivePrice,
         image: loadedImages[0] || productImagePaths(product.id, 1)[0],
         category: product.category,
         unit: selectedVariant ? selectedVariant.label : product.weight,
@@ -181,6 +184,7 @@ export default function ProductClient({
                     ${product.badge === "Хит" ? "bg-[#E8845A] text-white" : ""}
                     ${product.badge === "Новинка" ? "bg-[#4CAF50] text-white" : ""}
                     ${product.badge === "Скидка" ? "bg-[#FF6B6B] text-white" : ""}
+                    ${product.badge === "Осталось мало" ? "bg-[#F4B740] text-[#332304]" : ""}
                   `}>
                     {product.badge}
                   </div>
@@ -269,11 +273,45 @@ export default function ProductClient({
             )}
 
             {/* Цена */}
-            <div className="flex items-baseline gap-3 mb-5">
-              <span className="text-3xl font-bold">{activePrice.toLocaleString("ru-RU")} ₽</span>
-              {activeOldPrice && <span className="text-lg text-[#aaa] line-through">{activeOldPrice.toLocaleString("ru-RU")} ₽</span>}
-              {activeOldPrice && <span className="bg-[#FF6B6B] text-white text-sm font-bold px-2.5 py-1 rounded-full">-{Math.round(((activeOldPrice - activePrice) / activeOldPrice) * 100)}%</span>}
-            </div>
+            {blackFridayPrice ? (
+              <div className="mb-5 overflow-hidden rounded-3xl border-2 border-[#151515] bg-[#151515] text-white shadow-[0_16px_34px_rgba(21,21,21,0.16)]">
+                <div
+                  aria-hidden="true"
+                  className="h-2.5 bg-[repeating-linear-gradient(135deg,#f8d933_0px,#f8d933_12px,#151515_12px,#151515_24px)]"
+                />
+                <div className="p-5 sm:p-6">
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <div>
+                      <p className="text-xs font-black uppercase tracking-[0.16em] text-[#f8d933]">Цена Чёрной пятницы</p>
+                      <p className="mt-1 text-xs font-semibold text-white/55">11–15 ноября</p>
+                    </div>
+                    <span className="rounded-full bg-[#f8d933] px-3 py-1 text-sm font-black text-[#151515]">
+                      −{blackFridayPrice.discountPercent}%
+                    </span>
+                  </div>
+                  <div className="mt-5 grid grid-cols-2 gap-5 border-t border-white/10 pt-4">
+                    <div>
+                      <p className="text-xs font-medium text-white/55">Обычная цена</p>
+                      <p className="mt-1 text-xl font-semibold text-white/65 line-through decoration-[#f8d933] decoration-2">
+                        {blackFridayPrice.regularPrice.toLocaleString("ru-RU")} ₽
+                      </p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-xs font-medium text-white/55">Новая цена</p>
+                      <p className="mt-1 text-4xl font-black leading-none tracking-[-0.04em] text-[#f8d933]">
+                        {blackFridayPrice.salePrice.toLocaleString("ru-RU")} ₽
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div className="flex items-baseline gap-3 mb-5">
+                <span className="text-3xl font-bold">{activePrice.toLocaleString("ru-RU")} ₽</span>
+                {activeOldPrice && <span className="text-lg text-[#aaa] line-through">{activeOldPrice.toLocaleString("ru-RU")} ₽</span>}
+                {activeOldPrice && <span className="bg-[#FF6B6B] text-white text-sm font-bold px-2.5 py-1 rounded-full">-{Math.round(((activeOldPrice - activePrice) / activeOldPrice) * 100)}%</span>}
+              </div>
+            )}
             {!isSeed && (
               <p className="-mt-2 mb-5 text-xs font-medium leading-relaxed text-[#756c67]">БАД. Не является лекарственным средством.</p>
             )}
@@ -288,7 +326,7 @@ export default function ProductClient({
               <button
                 onClick={handleAddToCart}
                 disabled={!product.inStock}
-                className={`min-w-[190px] flex-1 flex items-center justify-center gap-2 font-semibold py-3 rounded-full transition-all disabled:cursor-not-allowed disabled:bg-[#b9b5b2] disabled:text-white ${added ? "bg-green-500 text-white" : "bg-[#E8845A] hover:bg-[#d4703f] text-white hover:-translate-y-0.5 hover:shadow-lg"}`}
+                className={`min-w-[190px] flex-1 flex items-center justify-center gap-2 font-semibold py-3 rounded-full transition-all disabled:cursor-not-allowed disabled:bg-[#b9b5b2] disabled:text-white ${added ? "bg-green-500 text-white" : blackFridayPrice ? "bg-[#f8d933] text-[#151515] hover:bg-[#ffe867] hover:-translate-y-0.5 hover:shadow-lg" : "bg-[#E8845A] hover:bg-[#d4703f] text-white hover:-translate-y-0.5 hover:shadow-lg"}`}
               >
                 {!product.inStock ? "Временно нет в наличии" : added ? <><Check size={18} /> Добавлено!</> : <><ShoppingCart size={18} /> В корзину</>}
               </button>
@@ -301,7 +339,7 @@ export default function ProductClient({
               </button>
             </div>
             <p className="text-sm font-semibold text-center mb-5">
-              Итого: {(activePrice * qty).toLocaleString("ru-RU")} ₽
+              Итого: {(effectivePrice * qty).toLocaleString("ru-RU")} ₽
               {isSeed && selectedVariant && <span className="text-[#aaa] font-normal"> · {selectedVariant.label}</span>}
             </p>
 

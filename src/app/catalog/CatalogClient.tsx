@@ -5,6 +5,7 @@ import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import ProductCard from "@/components/ProductCard";
 import { useProductStore } from "@/store/productStore";
+import { HEALTH_BUNDLE_ID } from "@/lib/bundle";
 
 type Category = "bads";
 
@@ -23,7 +24,10 @@ export default function CatalogClient({ cat, badge }: { cat?: Category; badge?: 
       (product) => product.oldPrice || product.weightVariants?.some((variant) => variant.oldPrice)
     );
   }
-  filtered = filtered.filter((product) => product.inStock);
+  filtered = filtered.filter(
+    (product) => product.inStock
+      || (process.env.NODE_ENV === "development" && product.id === HEALTH_BUNDLE_ID),
+  );
 
   const tabs: { label: string; value: Category | null }[] = [
     { label: "Все товары", value: null },
