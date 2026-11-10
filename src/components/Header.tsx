@@ -48,12 +48,13 @@ export default function Header() {
           </Link>
 
           {/* Навигация десктоп */}
-          <nav className="hidden md:flex items-center gap-7">
+          <nav className="hidden lg:flex items-center gap-6">
             <Link href="/catalog?cat=bads" className="text-sm font-medium text-[#1a1a1a] hover:text-[#E8845A] transition-colors">БАДы</Link>
             <Link href="/blog" className="text-sm font-medium text-[#1a1a1a] hover:text-[#E8845A] transition-colors">Статьи</Link>
             <Link href="/delivery" className="text-sm font-medium text-[#1a1a1a] hover:text-[#E8845A] transition-colors">Доставка</Link>
             <Link href="/sales" className="text-sm font-semibold text-[#E8845A] hover:text-[#d4703f] transition-colors">Акции 🔥</Link>
             <Link href="/about" className="text-sm font-medium text-[#1a1a1a] hover:text-[#E8845A] transition-colors">О компании</Link>
+            <Link href="/cooperation" className="text-sm font-medium text-[#1a1a1a] hover:text-[#E8845A] transition-colors">Сотрудничество</Link>
           </nav>
 
           {/* Иконки справа */}
@@ -155,7 +156,7 @@ export default function Header() {
               )}
             </div>
 
-            <button className="md:hidden p-2 rounded-full hover:bg-[#fdf8f5] transition-colors" onClick={() => setMobileOpen(!mobileOpen)}>
+            <button className="lg:hidden p-2 rounded-full hover:bg-[#fdf8f5] transition-colors" onClick={() => setMobileOpen(!mobileOpen)}>
               {mobileOpen ? <X size={20} /> : <Menu size={20} />}
             </button>
           </div>
@@ -179,7 +180,7 @@ export default function Header() {
 
       {/* Мобильное меню */}
       {mobileOpen && (
-        <div className="md:hidden max-h-[calc(100dvh-8.5rem)] overflow-y-auto bg-white border-t border-[#f0e8e0] px-4 py-4 flex flex-col gap-3">
+        <div className="lg:hidden max-h-[calc(100dvh-8.5rem)] overflow-y-auto bg-white border-t border-[#f0e8e0] px-4 py-4 flex flex-col gap-3">
           <Link href="/catalog?cat=bads" className="py-2 text-sm font-medium" onClick={() => setMobileOpen(false)}>БАДы</Link>
           <Link href="/blog" className="py-2 text-sm font-medium" onClick={() => setMobileOpen(false)}>Статьи</Link>
           <Link href="/delivery" className="py-2 text-sm font-medium" onClick={() => setMobileOpen(false)}>Доставка</Link>
@@ -187,6 +188,7 @@ export default function Header() {
           <Link href="/contacts" className="py-2 text-sm font-medium" onClick={() => setMobileOpen(false)}>Контакты</Link>
           <Link href="/sales" className="py-2 text-sm font-medium text-[#E8845A]" onClick={() => setMobileOpen(false)}>Акции 🔥</Link>
           <Link href="/about" className="py-2 text-sm font-medium" onClick={() => setMobileOpen(false)}>О компании</Link>
+          <Link href="/cooperation" className="py-2 text-sm font-medium" onClick={() => setMobileOpen(false)}>Сотрудничество</Link>
           <Link href={user ? "/account" : "/auth"} className="py-2 text-sm font-medium" onClick={() => setMobileOpen(false)}>Личный кабинет</Link>
           <Link href="/cart" className="py-2 text-sm font-medium" onClick={() => setMobileOpen(false)}>Корзина ({totalItems})</Link>
         </div>

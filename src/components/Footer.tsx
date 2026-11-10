@@ -38,6 +38,7 @@ export default function Footer() {
               <li><Link href="/contacts" className="text-sm text-[#6b6b6b] hover:text-[#E8845A] transition-colors">Контакты</Link></li>
               <li><Link href="/account" className="text-sm text-[#6b6b6b] hover:text-[#E8845A] transition-colors">Личный кабинет</Link></li>
               <li><Link href="/blog" className="text-sm text-[#6b6b6b] hover:text-[#E8845A] transition-colors">Статьи о здоровье</Link></li>
+              <li><Link href="/cooperation" className="text-sm text-[#6b6b6b] hover:text-[#E8845A] transition-colors">Сотрудничество</Link></li>
             </ul>
           </div>
 
