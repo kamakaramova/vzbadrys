@@ -2,6 +2,8 @@ import "server-only";
 
 import { createHash, timingSafeEqual } from "crypto";
 
+import { SITE_URL } from "@/lib/siteUrl";
+
 export const OZON_API_URL = "https://payapi.ozon.ru";
 export const CURRENCY_CODE = "643";
 
@@ -24,7 +26,9 @@ export function getOzonConfig() {
   const accessKey = process.env.OZON_ACQUIRING_ACCESS_KEY;
   const secretKey = process.env.OZON_ACQUIRING_SECRET_KEY;
   const notificationSecret = process.env.OZON_ACQUIRING_NOTIFICATION_SECRET;
-  const siteUrl = (process.env.NEXT_PUBLIC_SITE_URL || "https://xn--80abckmj9cj3h.xn--p1ai").replace(/\/$/, "");
+  // Ozon does not reliably repeat POST webhooks across an HTTP redirect.
+  // Always give it the canonical production host instead of the legacy domain.
+  const siteUrl = SITE_URL;
   const vatCandidate = process.env.OZON_ACQUIRING_VAT || "VAT_NONE";
   const fiscalizationCandidate = process.env.OZON_ACQUIRING_FISCALIZATION_TYPE || "FISCAL_TYPE_DOUBLE";
 
@@ -75,10 +79,10 @@ export function createOrderSignature(params: {
 
 export function createOrderStatusSignature(params: {
   accessKey: string;
-  orderId: string;
+  id: string;
   secretKey: string;
 }) {
-  return sha256(params.accessKey + params.orderId + params.secretKey);
+  return sha256(params.accessKey + params.id + params.secretKey);
 }
 
 export function createPaymentReturnToken(orderId: string, secretKey: string) {
@@ -159,6 +163,7 @@ function getOzonErrorDetails(data: unknown) {
 
 type OzonStatusResponse = {
   status?: string;
+  isTestMode?: boolean;
   order?: { status?: string; paymentMethod?: string; isTestMode?: boolean };
 };
 
@@ -167,10 +172,10 @@ export async function getOzonOrderStatus(orderId: string) {
   const config = getOzonConfig();
   const response = await postToOzon<OzonStatusResponse>("/v1/getOrderStatus", {
     accessKey: config.accessKey,
-    orderId,
+    id: orderId,
     requestSign: createOrderStatusSignature({
       accessKey: config.accessKey,
-      orderId,
+      id: orderId,
       secretKey: config.secretKey,
     }),
   });
@@ -179,6 +184,6 @@ export async function getOzonOrderStatus(orderId: string) {
   return {
     status,
     paymentMethod: response.order?.paymentMethod,
-    isTest: response.order?.isTestMode,
+    isTest: response.isTestMode ?? response.order?.isTestMode,
   };
 }

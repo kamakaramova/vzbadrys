@@ -6,6 +6,7 @@ import { sendEmail } from "@/lib/email/send";
 import { orderEmail } from "@/lib/email/templates";
 import { ensureOrderReward, findConfirmedUserByEmail, REFERRER_FIRST_ORDER_BONUS } from "@/lib/loyalty";
 import { getServerSupabase } from "@/lib/supabaseServer";
+import { normalizeOzonPaymentProviderStatus } from "@/lib/ozonPaymentProtocol";
 
 type Database = NonNullable<ReturnType<typeof getServerSupabase>>;
 
@@ -50,7 +51,7 @@ export async function applyOzonPaymentStatus({
   if (expectedAmount != null && Number(order.amount_kopecks) !== expectedAmount) return { ok: false, error: "amount_mismatch" };
   if (expectedCurrency && expectedCurrency !== "643") return { ok: false, error: "currency_mismatch" };
 
-  const normalizedStatus = status.trim().toLowerCase();
+  const normalizedStatus = normalizeOzonPaymentProviderStatus(status);
   const now = new Date().toISOString();
 
   if (["completed", "paid"].includes(normalizedStatus)) {
