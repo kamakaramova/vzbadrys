@@ -142,7 +142,7 @@ export async function applyOzonPaymentStatus({
     }
   }
 
-  if (["rejected", "failed", "cancelled", "canceled"].includes(normalizedStatus)) {
+  if (["rejected", "failed", "cancelled", "canceled", "expired", "refunded"].includes(normalizedStatus)) {
     if (["payment_failed", "paid"].includes(String(order.status))) return { ok: true, changed: false };
     await db.from("bonus_ledger").update({ status: "reversed" }).eq("order_id", order.id).eq("status", "reserved");
     const { error } = await db.from("payment_orders").update({
