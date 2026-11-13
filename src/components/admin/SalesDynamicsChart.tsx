@@ -57,6 +57,7 @@ export default function SalesDynamicsChart({ orders }: { orders: Order[] }) {
   const [customFrom, setCustomFrom] = useState(shiftDate(today, -29));
   const [customTo, setCustomTo] = useState(today);
   const [metric, setMetric] = useState<Metric>("revenue");
+  const [activePointIndex, setActivePointIndex] = useState<number | null>(null);
 
   const range = useMemo(() => {
     const rawFrom = period === "custom" ? customFrom : shiftDate(today, -(period - 1));
@@ -112,6 +113,18 @@ export default function SalesDynamicsChart({ orders }: { orders: Order[] }) {
   const currentComparison = metric === "revenue"
     ? percentChange(stats.revenue, stats.previousRevenue)
     : percentChange(stats.orderCount, stats.previousOrders);
+  const activePoint = activePointIndex !== null ? stats.points[activePointIndex] : null;
+  const tooltipWidth = 190;
+  const tooltipHeight = 72;
+  const tooltipPointX = activePointIndex !== null ? x(activePointIndex) : 0;
+  const tooltipPointY = activePoint ? y(activePoint[metric]) : 0;
+  const tooltipX = Math.min(
+    width - right - tooltipWidth,
+    Math.max(left + 4, tooltipPointX - tooltipWidth / 2),
+  );
+  const tooltipY = tooltipPointY - tooltipHeight - 14 >= top
+    ? tooltipPointY - tooltipHeight - 14
+    : Math.min(tooltipPointY + 14, top + plotHeight - tooltipHeight);
 
   return (
     <section className="bg-white rounded-3xl border border-[#f0e8e0] p-5 sm:p-6">
@@ -200,16 +213,47 @@ export default function SalesDynamicsChart({ orders }: { orders: Order[] }) {
           })}
           {area && <path d={area} fill="url(#sales-area)" />}
           {path && <path d={path} fill="none" stroke="#E8845A" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" />}
-          {stats.points.map((point, index) => (
-            <g key={point.day}>
-              <circle cx={x(index)} cy={y(point[metric])} r={stats.points.length <= 31 ? 4 : 2.5} fill="white" stroke="#E8845A" strokeWidth="3">
-                <title>{formatShortDate(point.day)}: {metric === "revenue" ? `${Math.round(point.revenue).toLocaleString("ru-RU")} ₽` : `${point.orders} зак.`}</title>
-              </circle>
-              {(index % labelEvery === 0 || index === stats.points.length - 1) && (
-                <text x={x(index)} y={height - 12} textAnchor="middle" fontSize="12" fill="#999">{formatShortDate(point.day)}</text>
-              )}
+          {stats.points.map((point, index) => {
+            const pointLabel = `${formatShortDate(point.day)}: ${Math.round(point.revenue).toLocaleString("ru-RU")} ₽, ${point.orders} ${point.orders === 1 ? "заказ" : point.orders >= 2 && point.orders <= 4 ? "заказа" : "заказов"}`;
+            return (
+              <g key={point.day}>
+                <circle cx={x(index)} cy={y(point[metric])} r={stats.points.length <= 31 ? 4 : 2.5} fill="white" stroke="#E8845A" strokeWidth="3" />
+                <circle
+                  cx={x(index)}
+                  cy={y(point[metric])}
+                  r="15"
+                  fill="transparent"
+                  className="cursor-crosshair outline-none"
+                  role="button"
+                  tabIndex={0}
+                  aria-label={pointLabel}
+                  onMouseEnter={() => setActivePointIndex(index)}
+                  onMouseLeave={() => setActivePointIndex(null)}
+                  onFocus={() => setActivePointIndex(index)}
+                  onBlur={() => setActivePointIndex(null)}
+                  onClick={() => setActivePointIndex(index)}
+                />
+                {activePointIndex === index && (
+                  <circle cx={x(index)} cy={y(point[metric])} r="6" fill="#fff3ed" stroke="#E8845A" strokeWidth="3" pointerEvents="none" />
+                )}
+                {(index % labelEvery === 0 || index === stats.points.length - 1) && (
+                  <text x={x(index)} y={height - 12} textAnchor="middle" fontSize="12" fill="#999">{formatShortDate(point.day)}</text>
+                )}
+              </g>
+            );
+          })}
+          {activePoint && (
+            <g transform={`translate(${tooltipX} ${tooltipY})`} pointerEvents="none">
+              <rect width={tooltipWidth} height={tooltipHeight} rx="12" fill="#1f1c1a" stroke="#E8845A" strokeWidth="1.5" />
+              <text x="14" y="21" fontSize="12" fontWeight="700" fill="#F5A47F">{formatShortDate(activePoint.day)}</text>
+              <text x="14" y="43" fontSize="13" fontWeight="700" fill="#ffffff">
+                Выручка: {Math.round(activePoint.revenue).toLocaleString("ru-RU")} ₽
+              </text>
+              <text x="14" y="61" fontSize="12" fill="#d8d5ca">
+                Оплаченных заказов: {activePoint.orders}
+              </text>
             </g>
-          ))}
+          )}
         </svg>
       </div>
     </section>
