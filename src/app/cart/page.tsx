@@ -11,6 +11,7 @@ import { supabase } from "@/lib/supabase";
 import { useBonusBalance } from "@/lib/useBonusBalance";
 import { productImagePaths } from "@/lib/productImages";
 import { promoDiscountAmount as calculatePromoDiscountAmount } from "@/lib/promoRules";
+import BlackFridayShippingNotice from "@/components/BlackFridayShippingNotice";
 
 export default function CartPage() {
   const router = useRouter();
@@ -103,6 +104,8 @@ export default function CartPage() {
             </nav>
             <h1 className="text-3xl font-bold">Корзина <span className="text-[#aaa] font-normal text-xl">({items.length} {items.length === 1 ? "товар" : items.length < 5 ? "товара" : "товаров"})</span></h1>
           </div>
+
+          <BlackFridayShippingNotice className="mb-8" />
 
           {!user && (
             <div className="mb-8 bg-[#fff4ee] border-l-4 border-[#E8845A] px-6 py-5 sm:px-8 sm:py-6">

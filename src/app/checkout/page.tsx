@@ -13,6 +13,7 @@ import PaymentLogos from "@/components/PaymentLogos";
 import { productImagePaths } from "@/lib/productImages";
 import { DELIVERY_CONTACT_EMAIL, getDeliveryRestriction, getOzonPvzDeliveryPrice } from "@/lib/deliveryPricing";
 import { Check, MapPin, Package, CreditCard, MessageSquare } from "lucide-react";
+import BlackFridayShippingNotice from "@/components/BlackFridayShippingNotice";
 
 type DeliveryMethod = "pickup" | "sdek_pvz" | "yandex_pvz" | "ozon_pvz" | "pochta";
 type PublicDeliverySettings = {
@@ -364,6 +365,7 @@ export default function CheckoutPage() {
                   <div className="w-7 h-7 rounded-full bg-[#E8845A] text-white text-xs font-bold flex items-center justify-center">2</div>
                   <h2 className="font-bold text-base flex items-center gap-2"><MapPin size={16} className="text-[#E8845A]" /> Способ доставки</h2>
                 </div>
+                <BlackFridayShippingNotice className="mb-5" />
                 <div className="space-y-3 mb-5">
                   {deliveryOptions.map((opt) => (
                     <label key={opt.id} className={`flex items-start gap-4 p-4 rounded-2xl border-2 cursor-pointer transition-all ${delivery === opt.id ? "border-[#E8845A] bg-[#fff8f5]" : "border-[#f0e8e0] hover:border-[#f5c9b0]"}`}>
