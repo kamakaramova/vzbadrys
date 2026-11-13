@@ -79,13 +79,14 @@ export async function GET(request: NextRequest) {
     }
     expectedLinked += expected;
     const rewardEntries = rewardsByOrder.get(order.id) ?? [];
-    const posted = rewardEntries
+    const activeRewardEntries = rewardEntries.filter((entry) => ["posted", "reserved"].includes(entry.status));
+    const posted = activeRewardEntries
       .filter((entry) => entry.status === "posted")
       .reduce((sum, entry) => sum + Number(entry.amount || 0), 0);
     postedOrderRewards += posted;
     if (expected <= 0) continue;
-    if (!rewardEntries.length) missingOrders.push({ id: order.id, paidAt: order.paid_at, expected });
-    else if (posted !== expected || rewardEntries.length !== 1) inconsistentOrders.push({ id: order.id, paidAt: order.paid_at, expected, posted });
+    if (!activeRewardEntries.length) missingOrders.push({ id: order.id, paidAt: order.paid_at, expected });
+    else if (posted !== expected || activeRewardEntries.length !== 1) inconsistentOrders.push({ id: order.id, paidAt: order.paid_at, expected, posted });
   }
 
   const totalsByKind: Record<string, number> = {};
