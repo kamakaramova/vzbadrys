@@ -104,6 +104,7 @@ export default function InventoryWorkspace({ password }: { password: string }) {
   const expiring = data.batches.filter((batch) => batch.status === "active" && batch.remaining_quantity > 0 && batch.expires_at && new Date(`${batch.expires_at}T23:59:59`).getTime() <= expiringLimit);
   const lowStock = data.products.filter((product) => product.stockQty !== null && product.stockQty <= (product.category === "seeds" ? 500 : 5));
   const unallocated = data.allocations.filter((allocation) => allocation.batch_id === null);
+  const standaloneBatches = data.batches.filter((batch) => !batch.supply_id);
 
   const batchesByProduct = useMemo(() => {
     const grouped = new Map<string, Batch[]>();
@@ -309,7 +310,23 @@ export default function InventoryWorkspace({ password }: { password: string }) {
             </div>
           </div>;
         })}
-        {!data.supplies.length && <div className="px-6 py-10 text-sm text-[#999]">Общих поставок пока нет. Отдельные товарные партии и остатки при этом сохранены.</div>}
+        {standaloneBatches.length > 0 && <div className="border-t border-[#eee7e2] p-5">
+          <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
+            <div>
+              <div className="text-xs font-semibold tracking-wide uppercase text-[#c66d48]">Отдельные партии</div>
+              <h3 className="mt-1 text-lg font-extrabold">Приняты отдельно</h3>
+              <p className="mt-1 text-sm text-[#756c67]">Эти партии не входят в общую поставку, но полностью учитываются в остатках и списаниях.</p>
+            </div>
+            <div className="text-right text-xs">
+              <div className="text-[#999]">Товарных партий</div>
+              <b className="text-base tabular-nums">{standaloneBatches.length}</b>
+            </div>
+          </div>
+          <div className="mt-4 flex flex-wrap gap-2">
+            {standaloneBatches.map((batch) => <span key={batch.id} className="rounded-xl border border-[#eadfd8] bg-[#fffaf7] px-3 py-2 text-xs"><b>{productById.get(batch.product_id)?.name || batch.product_id}</b><span className="mx-1 text-[#aaa]">·</span>{batch.lot_number}<span className="mx-1 text-[#aaa]">·</span>{number(batch.remaining_quantity)} из {number(batch.received_quantity)} {unit(productById.get(batch.product_id))}</span>)}
+          </div>
+        </div>}
+        {!data.supplies.length && !standaloneBatches.length && <div className="px-6 py-10 text-sm text-[#999]">Поставок и отдельных товарных партий пока нет.</div>}
       </div>
       <p className="text-xs text-[#999]">Общая поставка объединяет связанные товары одной приёмки. Списания, остатки и сроки годности по каждому товару продолжают учитываться отдельно.</p>
     </div> : tab === "batches" ? <div className="space-y-3">

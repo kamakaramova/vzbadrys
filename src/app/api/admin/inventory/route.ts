@@ -29,7 +29,10 @@ export async function GET(request: NextRequest) {
   if (error) return NextResponse.json({ error: inventoryError(error.message) }, { status: 500 });
 
   // В «Складе» учитываем физические баночки, а не виртуальный комплект.
-  const products = (productsResult.data ?? []).filter((row) => row.id !== HEALTH_BUNDLE_ID).map((row) => {
+  const products = (productsResult.data ?? []).filter((row) => {
+    const product = (row.data ?? {}) as Record<string, unknown>;
+    return row.id !== HEALTH_BUNDLE_ID && product.category === "bads";
+  }).map((row) => {
     const product = (row.data ?? {}) as Record<string, unknown>;
     return {
       id: String(row.id),
@@ -39,6 +42,10 @@ export async function GET(request: NextRequest) {
       inStock: Boolean(product.inStock),
     };
   });
+  const productIds = new Set(products.map((product) => product.id));
+  const batches = (batchesResult.data ?? []).filter((batch) => productIds.has(String(batch.product_id)));
+  const movements = (movementsResult.data ?? []).filter((movement) => productIds.has(String(movement.product_id)));
+  const allocations = (allocationsResult.data ?? []).filter((allocation) => productIds.has(String(allocation.product_id)));
   const orders = (ordersResult.data ?? []).map((row) => {
     const customer = (row.customer ?? {}) as Record<string, unknown>;
     const delivery = (row.delivery ?? {}) as Record<string, unknown>;
@@ -48,7 +55,7 @@ export async function GET(request: NextRequest) {
       customerName: [customer.name, customer.surname].filter(Boolean).join(" "),
       orderStatus: String(delivery.orderStatus ?? "processing"),
       items: ((row.items ?? []) as Record<string, unknown>[])
-        .filter((item) => item.bundleDisplayOnly !== true)
+        .filter((item) => item.bundleDisplayOnly !== true && productIds.has(String(item.productId ?? "")))
         .map((item) => ({
         productId: String(item.productId ?? ""),
         name: String(item.name ?? "Товар"),
@@ -60,10 +67,10 @@ export async function GET(request: NextRequest) {
 
   return NextResponse.json({
     products,
-    batches: batchesResult.data ?? [],
+    batches,
     supplies: suppliesResult.data ?? [],
-    movements: movementsResult.data ?? [],
-    allocations: allocationsResult.data ?? [],
+    movements,
+    allocations,
     orders,
   });
 }
@@ -113,6 +120,10 @@ export async function POST(request: NextRequest) {
     if (!Number.isInteger(productionCostKopecks) || productionCostKopecks < 0 || productionCostKopecks > 10_000_000_000) {
       return NextResponse.json({ error: "Проверьте стоимость партии" }, { status: 400 });
     }
+    const { data: productRow, error: productError } = await db.from("products").select("data").eq("id", body.productId).maybeSingle();
+    const product = (productRow?.data ?? {}) as Record<string, unknown>;
+    if (productError || !productRow) return NextResponse.json({ error: "Товар не найден" }, { status: 404 });
+    if (product.category !== "bads") return NextResponse.json({ error: "На склад можно принимать только БАДы" }, { status: 400 });
     const { data, error } = await db.rpc("inventory_receive_batch_v3", {
       p_product_id: body.productId,
       p_lot_number: body.lotNumber.trim().slice(0, 120),

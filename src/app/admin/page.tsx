@@ -1052,7 +1052,7 @@ export default function AdminPage() {
       <div className={`${tab === "shipments" || tab === "inventory" || tab === "finance" ? "max-w-[1920px] px-3 sm:px-4 lg:px-5" : "max-w-7xl px-4 sm:px-6 lg:px-8"} mx-auto py-8`}>
         {/* Табы */}
         <div className="flex gap-1.5 sm:gap-2 mb-6 sm:mb-8 bg-[#f5f0ec] p-1.5 rounded-2xl w-full overflow-x-auto">
-          {(["dashboard", "orders", "shipments", "inventory", "finance", "customers", "feedback", "promos", "bonuses", "products", "emails", "integrations"] as const).map((id) => {
+          {(["dashboard", "orders", "shipments", "inventory", "products", "finance", "customers", "feedback", "promos", "bonuses", "emails", "integrations"] as const).map((id) => {
             const labels: Record<typeof id, string> = { dashboard: "Дашборд", orders: "Заказы", shipments: "Отгрузки", inventory: "Склад", finance: "Финансы", customers: "Покупатели", feedback: "Отзывы и вопросы", promos: "Промокоды", bonuses: "Бонусы", products: "Товары", emails: "Письма", integrations: "Интеграции" };
             const icons: Record<typeof id, React.ReactNode> = {
               dashboard: <BarChart2 size={15} />,
@@ -1071,7 +1071,10 @@ export default function AdminPage() {
             return (
               <button
                 key={id}
-                onClick={() => setTab(id)}
+                onClick={() => {
+                  setTab(id);
+                  if (id === "products") void productStore.refresh();
+                }}
                 className={`shrink-0 flex items-center gap-2 px-4 sm:px-5 py-2.5 rounded-xl text-sm font-semibold transition-all ${
                   tab === id ? "bg-white shadow text-[#1a1a1a]" : "text-[#6b6b6b] hover:text-[#1a1a1a]"
                 }`}

@@ -57,6 +57,7 @@ interface ProductStore {
   adminPassword: string | null;
   setAdminPassword: (pw: string | null) => void;
   init: () => Promise<void>;
+  refresh: () => Promise<void>;
   updateProduct: (id: string, updates: Partial<Product>) => Promise<SaveResult>;
   addProduct: (product: Product) => Promise<SaveResult>;
   deleteProduct: (id: string) => Promise<SaveResult>;
@@ -113,6 +114,24 @@ export const useProductStore = create<ProductStore>((set, get) => ({
     } catch {
       // На случай временной недоступности базы оставляем последнюю корректную
       // версию, а не подменяем её устаревшими значениями из исходного каталога.
+    }
+    set({ initialized: true, loading: false });
+  },
+
+  refresh: async () => {
+    if (get().loading) return;
+    set({ loading: true });
+    try {
+      const response = await fetch("/api/products", { cache: "no-store" });
+      const payload = await response.json();
+      if (response.ok && Array.isArray(payload.products)) {
+        const products = mergeWithCatalogue(payload.products as Product[]);
+        cacheProducts((payload.products as Product[]).filter((product) => product.category === "bads"));
+        set({ products, initialized: true, loading: false });
+        return;
+      }
+    } catch {
+      // При кратком сбое оставляем последнюю корректную версию каталога.
     }
     set({ initialized: true, loading: false });
   },
