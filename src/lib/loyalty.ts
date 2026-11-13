@@ -5,6 +5,10 @@ export const REFERRER_FIRST_ORDER_BONUS = 50;
 export const ORDER_BONUS_PERCENT = 1;
 export const REVIEW_BONUS = 20;
 export const MAX_BONUS_PAYMENT_SHARE = 0.3;
+// PostgreSQL считает несколько NULL разными значениями внутри UNIQUE.
+// Для операций уровня заказа используем стабильный product_id, чтобы
+// существующее ограничение (kind, order_id, product_id) не допускало дублей.
+export const ORDER_LEDGER_PRODUCT_ID = "__order__";
 
 export function normalizeCode(value: string | undefined) {
   return (value || "").trim().toUpperCase().replace(/\s+/g, "");
@@ -62,6 +66,8 @@ export async function ensureOrderReward(
     .select("order_id")
     .eq("order_id", order.id)
     .eq("kind", "order_reward")
+    .in("status", ["reserved", "posted"])
+    .limit(1)
     .maybeSingle();
   if (existingError) throw new Error("Не удалось проверить бонусы за заказ");
   if (existing) return { created: false, reward };
@@ -71,8 +77,10 @@ export async function ensureOrderReward(
     amount: reward,
     kind: "order_reward",
     order_id: order.id,
+    product_id: ORDER_LEDGER_PRODUCT_ID,
     status: "posted",
   });
+  if (error?.code === "23505") return { created: false, reward };
   if (error) throw new Error("Не удалось начислить бонусы за заказ");
   return { created: true, reward };
 }

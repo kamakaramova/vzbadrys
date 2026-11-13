@@ -10,7 +10,7 @@ import {
   getOzonConfig,
   postToOzon,
 } from "@/lib/ozonAcquiring";
-import { findReferralOwner, getAuthenticatedUser, getBonusBalance, normalizeCode, REFERRAL_DISCOUNT_PERCENT } from "@/lib/loyalty";
+import { findReferralOwner, getAuthenticatedUser, getBonusBalance, normalizeCode, ORDER_LEDGER_PRODUCT_ID, REFERRAL_DISCOUNT_PERCENT } from "@/lib/loyalty";
 import { getServerSupabase } from "@/lib/supabaseServer";
 import { getDeliverySettings } from "@/lib/deliverySettings";
 import { getDeliveryRestriction, getDeliveryRestrictionMessage, getOzonPvzDeliveryPrice } from "@/lib/deliveryPricing";
@@ -431,6 +431,7 @@ export async function POST(request: NextRequest) {
       amount: -bonusSpent,
       kind: "order_payment",
       order_id: extId,
+      product_id: ORDER_LEDGER_PRODUCT_ID,
       status: "reserved",
     });
     if (bonusError) {

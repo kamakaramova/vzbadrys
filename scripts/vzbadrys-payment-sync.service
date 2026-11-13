@@ -1,5 +1,5 @@
 [Unit]
-Description=Sync pending VzBADris payment statuses with Ozon
+Description=Sync VzBADris payment statuses and reconcile loyalty bonuses
 After=network-online.target vzbadrys.service
 Wants=network-online.target
 

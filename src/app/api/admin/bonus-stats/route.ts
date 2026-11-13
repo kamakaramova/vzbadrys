@@ -83,6 +83,7 @@ export async function GET(request: NextRequest) {
       .filter((entry) => entry.status === "posted")
       .reduce((sum, entry) => sum + Number(entry.amount || 0), 0);
     postedOrderRewards += posted;
+    if (expected <= 0) continue;
     if (!rewardEntries.length) missingOrders.push({ id: order.id, paidAt: order.paid_at, expected });
     else if (posted !== expected || rewardEntries.length !== 1) inconsistentOrders.push({ id: order.id, paidAt: order.paid_at, expected, posted });
   }

@@ -10,6 +10,33 @@ import { normalizeOzonPaymentProviderStatus } from "@/lib/ozonPaymentProtocol";
 
 type Database = NonNullable<ReturnType<typeof getServerSupabase>>;
 
+type RewardOrder = {
+  id: unknown;
+  user_id: unknown;
+  customer: unknown;
+  amount_kopecks: unknown;
+};
+
+async function ensurePaidOrderReward(db: Database, order: RewardOrder) {
+  let rewardUserId = order.user_id ? String(order.user_id) : "";
+  if (!rewardUserId) {
+    const customer = (order.customer ?? {}) as Record<string, unknown>;
+    const matchedUser = await findConfirmedUserByEmail(db, String(customer.email ?? ""));
+    rewardUserId = matchedUser?.id || "";
+    if (rewardUserId) {
+      await db.from("payment_orders").update({ user_id: rewardUserId }).eq("id", order.id).is("user_id", null);
+    }
+  }
+  if (rewardUserId) {
+    await ensureOrderReward(db, {
+      id: String(order.id),
+      userId: rewardUserId,
+      amountKopecks: Number(order.amount_kopecks || 0),
+    });
+  }
+  return rewardUserId;
+}
+
 type ApplyPaymentStatusParams = {
   db: Database;
   ozonOrderId: string;
@@ -56,6 +83,10 @@ export async function applyOzonPaymentStatus({
 
   if (["completed", "paid"].includes(normalizedStatus)) {
     if (order.status === "paid") {
+      // Повторный webhook — это одновременно безопасная самопроверка:
+      // если оплата уже записана, но вторичное начисление однажды не прошло,
+      // восстанавливаем его идемпотентно.
+      await ensurePaidOrderReward(db, order);
       if (order.promo_code) await db.rpc("promo_sync_usage_count", { p_code: String(order.promo_code) });
       return { ok: true, changed: false };
     }
@@ -91,15 +122,8 @@ export async function applyOzonPaymentStatus({
       if (paidError) throw new Error(paidError.message);
 
       await db.from("bonus_ledger").update({ status: "posted" }).eq("order_id", order.id).eq("status", "reserved");
-      let rewardUserId = order.user_id ? String(order.user_id) : "";
-      if (!rewardUserId) {
-        const customer = (order.customer ?? {}) as Record<string, unknown>;
-        const matchedUser = await findConfirmedUserByEmail(db, String(customer.email ?? ""));
-        rewardUserId = matchedUser?.id || "";
-        if (rewardUserId) await db.from("payment_orders").update({ user_id: rewardUserId }).eq("id", order.id).is("user_id", null);
-      }
+      const rewardUserId = await ensurePaidOrderReward(db, order);
       if (rewardUserId) {
-        await ensureOrderReward(db, { id: String(order.id), userId: rewardUserId, amountKopecks: Number(order.amount_kopecks) });
         if (order.referral_owner_id && order.referral_owner_id !== rewardUserId) {
           const { error: rewardClaimError } = await db.from("referral_rewards").insert({
             referred_user_id: rewardUserId,

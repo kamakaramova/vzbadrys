@@ -1,5 +1,5 @@
 [Unit]
-Description=Sync pending Ozon payment statuses every 30 minutes
+Description=Sync Ozon payments and loyalty bonuses every 30 minutes
 
 [Timer]
 OnBootSec=5min

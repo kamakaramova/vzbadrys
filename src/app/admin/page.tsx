@@ -2167,7 +2167,7 @@ export default function AdminPage() {
             <div className="flex flex-col sm:flex-row gap-3 sm:items-center sm:justify-between">
               <div>
                 <h1 className="text-2xl font-black">Бонусы</h1>
-                <p className="text-sm text-[#777] mt-1">Начисления, списания и сверка обещанного кэшбэка 1% по оплаченным заказам.</p>
+                <p className="text-sm text-[#777] mt-1">Начисления, списания и сверка обещанного кэшбэка 1% по оплаченным заказам. Пропущенные начисления автоматически перепроверяются каждые 30 минут.</p>
               </div>
               <button onClick={() => void loadBonusStats()} disabled={bonusStatsLoading} className="inline-flex items-center justify-center gap-2 rounded-2xl border border-[#f0e8e0] bg-white px-5 py-3 text-sm font-semibold hover:border-[#E8845A] disabled:opacity-60">
                 <RefreshCw size={16} className={bonusStatsLoading ? "animate-spin" : ""} /> Обновить
