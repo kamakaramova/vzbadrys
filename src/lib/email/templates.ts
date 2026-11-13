@@ -113,8 +113,8 @@ export function orderEmail(
       return {
         subject: `Ваш заказ ${order.id} передан в доставку Ozon`,
         title: "Заказ отправился к Вам",
-        lead: `${name}, мы передали Ваш заказ в доставку Ozon. После оформления посылка появится в личном кабинете Ozon. Там Вы сможете следить за её движением и увидеть, когда она поступит в выбранный ПВЗ.`,
-        extra: `${deliveryBlock}<div style="background:#fff3ec;border-radius:14px;padding:16px;margin-bottom:20px"><p style="margin:0;font-size:14px;line-height:1.6;color:#5f5752"><b>Обратите внимание:</b> номер телефона в заказе должен совпадать с номером, который привязан к Вашему аккаунту Ozon.</p></div>${trackBlock}${actionButton("Открыть личный кабинет Ozon", "https://www.ozon.ru/my/orderlist/")}`,
+        lead: `${name}, мы передали Ваш заказ в доставку Ozon. В ближайшее время отправление появится в разделе «Заказы» Вашего личного кабинета Ozon. Там можно следить за его движением и увидеть, когда оно поступит в выбранный пункт выдачи.`,
+        extra: `${deliveryBlock}<div style="background:#fff3ec;border-radius:14px;padding:16px;margin-bottom:14px"><p style="margin:0 0 7px;font-size:16px;line-height:1.45;font-weight:800;color:#2d2926">За доставку больше платить не нужно</p><p style="margin:0;font-size:14px;line-height:1.65;color:#5f5752">Если в карточке отправления Вы увидите строку «Оплата заказчика» и сумму доставки, пожалуйста, не переживайте. Для Ozon заказчик доставки — магазин «взБАДрись», поэтому эта сумма относится к нам. Мы уже всё оплатили: Вам не нужно ничего доплачивать ни в приложении Ozon, ни при получении заказа.</p></div><div style="background:#fdf8f5;border-radius:14px;padding:16px;margin-bottom:20px"><p style="margin:0;font-size:14px;line-height:1.6;color:#5f5752"><b>Важно:</b> чтобы отправление появилось в личном кабинете, номер телефона в заказе должен совпадать с номером, который привязан к Вашему аккаунту Ozon.</p></div>${trackBlock}${actionButton("Открыть личный кабинет Ozon", "https://www.ozon.ru/my/orderlist/")}`,
       };
     }
     if (deliveryCode === "pochta") {
