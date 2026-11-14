@@ -93,6 +93,30 @@ chmod 600 /opt/vzbadrys-backups/*.tar.gz
 Результат каждого запуска сохраняется в журнале systemd сервиса
 `vzbadrys-payment-sync.service` без персональных данных и секретов.
 
+## Автоматический контроль работоспособности
+
+`vzbadrys-health-monitor.timer` запускает лёгкую проверку раз в 8 часов. Она
+проверяет витрину, соединение с Supabase, Ozon Delivery Gateway, зависшие
+платежи, целостность недавно оплаченных заказов и работу фоновой сверки
+платежей/бонусов.
+
+Письмо через Resend отправляется только при переходе из исправного состояния в
+ошибку и один раз после восстановления. Повторяющиеся одинаковые ошибки не
+создают рассылку. В письмах и systemd-журнале нет персональных данных
+покупателей. Состояние хранится в `/var/lib/vzbadrys-monitor/state.json`.
+
+Дополнительно GitHub Actions раз в 8 часов проверяет публичную витрину, health
+endpoint и Ozon Gateway снаружи VPS. Эта проверка нужна на случай полной
+недоступности самого сервера, когда он не сможет отправить письмо через Resend.
+
+Полезные команды:
+
+```bash
+systemctl status vzbadrys-health-monitor.timer
+systemctl start vzbadrys-health-monitor.service
+journalctl -u vzbadrys-health-monitor.service -n 50 --no-pager
+```
+
 ## Переменные окружения
 
 Значения взяты из production-окружения Vercel и хранятся только в

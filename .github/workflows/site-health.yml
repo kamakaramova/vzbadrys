@@ -1,0 +1,26 @@
+name: Production health check
+
+on:
+  schedule:
+    - cron: "0 */8 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: production-health-check
+  cancel-in-progress: true
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Check public services
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl --fail --silent --show-error --location --retry 2 --retry-delay 2 --max-time 20 https://vzbadris.ru/ >/dev/null
+          curl --fail --silent --show-error --retry 2 --retry-delay 2 --max-time 20 https://vzbadris.ru/api/health | grep -q '"ok":true'
+          curl --fail --silent --show-error --retry 2 --retry-delay 2 --max-time 20 https://api.xn--80abckmj9cj3h.xn--p1ai/gateway-health >/dev/null

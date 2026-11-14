@@ -1,0 +1,12 @@
+[Unit]
+Description=Run VzBADris health monitoring every 8 hours
+
+[Timer]
+OnBootSec=10min
+OnUnitActiveSec=8h
+RandomizedDelaySec=5min
+Persistent=true
+Unit=vzbadrys-health-monitor.service
+
+[Install]
+WantedBy=timers.target
