@@ -2,7 +2,7 @@ import Link from "next/link";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import { SHOW_FIRST_ORDER_PROMO } from "@/lib/campaignVisibility";
-import BlackFridayHomeHero from "@/components/BlackFridayHomeHero";
+import HeroSection from "@/components/HeroSection";
 import FeaturedProducts from "@/components/FeaturedProducts";
 import { ArrowRight, Shield, Truck, FileCheck, Star } from "lucide-react";
 import type { Metadata } from "next";
@@ -16,7 +16,7 @@ export default function Home() {
     <>
       <Header />
       <main>
-        <BlackFridayHomeHero />
+        <HeroSection />
 
         {/* ПРЕИМУЩЕСТВА */}
         <section className="py-14 border-b border-[#f0e8e0]">
@@ -143,7 +143,7 @@ export default function Home() {
           </div>
         </section>
 
-        {/* Промокод временно скрыт на период Чёрной пятницы */}
+        {/* Промокод на первый заказ */}
         {SHOW_FIRST_ORDER_PROMO && <section className="py-10 pb-20">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="bg-[#1a1a1a] rounded-3xl p-10 md:p-14 text-center text-white">

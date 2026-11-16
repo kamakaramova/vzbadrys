@@ -2,7 +2,13 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import { promoDiscountAmount } from "@/lib/promoRules";
-import { getBlackFridayCardPrice } from "@/lib/blackFridayPricing";
+
+const STANDARD_CART_PRICES: Record<string, number> = {
+  "magniy-bisglitinat": 901,
+  "selen-tsink": 715,
+  "magniy-citrat-b6": 868,
+  "nabor-magniy-tsink-selen": 1987,
+};
 
 export interface CartItem {
   id: string;
@@ -95,9 +101,9 @@ export const useCartStore = create<CartStore>()(
     }),
     {
       name: "vzbadrys-cart",
-      // Версия 5 обновляет сохранённые корзины до цен Чёрной пятницы и по-прежнему
-      // удаляет семена, которые больше не продаются.
-      version: 5,
+      // Версия 6 возвращает сохранённые корзины к обычным ценам после завершения
+      // временной акции и по-прежнему удаляет товары, снятые с продажи.
+      version: 6,
       migrate: (persistedState) => {
         const state = persistedState as CartStore;
         return {
@@ -107,8 +113,8 @@ export const useCartStore = create<CartStore>()(
               .filter((item) => item.category === "bads")
               .map((item) => {
                 const productId = item.id.match(/^(.+)-(\d+)g$/)?.[1] ?? item.id;
-                const blackFridayPrice = getBlackFridayCardPrice(productId, item.price);
-                return blackFridayPrice ? { ...item, price: blackFridayPrice.salePrice } : item;
+                const standardPrice = STANDARD_CART_PRICES[productId];
+                return standardPrice ? { ...item, price: standardPrice } : item;
               })
             : [],
           promoProductIds: Array.isArray(state.promoProductIds) ? state.promoProductIds : null,

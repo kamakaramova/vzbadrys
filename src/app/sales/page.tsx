@@ -7,7 +7,7 @@ import { SHOW_FIRST_ORDER_PROMO } from "@/lib/campaignVisibility";
 
 export const metadata: Metadata = {
   title: "Акции и скидки — взБАДрись",
-  description: "Актуальные акции и скидки на БАДы: Чёрная пятница и бесплатная доставка в ПВЗ Ozon от 3 000 ₽.",
+  description: "Актуальные акции и скидки на БАДы: скидка 10% на первый заказ и бесплатная доставка в ПВЗ Ozon от 3 000 ₽.",
   alternates: { canonical: "/sales" },
 };
 
@@ -27,38 +27,7 @@ export default function SalesPage() {
 
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-14">
 
-          {/* Чёрная пятница */}
-          <section className="mb-8 overflow-hidden rounded-3xl bg-[#151515] text-white relative">
-            <div className="absolute -top-20 -right-16 h-64 w-64 rounded-full bg-[#ffd84d]/20 blur-3xl pointer-events-none" />
-            <div className="absolute -bottom-24 left-1/3 h-56 w-56 rounded-full bg-[#E8845A]/20 blur-3xl pointer-events-none" />
-            <div className="relative z-10 grid gap-8 p-8 md:grid-cols-[1fr_auto] md:items-center md:p-12">
-              <div>
-                <span className="inline-flex rounded-full bg-[#ffd84d] px-4 py-1.5 text-xs font-black uppercase tracking-widest text-[#151515]">
-                  11–15 ноября
-                </span>
-                <p className="mt-5 text-sm font-bold uppercase tracking-[0.25em] text-[#ffd84d]">Чёрная пятница</p>
-                <h2 className="mt-2 text-3xl font-black leading-tight md:text-5xl">Три баночки за 1 499 ₽</h2>
-                <p className="mt-4 max-w-2xl text-[#d4d4d4] leading-relaxed">
-                  Селен + цинк, магний хелат и магний цитрат + B6. По отдельности — 2 484 ₽, ваша экономия — 985 ₽.
-                </p>
-                <p className="mt-3 font-semibold text-white">На остальные товары — скидка 20% в дни акции.</p>
-              </div>
-              <div className="flex flex-col items-start gap-3 md:items-end">
-                <div className="text-left md:text-right">
-                  <p className="text-sm text-[#a3a3a3]">Срок акции</p>
-                  <p className="text-lg font-bold">11–15 ноября · МСК</p>
-                </div>
-                <Link
-                  href="/catalog"
-                  className="inline-flex items-center justify-center rounded-full bg-[#ffd84d] px-7 py-3.5 font-black text-[#151515] transition-transform hover:-translate-y-0.5"
-                >
-                  Посмотреть товары →
-                </Link>
-              </div>
-            </div>
-          </section>
-
-          {/* Промокод временно скрыт на период Чёрной пятницы */}
+          {/* Промокод на первый заказ */}
           {SHOW_FIRST_ORDER_PROMO && <div className="mb-8">
             <div className="bg-[#1a1a1a] rounded-3xl p-8 md:p-12 relative overflow-hidden">
               {/* Декоративные элементы */}
@@ -124,7 +93,6 @@ export default function SalesPage() {
             <div className="grid md:grid-cols-2 gap-4">
               {[
                 ...(SHOW_FIRST_ORDER_PROMO ? [{ icon: "🎟️", title: "Промокод ВЗБАДРИСЬ10", desc: "Действует для новых покупателей. Одноразовый, применяется в корзине." }] : []),
-                { icon: "🖤", title: "Чёрная пятница", desc: "С 11 по 15 ноября: три баночки за 1 499 ₽, на остальные товары — скидка 20%." },
                 { icon: "📦", title: "Бесплатная доставка", desc: "При заказе от 3 000 ₽ доставка в пункт выдачи Ozon — бесплатно." },
                 { icon: "🏷️", title: "Цены со скидкой", desc: "Финальная цена всегда указана в карточке товара и корзине." },
                 { icon: "💬", title: "Вопросы по акциям", desc: "Напишите нам в Telegram @vzbadris — ответим быстро." },

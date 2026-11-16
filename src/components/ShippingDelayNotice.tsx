@@ -1,4 +1,4 @@
-export default function BlackFridayShippingNotice({ className = "" }: { className?: string }) {
+export default function ShippingDelayNotice({ className = "" }: { className?: string }) {
   return (
     <aside
       aria-label="Временное увеличение срока отправки"
@@ -19,7 +19,8 @@ export default function BlackFridayShippingNotice({ className = "" }: { classNam
           !
         </span>
         <p className="text-sm leading-6 text-[#f5f3ea]">
-          В связи с большим числом заказов в Чёрную пятницу срок отправки товаров временно увеличен.
+          Из-за большого количества заказов после Чёрной пятницы и ожидания новой поставки отправка может занять немного больше времени.
+          Заказ можно оформить уже сейчас — мы обязательно отправим его, но немного позже обычного.
           <strong className="ml-1 font-bold text-[#f8d933]">Благодарим за понимание.</strong>
         </p>
       </div>

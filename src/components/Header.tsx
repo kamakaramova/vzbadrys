@@ -51,7 +51,7 @@ export default function Header() {
         </div>
       )}
 
-      {/* Скидка на первый заказ временно скрыта на период Чёрной пятницы */}
+      {/* Скидка на первый заказ */}
       {SHOW_FIRST_ORDER_HEADER_ANNOUNCEMENT && (
         <div className="bg-[#FDDCCA] py-2 px-4 text-center text-[11px] leading-4 sm:text-xs font-medium text-[#8b4513]">
           <span className="sm:hidden">−10% на первый заказ · ВЗБАДРИСЬ10</span>
