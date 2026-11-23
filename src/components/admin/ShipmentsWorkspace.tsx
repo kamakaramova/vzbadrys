@@ -394,14 +394,14 @@ export default function ShipmentsWorkspace({ password }: { password: string }) {
       <label className="flex items-center gap-2 text-sm font-medium"><input type="checkbox" checked={onlyIncomplete} onChange={(e) => setOnlyIncomplete(e.target.checked)} className="accent-[#E8845A]"/>Только незавершённые</label>
     </div>
     <div ref={tableRef} onScroll={rememberView} className="border border-[#eadfd8] rounded-2xl bg-white overflow-auto max-h-[72vh] [scrollbar-gutter:stable]">
-      <table className="min-w-[2095px] w-full text-[12px] border-collapse table-fixed">
+      <table className="min-w-[2035px] w-full text-[12px] border-collapse table-fixed">
         <colgroup>
           <col style={{ width: 38 }}/>
           <col style={{ width: 44 }}/>
           <col style={{ width: 150 }}/>
           <col style={{ width: 165 }}/>
           <col style={{ width: 185 }}/>
-          <col style={{ width: 240 }}/>
+          <col style={{ width: 180 }}/>
           <col style={{ width: 82 }}/>
           <col style={{ width: 220 }}/>
           <col style={{ width: 86 }}/>
@@ -437,7 +437,7 @@ export default function ShipmentsWorkspace({ password }: { password: string }) {
           </td>
           <td className="px-2.5 py-3 border-b border-r border-[#eee7e2] w-[180px]"><b>{row.customerName}</b><div className="mt-1 flex items-center gap-1.5 text-[#837a75] whitespace-nowrap"><span>{formatPhoneForDisplay(row.phone)}</span><button onClick={() => void copyPhone(row.id, row.phone)} title="Скопировать номер без скобок и дефисов" aria-label={`Скопировать номер телефона ${row.customerName}`} className="shrink-0 inline-flex w-6 h-6 items-center justify-center rounded-md border border-[#eadfd8] bg-white text-[#c66d48] hover:bg-[#fff0e8] hover:border-[#e7b49e] transition-colors"><Clipboard size={12}/></button>{copiedPhone === row.id && <span className="text-[10px] font-semibold text-green-600">Скопировано</span>}</div><div className="text-[#aaa] break-all">{row.email}</div></td>
           <td className="px-2.5 py-3 border-b border-r border-[#eee7e2] w-[205px]">{row.items.map((item) => <div key={item.id} className="mb-2 leading-snug"><div>{item.name} <b>×{item.quantity}</b></div>{item.allocations.map((allocation, allocationIndex) => <div key={`${allocation.batchId || "none"}:${allocationIndex}`} className={`mt-0.5 text-[10px] font-semibold ${allocation.batchId ? "text-[#7d746f]" : "text-red-600"}`}>{allocation.batchId ? `Партия ${allocation.lotNumber}: ${allocation.quantity}` : `Не распределено: ${allocation.quantity}`}</div>)}</div>)}</td>
-          <td className="px-2.5 py-3 border-b border-r border-[#eee7e2] w-[240px]">{row.customerComment ? <div className="rounded-xl border border-amber-300 bg-amber-50 px-3 py-2.5 text-amber-950 shadow-sm"><div className="mb-1 text-[10px] font-extrabold uppercase tracking-wide text-amber-700">Важно от покупателя</div><div className="whitespace-pre-wrap break-words text-[12px] font-semibold leading-snug">{row.customerComment}</div></div> : <span className="text-[#bbb]">—</span>}</td>
+          <td className="px-2 py-3 border-b border-r border-[#eee7e2] w-[180px]">{row.customerComment ? <div className="rounded-xl border border-amber-300 bg-amber-50 px-2.5 py-2.5 text-amber-950 shadow-sm"><div className="mb-1 text-[10px] font-extrabold uppercase tracking-wide text-amber-700">Важно от покупателя</div><div className="whitespace-pre-wrap break-words text-[12px] font-semibold leading-snug">{row.customerComment}</div></div> : <span className="text-[#bbb]">—</span>}</td>
           <td className="px-2.5 py-3 border-b border-r border-[#eee7e2] w-[105px] font-extrabold whitespace-nowrap tabular-nums">{money(row.total)}</td>
           <td className="px-2.5 py-3 border-b border-r border-[#eee7e2] w-[235px]"><b>{row.deliveryMethod}</b><button onClick={() => navigator.clipboard.writeText(row.deliveryAddress)} className="block text-left mt-1 text-[#756c67] hover:text-[#c66d48] leading-snug">{row.deliveryAddress || "Адрес не указан"}</button>{row.trackNumber && <div className="mt-1 font-mono">{row.trackNumber}</div>}</td>
           <td className="px-3 py-3 border-b border-r border-[#eee7e2] font-bold whitespace-nowrap">{money(row.customerDeliveryCost)}</td>
