@@ -1,28 +1,25 @@
 export default function ShippingDelayNotice({ className = "" }: { className?: string }) {
   return (
     <aside
-      aria-label="Временное увеличение срока отправки"
+      aria-label="Отгрузка заказов восстановлена"
       className={[
-        "relative overflow-hidden rounded-2xl border border-[#f8d933] bg-[#151515] px-4 pb-4 pt-5 text-white shadow-[0_8px_24px_rgba(21,21,21,0.08)] sm:px-5",
+        "rounded-2xl border border-[#f0d8ca] bg-[#fff8f4] p-4 shadow-[0_8px_24px_rgba(83,55,42,0.05)] sm:p-5",
         className,
       ].join(" ")}
     >
-      <div
-        aria-hidden="true"
-        className="absolute inset-x-0 top-0 h-1.5 bg-[repeating-linear-gradient(135deg,#f8d933_0px,#f8d933_9px,#151515_9px,#151515_18px)]"
-      />
       <div className="flex items-start gap-3">
         <span
           aria-hidden="true"
-          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#f8d933] text-sm font-black text-[#151515]"
+          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#E8845A] text-base font-bold text-white"
         >
-          !
+          ✓
         </span>
-        <p className="text-sm leading-6 text-[#f5f3ea]">
-          Из-за большого количества заказов после Чёрной пятницы и ожидания новой поставки отправка может занять немного больше времени.
-          Заказ можно оформить уже сейчас — мы обязательно отправим его, но немного позже обычного.
-          <strong className="ml-1 font-bold text-[#f8d933]">Благодарим за понимание.</strong>
-        </p>
+        <div>
+          <p className="font-semibold text-[#1a1a1a]">Отгрузка восстановлена</p>
+          <p className="mt-1 text-sm leading-6 text-[#6b625d]">
+            Заказы снова отправляем в обычные сроки. С удовольствием ждём ваши заказы!
+          </p>
+        </div>
       </div>
     </aside>
   );
