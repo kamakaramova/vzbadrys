@@ -54,6 +54,7 @@ function mapShipment(row: Record<string, unknown>, allocations: BatchAllocation[
     customerName: [customer.name, customer.surname].filter(Boolean).join(" "),
     email: customer.email ?? "",
     phone: customer.phone ?? "",
+    customerComment: row.comment ? String(row.comment) : "",
     items,
     itemsCount: items.reduce((sum, item) => sum + item.quantity, 0),
     total: Number(row.amount_kopecks ?? 0) / 100,
@@ -85,7 +86,7 @@ export async function GET(request: NextRequest) {
   const to = request.nextUrl.searchParams.get("to");
   let query = db
     .from("payment_orders")
-    .select("id,status,amount_kopecks,customer,items,delivery,created_at,updated_at")
+    .select("id,status,amount_kopecks,customer,items,delivery,comment,created_at,updated_at")
     .eq("status", "paid")
     .order("created_at", { ascending: false })
     .limit(1000);

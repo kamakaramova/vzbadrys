@@ -19,7 +19,7 @@ type Warehouse = {
 type Shipment = {
   id: string; createdAt: string; updatedAt: string; orderStatus: string; customerName: string; email: string; phone: string;
   items: Array<{ id: string; productId: string; name: string; quantity: number; stockAmount: number; allocations: Array<{ batchId: string | null; lotNumber: string | null; quantity: number }> }>; itemsCount: number; total: number;
-  deliveryMethod: string; deliveryAddress: string; customerDeliveryCost: number; trackNumber: string; warehouse: Warehouse;
+  customerComment: string; deliveryMethod: string; deliveryAddress: string; customerDeliveryCost: number; trackNumber: string; warehouse: Warehouse;
 };
 
 const ORDER_STATUSES = [
@@ -148,7 +148,7 @@ export default function ShipmentsWorkspace({ password }: { password: string }) {
   const visible = useMemo(() => {
     const filtered = rows.filter((row) => {
       const q = search.trim().toLowerCase();
-      const matches = !q || [row.id, row.customerName, row.email, row.phone, row.deliveryAddress]
+      const matches = !q || [row.id, row.customerName, row.email, row.phone, row.deliveryAddress, row.customerComment]
         .some((value) => value.toLowerCase().includes(q));
       const matchesStatus = statusFilter === "all" || row.orderStatus === statusFilter;
       const incomplete = row.orderStatus !== "delivered";
@@ -327,15 +327,16 @@ export default function ShipmentsWorkspace({ password }: { password: string }) {
         }, {})).map((item, index) => `<tr><td>${index + 1}</td><td><b>${escape(item.name)}</b></td><td class="num">${item.quantity}</td><td>${escape([...new Set(item.lots)].join(", ") || "Партия не указана")}</td><td>${escape(item.orders.join(", "))}</td></tr>`).join("")
       : documentRows.map((row, index) => {
           const orderItems = row.items.map((item) => `<div class="packing-item"><span class="packing-check"></span><span>${escape(item.name)}</span><b class="packing-qty">× ${item.quantity}</b></div>`).join("");
-          return `<tr><td>${index + 1}</td><td><b>${escape(row.id)}</b><br><small>${new Date(row.createdAt).toLocaleDateString("ru-RU")}</small></td><td class="items">${orderItems}</td><td>${escape(row.customerName)}<br><small>${escape(formatPhoneForDisplay(row.phone))} · ${escape(row.email)}</small></td><td>${escape(row.deliveryMethod)}<br>${escape(row.deliveryAddress)}</td><td class="num">${escape(money(row.total))}<br><small>доставка: ${escape(money(row.customerDeliveryCost))}</small></td><td>${escape(row.trackNumber || "—")}</td></tr>`;
+          return `<tr><td>${index + 1}</td><td><b>${escape(row.id)}</b><br><small>${new Date(row.createdAt).toLocaleDateString("ru-RU")}</small></td><td class="items">${orderItems}</td><td class="customer-comment">${row.customerComment ? `<b>Важно от покупателя:</b><br>${escape(row.customerComment)}` : "—"}</td><td>${escape(row.customerName)}<br><small>${escape(formatPhoneForDisplay(row.phone))} · ${escape(row.email)}</small></td><td>${escape(row.deliveryMethod)}<br>${escape(row.deliveryAddress)}</td><td class="num">${escape(money(row.total))}<br><small>доставка: ${escape(money(row.customerDeliveryCost))}</small></td><td>${escape(row.trackNumber || "—")}</td></tr>`;
         }).join("");
-    const headings = kind === "assembly" ? ["№", "Товар", "Кол-во", "Партия", "Заказы"] : ["№", "Заказ", "Состав заказа", "Покупатель", "Доставка / адрес", "Сумма", "Трек"];
+    const headings = kind === "assembly" ? ["№", "Товар", "Кол-во", "Партия", "Заказы"] : ["№", "Заказ", "Состав заказа", "Комментарий покупателя", "Покупатель", "Доставка / адрес", "Сумма", "Трек"];
+    const customerComments = documentRows.filter((row) => row.customerComment.trim()).map((row) => `<div class="comment-card"><b>${escape(row.id)}</b><span>${escape(row.customerComment)}</span></div>`).join("");
     // Для пустого окна нужен WindowProxy: с feature `noopener` window.open()
     // возвращает null даже при успешном открытии, и документ некуда записать.
     const printWindow = window.open("", "_blank");
     if (!printWindow) { setError("Разрешите всплывающие окна, чтобы открыть печать"); return; }
     printWindow.opener = null;
-    printWindow.document.write(`<!doctype html><html lang="ru"><head><meta charset="utf-8"><title>${title}</title><style>@page{${kind === "register" ? "size:landscape;" : ""}margin:10mm}body{font-family:Arial,sans-serif;color:#211f1e;padding:28px}h1{margin:0 0 6px;font-size:25px}p{margin:0 0 20px;color:#6f6863}table{border-collapse:collapse;width:100%;font-size:12px}th{background:#faefe9;text-align:left}th,td{border:1px solid #dcd3ce;padding:9px;vertical-align:top}.num{white-space:nowrap;font-weight:700}.items{min-width:220px}.packing-item{display:grid;grid-template-columns:13px 1fr auto;gap:6px;align-items:start;padding:0 0 7px}.packing-item:last-child{padding-bottom:0}.packing-check{width:11px;height:11px;margin-top:1px;border:1.5px solid #6f6863;border-radius:2px}.packing-qty{white-space:nowrap;font-size:13px}small{color:#746d68}@media print{body{padding:0}.packing-item{break-inside:avoid}}</style></head><body><h1>${title}</h1><p>Период: ${period}. Заказов: ${documentRows.length}${selectedRows.length ? " (выбрано вручную)" : ""}.</p><table><thead><tr>${headings.map((heading) => `<th>${heading}</th>`).join("")}</tr></thead><tbody>${body}</tbody></table><script>window.onload=()=>window.print()</script></body></html>`);
+    printWindow.document.write(`<!doctype html><html lang="ru"><head><meta charset="utf-8"><title>${title}</title><style>@page{${kind === "register" ? "size:landscape;" : ""}margin:10mm}body{font-family:Arial,sans-serif;color:#211f1e;padding:28px}h1{margin:0 0 6px;font-size:25px}h2{margin:24px 0 10px;font-size:17px}p{margin:0 0 20px;color:#6f6863}table{border-collapse:collapse;width:100%;font-size:12px}th{background:#faefe9;text-align:left}th,td{border:1px solid #dcd3ce;padding:9px;vertical-align:top}.num{white-space:nowrap;font-weight:700}.items{min-width:220px}.customer-comment{min-width:190px;background:#fff8d9;color:#5d4300;font-weight:600;white-space:pre-wrap}.packing-item{display:grid;grid-template-columns:13px 1fr auto;gap:6px;align-items:start;padding:0 0 7px}.packing-item:last-child{padding-bottom:0}.packing-check{width:11px;height:11px;margin-top:1px;border:1.5px solid #6f6863;border-radius:2px}.packing-qty{white-space:nowrap;font-size:13px}.comment-card{display:grid;grid-template-columns:210px 1fr;gap:12px;border:1px solid #e4bd49;background:#fff8d9;padding:10px;margin-bottom:7px;font-size:12px;white-space:pre-wrap}small{color:#746d68}@media print{body{padding:0}.packing-item,.comment-card{break-inside:avoid}}</style></head><body><h1>${title}</h1><p>Период: ${period}. Заказов: ${documentRows.length}${selectedRows.length ? " (выбрано вручную)" : ""}.</p><table><thead><tr>${headings.map((heading) => `<th>${heading}</th>`).join("")}</tr></thead><tbody>${body}</tbody></table>${customerComments ? `<h2>Комментарии покупателей — проверить перед упаковкой</h2>${customerComments}` : ""}<script>window.onload=()=>window.print()</script></body></html>`);
     printWindow.document.close();
   };
 
@@ -388,18 +389,19 @@ export default function ShipmentsWorkspace({ password }: { password: string }) {
       <label className="text-xs font-semibold text-[#756c67]">По дату<input type="date" value={to} onChange={(e) => setTo(e.target.value)} className="block mt-1 border border-[#e8ddd7] rounded-lg px-3 py-2 text-sm"/></label>
       <button onClick={() => quickRange(1)} className="px-3 py-2 rounded-lg bg-[#fff4ee] text-[#b9633f] text-sm font-semibold">Сегодня</button>
       <button onClick={() => quickRange(7)} className="px-3 py-2 rounded-lg bg-[#fff4ee] text-[#b9633f] text-sm font-semibold">7 дней</button>
-      <div className="relative min-w-[240px] flex-1"><Search size={16} className="absolute left-3 top-3 text-[#aaa]"/><input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Заказ, имя, телефон, адрес…" className="w-full border border-[#e8ddd7] rounded-lg pl-9 pr-3 py-2 text-sm"/></div>
+      <div className="relative min-w-[240px] flex-1"><Search size={16} className="absolute left-3 top-3 text-[#aaa]"/><input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Заказ, имя, телефон, адрес, комментарий…" className="w-full border border-[#e8ddd7] rounded-lg pl-9 pr-3 py-2 text-sm"/></div>
       <label className="text-xs font-semibold text-[#756c67]">Статус<select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="block mt-1 border border-[#e8ddd7] rounded-lg px-3 py-2 text-sm bg-white"><option value="all">Все статусы</option>{ORDER_STATUSES.map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>
       <label className="flex items-center gap-2 text-sm font-medium"><input type="checkbox" checked={onlyIncomplete} onChange={(e) => setOnlyIncomplete(e.target.checked)} className="accent-[#E8845A]"/>Только незавершённые</label>
     </div>
     <div ref={tableRef} onScroll={rememberView} className="border border-[#eadfd8] rounded-2xl bg-white overflow-auto max-h-[72vh] [scrollbar-gutter:stable]">
-      <table className="min-w-[1855px] w-full text-[12px] border-collapse table-fixed">
+      <table className="min-w-[2095px] w-full text-[12px] border-collapse table-fixed">
         <colgroup>
           <col style={{ width: 38 }}/>
           <col style={{ width: 44 }}/>
           <col style={{ width: 150 }}/>
           <col style={{ width: 165 }}/>
           <col style={{ width: 185 }}/>
+          <col style={{ width: 240 }}/>
           <col style={{ width: 82 }}/>
           <col style={{ width: 220 }}/>
           <col style={{ width: 86 }}/>
@@ -413,7 +415,7 @@ export default function ShipmentsWorkspace({ password }: { password: string }) {
         <thead className="sticky top-0 z-20 bg-[#faf6f3] text-[#706762]"><tr>
           <th className="sticky left-0 z-30 bg-[#faf6f3] w-10 text-center px-1 py-3 border-b border-r border-[#eadfd8]"><input type="checkbox" aria-label="Выбрать все показанные заказы" checked={visible.length > 0 && visible.every((row) => selectedIds.includes(row.id))} onChange={toggleAllVisible} className="accent-[#E8845A]"/></th>
           <th className="sticky left-[38px] z-30 bg-[#faf6f3] w-11 text-center px-2 py-3 border-b border-r border-[#eadfd8] font-semibold">№</th>
-          {['Дата / заказ','Покупатель','Товары','Сумма заказа','Доставка / адрес','Доставка клиенту','Доставка факт','ПВЗ отправки',...checks.map(([,label]) => label),'Статус заказа','Комментарий','Последнее изменение'].map((label, index) => <th key={label} className={`${index >= 8 && index <= 11 ? "text-center px-1" : "text-left px-2.5"} py-3 border-b border-r border-[#eadfd8] leading-tight font-semibold`}>
+          {['Дата / заказ','Покупатель','Товары','Комментарий покупателя','Сумма заказа','Доставка / адрес','Доставка клиенту','Доставка факт','ПВЗ отправки',...checks.map(([,label]) => label),'Статус заказа','Внутренний комментарий','Последнее изменение'].map((label, index) => <th key={label} className={`${index >= 9 && index <= 12 ? "text-center px-1" : "text-left px-2.5"} py-3 border-b border-r border-[#eadfd8] leading-tight font-semibold`}>
             {label === "Статус заказа" ? <button type="button" onClick={toggleStatusSort} title="Сортировать по статусу" className="inline-flex items-center gap-1.5 hover:text-[#c66d48] transition-colors">
               <span>{label}</span>{statusSort === "asc" ? <ArrowUp size={14}/> : statusSort === "desc" ? <ArrowDown size={14}/> : <ArrowUpDown size={14}/>}
             </button> : label}
@@ -435,6 +437,7 @@ export default function ShipmentsWorkspace({ password }: { password: string }) {
           </td>
           <td className="px-2.5 py-3 border-b border-r border-[#eee7e2] w-[180px]"><b>{row.customerName}</b><div className="mt-1 flex items-center gap-1.5 text-[#837a75] whitespace-nowrap"><span>{formatPhoneForDisplay(row.phone)}</span><button onClick={() => void copyPhone(row.id, row.phone)} title="Скопировать номер без скобок и дефисов" aria-label={`Скопировать номер телефона ${row.customerName}`} className="shrink-0 inline-flex w-6 h-6 items-center justify-center rounded-md border border-[#eadfd8] bg-white text-[#c66d48] hover:bg-[#fff0e8] hover:border-[#e7b49e] transition-colors"><Clipboard size={12}/></button>{copiedPhone === row.id && <span className="text-[10px] font-semibold text-green-600">Скопировано</span>}</div><div className="text-[#aaa] break-all">{row.email}</div></td>
           <td className="px-2.5 py-3 border-b border-r border-[#eee7e2] w-[205px]">{row.items.map((item) => <div key={item.id} className="mb-2 leading-snug"><div>{item.name} <b>×{item.quantity}</b></div>{item.allocations.map((allocation, allocationIndex) => <div key={`${allocation.batchId || "none"}:${allocationIndex}`} className={`mt-0.5 text-[10px] font-semibold ${allocation.batchId ? "text-[#7d746f]" : "text-red-600"}`}>{allocation.batchId ? `Партия ${allocation.lotNumber}: ${allocation.quantity}` : `Не распределено: ${allocation.quantity}`}</div>)}</div>)}</td>
+          <td className="px-2.5 py-3 border-b border-r border-[#eee7e2] w-[240px]">{row.customerComment ? <div className="rounded-xl border border-amber-300 bg-amber-50 px-3 py-2.5 text-amber-950 shadow-sm"><div className="mb-1 text-[10px] font-extrabold uppercase tracking-wide text-amber-700">Важно от покупателя</div><div className="whitespace-pre-wrap break-words text-[12px] font-semibold leading-snug">{row.customerComment}</div></div> : <span className="text-[#bbb]">—</span>}</td>
           <td className="px-2.5 py-3 border-b border-r border-[#eee7e2] w-[105px] font-extrabold whitespace-nowrap tabular-nums">{money(row.total)}</td>
           <td className="px-2.5 py-3 border-b border-r border-[#eee7e2] w-[235px]"><b>{row.deliveryMethod}</b><button onClick={() => navigator.clipboard.writeText(row.deliveryAddress)} className="block text-left mt-1 text-[#756c67] hover:text-[#c66d48] leading-snug">{row.deliveryAddress || "Адрес не указан"}</button>{row.trackNumber && <div className="mt-1 font-mono">{row.trackNumber}</div>}</td>
           <td className="px-3 py-3 border-b border-r border-[#eee7e2] font-bold whitespace-nowrap">{money(row.customerDeliveryCost)}</td>

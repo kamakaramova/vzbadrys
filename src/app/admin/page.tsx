@@ -827,6 +827,7 @@ export default function AdminPage() {
         o.deliveryRegion,
         o.deliveryCity,
         o.items.map((item) => item.name).join(" "),
+        o.comment,
       );
     });
     return [...filtered].sort((a, b) => {
@@ -902,7 +903,7 @@ export default function AdminPage() {
         "Доставка (руб)": o.deliveryCost, "Итого (руб)": o.total,
         "Промокод": o.promoCode ?? "", "Доставка": o.deliveryMethod,
         "Адрес": o.deliveryAddress, "Оплата": o.paymentMethod,
-        "Трек": o.trackNumber ?? "",
+        "Трек": o.trackNumber ?? "", "Комментарий": o.comment ?? "",
       })),
       `заказы_${new Date().toISOString().slice(0, 10)}.csv`
     );
@@ -1242,7 +1243,7 @@ export default function AdminPage() {
                 <input
                   value={orderSearch}
                   onChange={(e) => setOrderSearch(e.target.value)}
-                  placeholder="Заказ, покупатель, телефон, город, товар…"
+                  placeholder="Заказ, покупатель, телефон, город, товар, комментарий…"
                   className="w-full pl-10 pr-4 py-2.5 rounded-2xl border border-[#f0e8e0] text-sm outline-none focus:border-[#E8845A] bg-white"
                 />
               </div>
@@ -2800,6 +2801,12 @@ export default function AdminPage() {
                   </div>
                 )}
               </div>
+              {selectedOrder.comment && (
+                <div className="rounded-2xl border border-amber-300 bg-amber-50 p-4 shadow-sm">
+                  <p className="text-xs font-extrabold uppercase tracking-wide text-amber-700">Комментарий покупателя — проверить перед сборкой</p>
+                  <p className="mt-2 whitespace-pre-wrap break-words text-sm font-semibold leading-relaxed text-amber-950">{selectedOrder.comment}</p>
+                </div>
+              )}
               <div>
                 <p className="text-xs font-semibold text-[#aaa] uppercase tracking-wide mb-2">Состав</p>
                 {selectedOrder.items.map((item, i) => (
