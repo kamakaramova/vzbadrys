@@ -434,7 +434,62 @@ export default function ProductClient({
         )}
 
         {activeTab === "docs" && (
-          <div className="max-w-xl flex flex-col gap-3">
+          <div className="max-w-2xl flex flex-col gap-3">
+            <details className="group overflow-hidden rounded-2xl border border-[#f0d8ca] bg-gradient-to-br from-[#fff8f4] to-[#fdf8f5]">
+              <summary className="flex cursor-pointer list-none items-center justify-between gap-4 p-4 sm:p-5 [&::-webkit-details-marker]:hidden">
+                <span className="flex min-w-0 items-center gap-3">
+                  <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#FDDCCA] text-[#C45E36]">
+                    <Shield size={20} />
+                  </span>
+                  <span>
+                    <span className="mb-1 block text-[10px] font-bold uppercase tracking-[0.16em] text-[#C45E36]">Вопрос</span>
+                    <span className="block font-bold leading-snug text-[#1a1a1a]">Как проверить подлинность наших БАДов?</span>
+                  </span>
+                </span>
+                <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-[#efc6b3] text-lg font-medium text-[#C45E36] transition-transform group-open:rotate-45">+</span>
+              </summary>
+
+              <div className="border-t border-[#f0d8ca] bg-white/70 p-4 sm:p-5">
+                <p className="text-sm leading-relaxed text-[#4f4945]">
+                  <b className="text-[#1a1a1a]">Ответ.</b> На каждой нашей баночке есть индивидуальный код Data Matrix системы «Честный ЗНАК». По нему можно проверить, что товар зарегистрирован в государственной системе маркировки, а сведения о продукте совпадают.
+                </p>
+
+                <ol className="mt-5 space-y-4">
+                  <li className="flex gap-3">
+                    <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[#E8845A] text-xs font-bold text-white">1</span>
+                    <p className="pt-0.5 text-sm leading-relaxed text-[#4f4945]">
+                      <b className="text-[#1a1a1a]">Откройте сканер:</b> в мобильном приложении «Госуслуги» выберите «Госкан» или откройте сканер в приложении «Честный ЗНАК».
+                    </p>
+                  </li>
+                  <li className="flex gap-3">
+                    <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[#E8845A] text-xs font-bold text-white">2</span>
+                    <p className="pt-0.5 text-sm leading-relaxed text-[#4f4945]">
+                      <b className="text-[#1a1a1a]">Наведите камеру на квадратный код Data Matrix</b> на упаковке. Не путайте его с обычным линейным штрихкодом.
+                    </p>
+                  </li>
+                  <li className="flex gap-3">
+                    <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[#E8845A] text-xs font-bold text-white">3</span>
+                    <p className="pt-0.5 text-sm leading-relaxed text-[#4f4945]">
+                      <b className="text-[#1a1a1a]">Проверьте результат:</b> приложение покажет статус кода и сведения о товаре. Название и производитель должны соответствовать информации на баночке.
+                    </p>
+                  </li>
+                </ol>
+
+                <div className="mt-5 flex flex-col gap-2 sm:flex-row">
+                  <a href="https://www.gosuslugi.ru/" target="_blank" rel="noopener noreferrer" className="inline-flex items-center justify-center gap-2 rounded-full border border-[#E8845A] px-4 py-2.5 text-sm font-semibold text-[#C45E36] transition-colors hover:bg-[#fff1ea]">
+                    Открыть Госуслуги <ExternalLink size={14} />
+                  </a>
+                  <a href="https://markirovka.ru/knowledge/obshchie-voprosi-markirovki/mp-chz-consumer/sposoby-ustanovki-prilozheniya-chestnyy-znak" target="_blank" rel="noopener noreferrer" className="inline-flex items-center justify-center gap-2 rounded-full bg-[#E8845A] px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-[#d4703f]">
+                    Скачать «Честный ЗНАК» <ExternalLink size={14} />
+                  </a>
+                </div>
+
+                <p className="mt-4 rounded-xl bg-[#fdf3ed] px-3.5 py-3 text-xs leading-relaxed text-[#756c67]">
+                  Если код не считывается, приложение сообщает о проблеме или данные не совпадают с баночкой — напишите нам, и мы поможем всё проверить.
+                </p>
+              </div>
+            </details>
+
             <p className="text-sm text-[#777] leading-relaxed">Все документы доступны в PDF и открываются в новой вкладке.</p>
             {documents.map((doc, i) => (
               <a key={i} href={doc.url} target="_blank" rel="noopener noreferrer" className="group flex items-center gap-3 rounded-2xl border border-[#f0e8e0] bg-[#fdf8f5] p-4 transition-colors hover:bg-[#FDDCCA]/30">
