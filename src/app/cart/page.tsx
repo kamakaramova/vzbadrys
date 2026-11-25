@@ -11,6 +11,7 @@ import { supabase } from "@/lib/supabase";
 import { useBonusBalance } from "@/lib/useBonusBalance";
 import { productImagePaths } from "@/lib/productImages";
 import { promoDiscountAmount as calculatePromoDiscountAmount } from "@/lib/promoRules";
+import { getOzonPvzDeliveryPrice } from "@/lib/deliveryPricing";
 import ShippingDelayNotice from "@/components/ShippingDelayNotice";
 
 export default function CartPage() {
@@ -324,7 +325,7 @@ export default function CartPage() {
                   <div className="flex justify-between text-sm">
                     <span className="text-[#6b6b6b]">Доставка</span>
                     <span className="text-green-600 font-semibold">
-                      {discountedSubtotal >= freeDeliveryThreshold ? "0 ₽" : "от 200 ₽"}
+                      {discountedSubtotal >= freeDeliveryThreshold ? "0 ₽" : `от ${getOzonPvzDeliveryPrice()} ₽`}
                     </span>
                   </div>
                   <p className="text-xs text-[#aaa] bg-[#fdf8f5] rounded-xl p-3">
