@@ -2,6 +2,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
+import FridayPromoPrice from "@/components/FridayPromoPrice";
 import { Product } from "@/lib/products";
 import { productImagePaths, productMainImage } from "@/lib/productImages";
 import { ShoppingCart, Heart, FileText, ChevronLeft, ChevronRight, Check, Shield, AlertCircle, Copy, Share2, ExternalLink } from "lucide-react";
@@ -270,10 +271,13 @@ export default function ProductClient({
             )}
 
             {/* Цена */}
-            <div className="flex items-baseline gap-3 mb-5">
-              <span className="text-3xl font-bold">{activePrice.toLocaleString("ru-RU")} ₽</span>
-              {activeOldPrice && <span className="text-lg text-[#aaa] line-through">{activeOldPrice.toLocaleString("ru-RU")} ₽</span>}
-              {activeOldPrice && <span className="bg-[#FF6B6B] text-white text-sm font-bold px-2.5 py-1 rounded-full">-{Math.round(((activeOldPrice - activePrice) / activeOldPrice) * 100)}%</span>}
+            <div className="mb-5">
+              <div className="flex flex-wrap items-baseline gap-3">
+                <span className="text-3xl font-bold">{activePrice.toLocaleString("ru-RU")} ₽</span>
+                {activeOldPrice && <span className="text-lg text-[#aaa] line-through">{activeOldPrice.toLocaleString("ru-RU")} ₽</span>}
+                {activeOldPrice && <span className="bg-[#FF6B6B] text-white text-sm font-bold px-2.5 py-1 rounded-full">-{Math.round(((activeOldPrice - activePrice) / activeOldPrice) * 100)}%</span>}
+              </div>
+              <FridayPromoPrice product={product} />
             </div>
             {!isSeed && (
               <p className="-mt-2 mb-5 text-xs font-medium leading-relaxed text-[#756c67]">БАД. Не является лекарственным средством.</p>
@@ -538,6 +542,7 @@ export default function ProductClient({
                   <p className="mb-3 text-[10px] leading-snug text-[#9a918c]">БАД. Не является лекарственным средством.</p>
                 )}
                 <p className="font-bold text-[#E8845A]">{p.price.toLocaleString("ru-RU")} ₽</p>
+                <FridayPromoPrice product={p} />
               </Link>
             ))}
           </div>

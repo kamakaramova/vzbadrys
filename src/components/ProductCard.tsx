@@ -1,5 +1,6 @@
 "use client";
 import { useState } from "react";
+import FridayPromoPrice from "@/components/FridayPromoPrice";
 import { ShoppingCart, Heart, Check } from "lucide-react";
 import { Product } from "@/lib/products";
 import { productImagePaths } from "@/lib/productImages";
@@ -84,6 +85,7 @@ export default function ProductCard({ product }: { product: Product }) {
           {product.oldPrice && (
             <span className="ml-2 text-xs text-[#aaa] line-through">{product.oldPrice.toLocaleString("ru-RU")} ₽</span>
           )}
+          <FridayPromoPrice product={product} />
         </div>
         <div className="mt-3 flex justify-end">
           <button

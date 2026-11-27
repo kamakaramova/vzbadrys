@@ -3,8 +3,7 @@
 import Link from "next/link";
 import { useState } from "react";
 import { ArrowRight, Check, Copy } from "lucide-react";
-
-const FRIDAY_PROMO_CODE = "ПЯТНИЦА";
+import { FRIDAY_PROMO } from "@/lib/campaignVisibility";
 
 interface FridayPromoBannerProps {
   className?: string;
@@ -20,10 +19,10 @@ export default function FridayPromoBanner({
 
   async function copyCode() {
     try {
-      await navigator.clipboard.writeText(FRIDAY_PROMO_CODE);
+      await navigator.clipboard.writeText(FRIDAY_PROMO.code);
       setCopyStatus("Промокод скопирован");
     } catch {
-      setCopyStatus(`Введите ${FRIDAY_PROMO_CODE} в корзине`);
+      setCopyStatus(`Введите ${FRIDAY_PROMO.code} в корзине`);
     }
   }
 
@@ -34,7 +33,7 @@ export default function FridayPromoBanner({
         <div>
           <p className="text-lg font-black leading-tight sm:text-2xl">Чёрная пятница возвращается!</p>
           <p className="mt-2 text-sm leading-relaxed">
-            <strong className="text-[#ffdb55]">−20% по промокоду</strong> на отдельные БАДы и на набор из трёх. На набор уже действует скидка.
+            <strong className="text-[#ffdb55]">−{FRIDAY_PROMO.discountPercent}% по промокоду</strong> на отдельные БАДы и на набор из трёх. На набор уже действует скидка.
           </p>
           <p className="mt-1 text-xs text-[#ded2ba]">Не успели в прошлый раз? Введите промокод в корзине.</p>
         </div>
@@ -42,10 +41,10 @@ export default function FridayPromoBanner({
           <button
             type="button"
             onClick={() => void copyCode()}
-            aria-label={`Скопировать промокод ${FRIDAY_PROMO_CODE}`}
+            aria-label={`Скопировать промокод ${FRIDAY_PROMO.code}`}
             className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-dashed border-[#b79c43] bg-[#352d1b] px-4 font-mono text-sm font-bold tracking-wider text-[#ffdb55] transition-colors hover:bg-[#493c20] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#ffdb55]"
           >
-            {FRIDAY_PROMO_CODE}
+            {FRIDAY_PROMO.code}
             {copied ? <Check size={16} aria-hidden="true" /> : <Copy size={16} aria-hidden="true" />}
           </button>
           <Link href={action.href} className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-[#ffdb55] px-4 text-sm font-extrabold text-[#201d19] no-underline transition-colors hover:bg-[#ffe582] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#ffdb55]">
