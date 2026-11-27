@@ -8,11 +8,15 @@ import { FRIDAY_PROMO } from "@/lib/campaignVisibility";
 interface FridayPromoBannerProps {
   className?: string;
   action?: { href: string; label: string };
+  secondaryAction?: { href: string; label: string };
+  offerDetails?: string;
 }
 
 export default function FridayPromoBanner({
   className = "",
   action = { href: "/catalog?cat=bads", label: "К добавкам" },
+  secondaryAction,
+  offerDetails = "на отдельные БАДы и на набор из трёх. На набор уже действует скидка.",
 }: FridayPromoBannerProps) {
   const [copyStatus, setCopyStatus] = useState("");
   const copied = copyStatus === "Промокод скопирован";
@@ -33,7 +37,7 @@ export default function FridayPromoBanner({
         <div>
           <p className="text-lg font-black leading-tight sm:text-2xl">Чёрная пятница возвращается!</p>
           <p className="mt-2 text-sm leading-relaxed">
-            <strong className="text-[#ffdb55]">−{FRIDAY_PROMO.discountPercent}% по промокоду</strong> на отдельные БАДы и на набор из трёх. На набор уже действует скидка.
+            <strong className="text-[#ffdb55]">−{FRIDAY_PROMO.discountPercent}% по промокоду</strong> {offerDetails}
           </p>
           <p className="mt-1 text-xs text-[#ded2ba]">Не успели в прошлый раз? Введите промокод в корзине.</p>
         </div>
@@ -50,6 +54,14 @@ export default function FridayPromoBanner({
           <Link href={action.href} className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-[#ffdb55] px-4 text-sm font-extrabold text-[#201d19] no-underline transition-colors hover:bg-[#ffe582] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#ffdb55]">
             {action.label} <ArrowRight size={16} aria-hidden="true" />
           </Link>
+          {secondaryAction && (
+            <Link
+              href={secondaryAction.href}
+              className="inline-flex min-h-11 items-center rounded-xl border border-[#afa28c] px-4 text-sm font-bold text-[#fff9e9] no-underline transition-colors hover:bg-[#352d1b] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#ffdb55]"
+            >
+              {secondaryAction.label}
+            </Link>
+          )}
           <span role="status" className={copyStatus ? "basis-full text-xs text-[#ded2ba]" : "sr-only"}>{copyStatus}</span>
         </div>
       </div>

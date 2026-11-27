@@ -243,6 +243,12 @@ export default function MagnesiumQuiz({ products: fallbackProducts }: MagnesiumQ
               <h2 id="quiz-result-title" className="max-w-xl text-2xl font-extrabold leading-tight sm:text-3xl">
                 Вам больше всего подойдёт {product.name}
               </h2>
+              <FridayPromoBanner
+                className="mt-4"
+                action={{ href: `/product/${product.id}`, label: "Купить магний со скидкой" }}
+                secondaryAction={{ href: "/catalog?cat=bads", label: "Посмотреть все БАДы" }}
+                offerDetails="на рекомендованный магний и другие БАДы."
+              />
               <p className="mt-4 max-w-2xl leading-relaxed text-[#5f5a57]">{copy.explanation}</p>
             </div>
             <MiniKama state="complete" />
@@ -303,12 +309,6 @@ export default function MagnesiumQuiz({ products: fallbackProducts }: MagnesiumQ
                 </p>
 
                 <div className="mt-6 flex flex-col gap-3 sm:flex-row">
-                  <Link
-                    href={`/product/${product.id}`}
-                    className="inline-flex min-h-12 items-center justify-center gap-2 rounded-full bg-[#E8845A] px-6 py-3 text-sm font-bold text-white transition hover:bg-[#d4703f] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#E8845A]/30"
-                  >
-                    Посмотреть этот магний <ArrowRight size={17} aria-hidden="true" />
-                  </Link>
                   <button
                     type="button"
                     onClick={restart}
@@ -319,10 +319,6 @@ export default function MagnesiumQuiz({ products: fallbackProducts }: MagnesiumQ
                 </div>
               </div>
             </div>
-            <FridayPromoBanner
-              className="mt-8"
-              action={{ href: `/product/${product.id}`, label: "К этому магнию" }}
-            />
           </div>
         </div>
       </section>
