@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
+import FridayPromoBanner from "@/components/FridayPromoBanner";
 import { useMemo, useRef, useState } from "react";
 import { ArrowRight, Check, ChevronLeft, RotateCcw, ShieldCheck, Sparkles } from "lucide-react";
 import { productMainImage } from "@/lib/productImages";
@@ -130,6 +131,9 @@ export default function ZincSeleniumQuiz({ fallbackProduct }: ZincSeleniumQuizPr
               <p className="mt-3 text-center text-xs text-[#8a817c]">БАД. Не является лекарственным средством.</p>
             </div>
           </Link>
+        </div>
+        <div className="px-5 pb-5 sm:px-8 sm:pb-8 lg:px-10 lg:pb-10">
+          <FridayPromoBanner action={{ href: `/product/${product.id}`, label: "К комплексу" }} />
         </div>
       </section>
     );

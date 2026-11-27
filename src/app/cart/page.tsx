@@ -13,6 +13,7 @@ import { productImagePaths } from "@/lib/productImages";
 import { promoDiscountAmount as calculatePromoDiscountAmount } from "@/lib/promoRules";
 import { getOzonPvzDeliveryPrice } from "@/lib/deliveryPricing";
 import ShippingDelayNotice from "@/components/ShippingDelayNotice";
+import FridayPromoBanner from "@/components/FridayPromoBanner";
 
 export default function CartPage() {
   const router = useRouter();
@@ -85,6 +86,7 @@ export default function CartPage() {
               Перейти в каталог →
             </Link>
           </div>
+          <FridayPromoBanner className="mt-8 max-w-3xl" />
         </main>
         <Footer />
       </>
@@ -107,6 +109,7 @@ export default function CartPage() {
           </div>
 
           <ShippingDelayNotice className="mb-8" />
+          <FridayPromoBanner className="mb-8" action={{ href: "#cart-discounts", label: "К промокоду" }} />
 
           {!user && (
             <div className="mb-8 bg-[#fff4ee] border-l-4 border-[#E8845A] px-6 py-5 sm:px-8 sm:py-6">
@@ -188,7 +191,7 @@ export default function CartPage() {
               ))}
 
               {/* Промокод и реферальный код */}
-              <div className="bg-white rounded-3xl border border-[#f0e8e0] p-5">
+              <div id="cart-discounts" className="scroll-mt-36 bg-white rounded-3xl border border-[#f0e8e0] p-5">
                 <div className="flex items-center gap-2 mb-4">
                   <Tag size={16} className="text-[#E8845A]" />
                   <p className="font-semibold text-sm">Скидки</p>

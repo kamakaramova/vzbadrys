@@ -2,6 +2,7 @@
 
 import { useMemo, useRef, useState } from "react";
 import Link from "next/link";
+import FridayPromoBanner from "@/components/FridayPromoBanner";
 import { ArrowRight, Check, ChevronLeft, RotateCcw, Sparkles } from "lucide-react";
 import {
   buildMagnesiumReasons,
@@ -318,6 +319,10 @@ export default function MagnesiumQuiz({ products: fallbackProducts }: MagnesiumQ
                 </div>
               </div>
             </div>
+            <FridayPromoBanner
+              className="mt-8"
+              action={{ href: `/product/${product.id}`, label: "К этому магнию" }}
+            />
           </div>
         </div>
       </section>

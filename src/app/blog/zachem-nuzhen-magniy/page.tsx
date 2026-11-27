@@ -2,6 +2,7 @@
 import Link from "next/link";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
+import FridayPromoBanner from "@/components/FridayPromoBanner";
 
 
 export default function MagniyArticle() {
@@ -275,6 +276,7 @@ export default function MagniyArticle() {
             </div>
 
           </div>
+          <FridayPromoBanner className="mt-10" />
         </article>
       </main>
       <Footer />

@@ -4,6 +4,7 @@ import { ChevronRight, ExternalLink, FlaskConical, ShieldCheck } from "lucide-re
 import Footer from "@/components/Footer";
 import Header from "@/components/Header";
 import ZincSeleniumQuiz from "@/components/ZincSeleniumQuiz";
+import FridayPromoBanner from "@/components/FridayPromoBanner";
 import { products } from "@/lib/products";
 
 export const metadata: Metadata = {
@@ -199,6 +200,7 @@ export default function ZincSeleniumArticlePage() {
                   ))}
                 </ol>
               </section>
+              <FridayPromoBanner />
             </div>
           </div>
         </article>
